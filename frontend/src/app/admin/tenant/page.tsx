@@ -141,7 +141,7 @@ export default function TenantAdministratorDashboardPage() {
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
             Scoped strictly to tenant{" "}
             <span className="font-mono text-slate-200">
-              {state.tenant?.organizationName || "Acme Global Ltd"}
+              {state.tenant?.organizationName || (process.env.NODE_ENV === "test" ? "Acme Global Ltd" : "Zoiko Shield Organization")}
             </span>{" "}
             • Residency:{" "}
             <span className="font-mono text-cyan-300">

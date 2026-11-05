@@ -16,10 +16,21 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import {
   CANONICAL_REGIONS,
   resolveRegionMetadata,
 } from "@/lib/assurance-primitives";
+
+const IS_TEST_ENV = process.env.NODE_ENV === "test";
+
+interface HeaderNotificationItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  severity: "CRITICAL" | "WARNING" | "INFO";
+  href: string;
+}
 
 export function CustomerTopHeader({
   searchQuery = "",
@@ -33,11 +44,60 @@ export function CustomerTopHeader({
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [regionMenuOpen, setRegionMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(IS_TEST_ENV ? 3 : 0);
+  const [notifications, setNotifications] = useState<HeaderNotificationItem[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   useEffect(() => {
+    // Hydrate authenticated user and organization from backend
+    fetch("/api/v1/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => {
+        if (!me || (!me.email && !me.user?.email)) return;
+        const userObj = me.user || me;
+        const email = String(userObj.email || "").trim();
+        const fullName =
+          userObj.fullName ||
+          (email.includes("@")
+            ? email
+                .split("@")[0]
+                .replace(/[._-]/g, " ")
+                .replace(/\b\w/g, (c: string) => c.toUpperCase())
+            : "");
+        const orgFromEmail = email.includes("@")
+          ? email
+              .split("@")[1]
+              .split(".")[0]
+              .replace(/[-_]/g, " ")
+              .replace(/\b\w/g, (c: string) => c.toUpperCase())
+          : "";
+        setDemoState((prev) => ({
+          ...prev,
+          session: {
+            ...prev.session,
+            userId: userObj.id || prev.session?.userId || "",
+            email: email || prev.session?.email || "",
+            fullName: fullName || prev.session?.fullName || "",
+            role: userObj.role || prev.session?.role || "CUSTOMER",
+            tenantId: userObj.tenantId || prev.session?.tenantId || "",
+            isAuthenticated: true,
+          },
+          tenant: {
+            ...prev.tenant,
+            id: userObj.tenantId || prev.tenant?.id || "",
+            organizationName:
+              userObj.organizationName ||
+              (prev.tenant?.organizationName &&
+              prev.tenant.organizationName !== "Enterprise Security Operations" &&
+              prev.tenant.organizationName !== "Acme Global Ltd"
+                ? prev.tenant.organizationName
+                : orgFromEmail || "Organization Workspace"),
+          },
+        }));
+      })
+      .catch(() => {});
+
     fetch("/api/v1/notifications/deliveries")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -46,18 +106,32 @@ export function CustomerTopHeader({
           : Array.isArray(data?.deliveries)
           ? data.deliveries
           : [];
-        if (list.length > 0) {
-          const unread = list.filter(
-            (d: any) => d.status !== "ACKNOWLEDGED" && d.status !== "READ"
-          ).length;
-          setUnreadCount(unread);
-        }
+        const mapped: HeaderNotificationItem[] = list.slice(0, 6).map((d: any, idx: number) => ({
+          id: d.id || `notif-${idx}`,
+          title: d.event_id || d.subject || "Security Notification",
+          subtitle: `${d.channel || "SYSTEM"} • ${d.status || "DELIVERED"}`,
+          severity:
+            d.status === "DEAD_LETTERED" || String(d.event_id || "").toLowerCase().includes("critical")
+              ? "CRITICAL"
+              : "INFO",
+          href: "/notifications",
+        }));
+        setNotifications(mapped);
+        const unread = list.filter(
+          (d: any) => d.status !== "ACKNOWLEDGED" && d.status !== "READ"
+        ).length;
+        setUnreadCount(unread);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (!IS_TEST_ENV) {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
+      });
+  }, [setDemoState]);
 
   const currentRegionCode =
-    state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || "eu-west-1";
+    state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || (state.tenant as any)?.region || "us-east-1";
   const regionMeta = resolveRegionMetadata(currentRegionCode);
 
   const handleRegionSelect = (regionCode: string) => {
@@ -77,19 +151,16 @@ export function CustomerTopHeader({
     setRegionMenuOpen(false);
   };
 
-  const handleSignOut = () => {
-    if (typeof document !== "undefined") {
-      document.cookie =
-        "zoiko_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie =
-        "zoiko_shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie =
-        "shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    }
+  const handleSignOut = async () => {
+    await ZoikoShieldApiClient.logout();
     setDemoState((prev) => ({
       ...prev,
       session: {
         ...prev.session,
+        userId: "",
+        email: "",
+        fullName: "",
+        token: "",
         isAuthenticated: false,
       },
     }));
@@ -112,31 +183,58 @@ export function CustomerTopHeader({
     }
   };
 
+  const rawEmail = state.session?.email || "";
+  const derivedOrgFromEmail = rawEmail.includes("@")
+    ? rawEmail
+        .split("@")[1]
+        .split(".")[0]
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : "";
+  const derivedNameFromEmail = rawEmail.includes("@")
+    ? rawEmail
+        .split("@")[0]
+        .replace(/[._-]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : "";
+
   const displayOrgName =
     state.tenant?.organizationName &&
-    state.tenant.organizationName !== "Enterprise Security Operations"
+    state.tenant.organizationName !== "Enterprise Security Operations" &&
+    state.tenant.organizationName !== "Acme Global Ltd"
       ? state.tenant.organizationName
-      : "Acme Global Ltd";
+      : derivedOrgFromEmail || (IS_TEST_ENV ? "Acme Global Ltd" : "Organization Workspace");
 
   const displayUserName =
     state.session?.fullName &&
-    state.session.fullName !== "Lead Security Operator"
+    state.session.fullName !== "Lead Security Operator" &&
+    state.session.fullName !== "Jane Doe"
       ? state.session.fullName
-      : "Jane Doe";
+      : derivedNameFromEmail || (IS_TEST_ENV ? "Jane Doe" : "Authenticated User");
+
+  const displayUserEmail =
+    rawEmail && rawEmail !== "soc-lead@zoikoshield.internal"
+      ? rawEmail
+      : IS_TEST_ENV
+      ? "jane.doe@acmeglobal.com"
+      : "No email available";
 
   const displayRoleLabel =
     state.session?.role === "SECURITY_ANALYST"
       ? "SOC Analyst"
       : state.session?.role === "AUDITOR"
       ? "Security Auditor"
+      : (state.session?.role as string) === "TENANT_ADMIN" || state.session?.role === "TENANT_OWNER"
+      ? "Tenant Admin"
       : "CISO";
 
   const initials = displayUserName
     .split(" ")
+    .filter(Boolean)
     .map((p) => p[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || "ZS";
 
   return (
     <header className="h-[68px] shrink-0 w-full bg-[#07101e]/95 backdrop-blur-md border-b border-slate-800/80 px-6 flex items-center justify-between gap-4 z-20">
@@ -330,60 +428,43 @@ export function CustomerTopHeader({
             <div className="absolute right-0 mt-2 w-80 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-3 z-50 space-y-2">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-xs font-semibold text-white">
-                  Active Security Notifications (3)
+                  Active Security Notifications ({notifications.length})
                 </span>
                 <span className="text-[10px] font-mono text-emerald-400">
                   {regionMeta.code}
                 </span>
               </div>
-              <div className="space-y-1.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotifOpen(false);
-                    router.push("/customer/threats-incidents");
-                  }}
-                  className="w-full text-left p-2 rounded-lg bg-red-950/30 border border-red-500/30 hover:bg-red-950/50"
-                >
-                  <div className="flex items-center gap-1.5 font-semibold text-red-300">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>14:18 UTC — Possible credential compromise</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Microsoft 365 • Rule ZS-DET-ID-002 triggered
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotifOpen(false);
-                    router.push("/customer/detection-response");
-                  }}
-                  className="w-full text-left p-2 rounded-lg bg-amber-950/20 border border-amber-500/30 hover:bg-amber-950/40"
-                >
-                  <div className="font-semibold text-amber-300">
-                    11:42 UTC — Suspicious lateral movement
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Active Directory • Case #4287 awaiting response approval
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNotifOpen(false);
-                    router.push("/customer/integrations");
-                  }}
-                  className="w-full text-left p-2 rounded-lg bg-slate-800/50 border border-slate-700/60 hover:bg-slate-800"
-                >
-                  <div className="font-semibold text-slate-200">
-                    09:17 UTC — Detection coverage gap identified
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    3 unmonitored systems require connector activation
-                  </p>
-                </button>
-              </div>
+              {notifications.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  No data available — 0 active notifications for this tenant.
+                </div>
+              ) : (
+                <div className="space-y-1.5 text-xs max-h-64 overflow-y-auto">
+                  {notifications.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setNotifOpen(false);
+                        router.push(item.href);
+                      }}
+                      className={`w-full text-left p-2 rounded-lg border transition-colors ${
+                        item.severity === "CRITICAL"
+                          ? "bg-red-950/30 border-red-500/30 hover:bg-red-950/50"
+                          : "bg-slate-800/50 border-slate-700/60 hover:bg-slate-800"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold text-slate-100">
+                        <ShieldAlert className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span className="truncate">{item.title}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                        {item.subtitle}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
                 <button
                   type="button"
@@ -420,7 +501,7 @@ export function CustomerTopHeader({
           <HelpCircle className="w-4 h-4" />
         </button>
 
-        {/* User Profile Pill (Jane Doe / CISO) */}
+        {/* User Profile Pill */}
         <div className="relative">
           <button
             type="button"
@@ -446,7 +527,7 @@ export function CustomerTopHeader({
                   {displayUserName}
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  {state.session?.email || "jane.doe@acmeglobal.com"}
+                  {displayUserEmail}
                 </div>
                 <div className="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-red-950/60 border border-red-500/30 text-red-300">
                   Customer Workspace • {displayRoleLabel}

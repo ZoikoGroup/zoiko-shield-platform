@@ -154,6 +154,17 @@ function toAuthenticationOptions(res: any): PasskeyAuthenticationOptions {
   };
 }
 
+async function hashSha256Browser(val: string): Promise<string> {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const data = new TextEncoder().encode(val);
+    const hash = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  return "";
+}
+
 export class ZoikoShieldApiClient {
   /**
    * Pass `null` as fallbackFn for calls whose answer must come from the
@@ -183,6 +194,14 @@ export class ZoikoShieldApiClient {
       }
       if (state.session?.token) {
         headers["Authorization"] = `Bearer ${state.session.token}`;
+      }
+      if (typeof window !== "undefined") {
+        try {
+          const offlineAccountsRaw = localStorage.getItem("zoiko_offline_accounts");
+          if (offlineAccountsRaw) {
+            headers["x-zoiko-offline-accounts"] = offlineAccountsRaw;
+          }
+        } catch {}
       }
       const url =
         endpoint.startsWith("http://") || endpoint.startsWith("https://")
@@ -275,15 +294,62 @@ export class ZoikoShieldApiClient {
     );
 
     const state = getState();
+    const userObj = (session as any)?.user || session || {};
+    const resolvedToken = (session as any)?.accessToken || session?.token || "";
+    const signedInTenantId = userObj.tenantId || session?.tenantId || resolvedTenantId || state.tenant?.id || "";
+    const resolvedEmail = userObj.email || session?.email || normalizedEmail;
+    const resolvedFullName =
+      userObj.fullName ||
+      session?.fullName ||
+      (resolvedEmail.includes("@")
+        ? resolvedEmail
+            .split("@")[0]
+            .replace(/[._-]/g, " ")
+            .replace(/\b\w/g, (c: string) => c.toUpperCase())
+        : "");
+    const resolvedRole = userObj.role || session?.role || "TENANT_ADMIN";
+
+    const previousTenantId = state.tenant?.id;
     state.session = {
       ...session,
+      userId: userObj.id || session?.userId || "",
+      email: resolvedEmail,
+      fullName: resolvedFullName,
+      role: resolvedRole,
+      tenantId: signedInTenantId,
+      token: resolvedToken,
       isAuthenticated: true,
     };
-    // Carry the tenant the user actually signed in to, so every later request
-    // sends an x-tenant-id the backend will accept.
-    const signedInTenantId = session.tenantId || resolvedTenantId || state.tenant?.id;
     if (signedInTenantId && state.tenant) {
+      const isMockOrg =
+        !state.tenant.organizationName ||
+        state.tenant.organizationName === "Enterprise Security Operations" ||
+        state.tenant.organizationName === "Acme Global Ltd" ||
+        (previousTenantId && previousTenantId !== signedInTenantId);
       state.tenant.id = signedInTenantId;
+      if ((session as any)?.tenant?.organizationName) {
+        state.tenant.organizationName = (session as any).tenant.organizationName;
+      } else if (isMockOrg) {
+        const domainPart = resolvedEmail.includes("@") ? resolvedEmail.split("@")[1].split(".")[0] : "";
+        state.tenant.organizationName = domainPart
+          ? domainPart.replace(/[-_]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
+          : "Organization Workspace";
+      }
+    }
+    if (!DEMO_FALLBACK_ENABLED) {
+      state.alerts = [];
+      state.cases = [];
+      state.connectors = [];
+      state.controlTests = [];
+      state.auditPackages = [];
+      state.team = [];
+      state.jitSessions = [];
+      state.aiIncidents = [];
+      state.incidentRetainers = [];
+      state.incidentWorkOrders = [];
+      state.workOrderConsumption = [];
+      state.legalSensitiveRecords = [];
+      state.legalAccessAuditLogs = [];
     }
     state.currentStep = 2;
 
@@ -291,13 +357,47 @@ export class ZoikoShieldApiClient {
       try {
         const maxAge = 86400 * 7; // 7 days
         document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
-        document.cookie = `zoiko_shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
-        document.cookie = `shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
-        document.cookie = `access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_access_token=${resolvedToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `shield_access_token=${resolvedToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `access_token=${resolvedToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
         if (signedInTenantId) {
           document.cookie = `zoiko_shield_tenant_id=${signedInTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
         }
-        document.cookie = `zoiko_shield_user_email=${encodeURIComponent(session.email || email)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_user_email=${encodeURIComponent(resolvedEmail)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        if (state.tenant?.organizationName) {
+          document.cookie = `zoiko_shield_org_name=${encodeURIComponent(state.tenant.organizationName)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        }
+
+        if (password) {
+          hashSha256Browser(password).then((passHash) => {
+            if (passHash) {
+              const storedRaw = localStorage.getItem("zoiko_offline_accounts");
+              let accountsList: any[] = [];
+              if (storedRaw) {
+                try {
+                  accountsList = JSON.parse(decodeURIComponent(storedRaw));
+                } catch {}
+              }
+              if (!Array.isArray(accountsList)) accountsList = [];
+              const newAcc = {
+                email: normalizedEmail,
+                passwordSha256: passHash,
+                fullName: resolvedFullName || "User",
+                role: (resolvedRole || "TENANT_OWNER") as any,
+                tenantId: signedInTenantId || state.tenant?.id || "00000000-0000-4000-8000-000000000001",
+              };
+              const existingIdx = accountsList.findIndex(
+                (a) => a.email === normalizedEmail
+              );
+              if (existingIdx >= 0) accountsList[existingIdx] = newAcc;
+              else accountsList.push(newAcc);
+
+              const encoded = encodeURIComponent(JSON.stringify(accountsList));
+              localStorage.setItem("zoiko_offline_accounts", encoded);
+              document.cookie = `zoiko_offline_accounts=${encoded}; path=/; max-age=${86400 * 30}; SameSite=Lax`;
+            }
+          }).catch(() => {});
+        }
       } catch {}
     }
 
@@ -387,6 +487,21 @@ export class ZoikoShieldApiClient {
     if (res.session) {
       state.session = { ...res.session, isAuthenticated: true };
     }
+    if (!DEMO_FALLBACK_ENABLED) {
+      state.alerts = [];
+      state.cases = [];
+      state.connectors = [];
+      state.controlTests = [];
+      state.auditPackages = [];
+      state.team = [];
+      state.jitSessions = [];
+      state.aiIncidents = [];
+      state.incidentRetainers = [];
+      state.incidentWorkOrders = [];
+      state.workOrderConsumption = [];
+      state.legalSensitiveRecords = [];
+      state.legalAccessAuditLogs = [];
+    }
     state.currentStep = 2;
 
     if (typeof window !== "undefined") {
@@ -394,7 +509,44 @@ export class ZoikoShieldApiClient {
         const maxAge = 86400 * 7;
         document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `zoiko_shield_access_token=${state.session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `shield_access_token=${state.session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `access_token=${state.session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `zoiko_shield_tenant_id=${state.tenant.id}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_user_email=${encodeURIComponent(state.session.email || normalizedPayload.email)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        if (state.tenant?.organizationName) {
+          document.cookie = `zoiko_shield_org_name=${encodeURIComponent(state.tenant.organizationName)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        }
+
+        if (payload.password) {
+          hashSha256Browser(payload.password).then((passHash) => {
+            if (passHash) {
+              const storedRaw = localStorage.getItem("zoiko_offline_accounts");
+              let accountsList: any[] = [];
+              if (storedRaw) {
+                try {
+                  accountsList = JSON.parse(decodeURIComponent(storedRaw));
+                } catch {}
+              }
+              if (!Array.isArray(accountsList)) accountsList = [];
+              const newAcc = {
+                email: normalizedPayload.email,
+                passwordSha256: passHash,
+                fullName: payload.fullName || "Administrator",
+                role: "TENANT_OWNER" as const,
+                tenantId: state.tenant?.id || `tenant-${payload.slug || "eval"}`,
+              };
+              const existingIdx = accountsList.findIndex(
+                (a) => a.email === normalizedPayload.email
+              );
+              if (existingIdx >= 0) accountsList[existingIdx] = newAcc;
+              else accountsList.push(newAcc);
+
+              const encoded = encodeURIComponent(JSON.stringify(accountsList));
+              localStorage.setItem("zoiko_offline_accounts", encoded);
+              document.cookie = `zoiko_offline_accounts=${encoded}; path=/; max-age=${86400 * 30}; SameSite=Lax`;
+            }
+          }).catch(() => {});
+        }
       } catch {}
     }
 
@@ -1566,9 +1718,12 @@ export class ZoikoShieldApiClient {
         return state.alerts;
       }
     );
+    const list = Array.isArray(backendAlerts) ? backendAlerts : [];
+    if (!DEMO_FALLBACK_ENABLED) {
+      return list;
+    }
     const state = getState();
     const demoAlerts = state.alerts || [];
-    const list = Array.isArray(backendAlerts) ? backendAlerts : [];
     const ids = new Set(list.map((a) => a.id));
     const merged = [...list, ...demoAlerts.filter((a) => !ids.has(a.id))];
     return merged.length > 0 ? merged : demoAlerts;
@@ -1584,9 +1739,12 @@ export class ZoikoShieldApiClient {
         return state.cases;
       }
     );
+    const list = Array.isArray(backendCases) ? backendCases : [];
+    if (!DEMO_FALLBACK_ENABLED) {
+      return list;
+    }
     const state = getState();
     const demoCases = state.cases || [];
-    const list = Array.isArray(backendCases) ? backendCases : [];
     const ids = new Set(list.map((c) => c.id));
     const merged = [...list, ...demoCases.filter((c) => !ids.has(c.id))];
     return merged.length > 0 ? merged : demoCases;

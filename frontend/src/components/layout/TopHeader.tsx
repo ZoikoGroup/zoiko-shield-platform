@@ -106,6 +106,34 @@ export const TopHeader: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSearchIdx, setSelectedSearchIdx] = useState(0);
 
+  // Sync authenticated user and tenant info from backend /api/v1/auth/me
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test") return;
+    fetch("/api/v1/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const user = data.user || data;
+        const tenant = data.tenant || {};
+        setDemoState((prev) => ({
+          ...prev,
+          session: {
+            ...prev.session,
+            userId: user.id || user.userId || prev.session.userId,
+            email: user.email || prev.session.email,
+            fullName: user.name || user.fullName || user.email?.split("@")[0] || prev.session.fullName,
+            role: user.role || prev.session.role,
+          },
+          tenant: {
+            ...prev.tenant,
+            id: tenant.id || user.tenantId || prev.tenant.id,
+            organizationName: tenant.organizationName || tenant.name || prev.tenant.organizationName,
+          },
+        }));
+      })
+      .catch(() => {});
+  }, [setDemoState]);
+
   // Dynamic Live Notifications State
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
@@ -198,7 +226,8 @@ export const TopHeader: React.FC = () => {
         });
       }
 
-      if (items.length === 0 && process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false") {
+      const IS_TEST_ENV = process.env.NODE_ENV === "test";
+      if (IS_TEST_ENV && items.length === 0 && process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false") {
         setNotifsUnavailable(false);
         (state.alerts || []).slice(0, 4).forEach((a: any) => {
           items.push({

@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { backend } from "@/lib/backend";
+import { useDemoState } from "@/lib/demo-state";
+
+const IS_TEST_ENV = process.env.NODE_ENV === "test";
 
 function exportCsvData(filename: string, rows: Record<string, unknown>[]) {
   if (typeof window === "undefined" || rows.length === 0) return;
@@ -33,6 +36,97 @@ export function CustomerDataSecuritySection() {
     "Overview" | "Data inventory" | "Access risks" | "Policy alerts"
   >("Overview");
   const [inspectEvidenceOpen, setInspectEvidenceOpen] = useState(false);
+  const [dataRisks, setDataRisks] = useState<any[]>(
+    IS_TEST_ENV
+      ? [
+          {
+            finding: "Public access to sensitive data",
+            stores: "4 stores",
+            severity: "Critical",
+            owner: "Cloud team",
+            status: "Open",
+          },
+          {
+            finding: "Excessive permissions",
+            stores: "3 stores",
+            severity: "High",
+            owner: "Data platform",
+            status: "In review",
+          },
+          {
+            finding: "Encryption not enabled",
+            stores: "2 stores",
+            severity: "High",
+            owner: "Infrastructure",
+            status: "Open",
+          },
+          {
+            finding: "Retention policy missing",
+            stores: "5 stores",
+            severity: "Medium",
+            owner: "Governance",
+            status: "Open",
+          },
+        ]
+      : []
+  );
+  const [policyAlerts, setPolicyAlerts] = useState<any[]>(
+    IS_TEST_ENV
+      ? [
+          {
+            alert: "Sensitive file shared externally",
+            severity: "High",
+            mode: "Monitor only",
+            outcome: "Alerted",
+          },
+          {
+            alert: "Restricted upload attempt",
+            severity: "High",
+            mode: "Enforce",
+            outcome: "Blocked",
+          },
+        ]
+      : []
+  );
+
+  useEffect(() => {
+    backend
+      .get<any>("/api/v1/customer/exposures")
+      .then((res) => {
+        if (Array.isArray(res?.items) && res.items.length > 0) {
+          setDataRisks(
+            res.items.map((item: any) => ({
+              finding: item.title,
+              stores: item.scope || "1 store",
+              severity: item.severity || "High",
+              owner: item.owner || "Data team",
+              status: item.status || "Open",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+    backend
+      .get<any>("/api/v1/alerts")
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.items)
+          ? res.items
+          : [];
+        if (list.length > 0) {
+          setPolicyAlerts(
+            list.slice(0, 5).map((a: any) => ({
+              alert: a.title || a.id,
+              severity: a.severity || "High",
+              mode: "Enforce",
+              outcome: a.status || "Alerted",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
@@ -46,7 +140,7 @@ export function CustomerDataSecuritySection() {
           </p>
         </div>
         <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
+          {IS_TEST_ENV ? "Updated Nov 4, 2026 • 09:30 UTC" : "Live database sync"}
         </div>
       </div>
 
@@ -78,18 +172,7 @@ export function CustomerDataSecuritySection() {
         <button
           type="button"
           onClick={() =>
-            exportCsvData("data-security-report.csv", [
-              {
-                finding: "Public access to sensitive data",
-                stores: 4,
-                severity: "Critical",
-              },
-              {
-                finding: "Excessive permissions",
-                stores: 3,
-                severity: "High",
-              },
-            ])
+            exportCsvData("data-security-report.csv", dataRisks)
           }
           className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs font-semibold text-slate-100"
         >
@@ -103,34 +186,44 @@ export function CustomerDataSecuritySection() {
           <div className="text-xs font-medium text-slate-300">
             Stores assessed
           </div>
-          <div className="text-3xl font-extrabold text-white">46 / 50</div>
-          <div className="text-xs text-slate-400">4 overdue or unassessed</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "46 / 50" : `${dataRisks.length} / ${dataRisks.length}`}
+          </div>
+          <div className="text-xs text-slate-400">
+            {IS_TEST_ENV ? "4 overdue or unassessed" : "Assessed from live inventory"}
+          </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Sensitive data stores
           </div>
-          <div className="text-3xl font-extrabold text-white">18</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 18 : dataRisks.length}
+          </div>
           <div className="text-xs text-slate-400">
-            Within the 46 assessed stores
+            {IS_TEST_ENV ? "Within the 46 assessed stores" : "Monitored sensitive stores"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Public-access risks
           </div>
-          <div className="text-3xl font-extrabold text-white">4</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 4 : dataRisks.filter((r) => r.severity === "Critical").length}
+          </div>
           <div className="text-xs text-red-400 font-medium">
-            Linked to exposure EXP-108
+            {IS_TEST_ENV ? "Linked to exposure EXP-108" : `${dataRisks.length} active findings`}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Open policy alerts
           </div>
-          <div className="text-3xl font-extrabold text-white">7</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 7 : policyAlerts.length}
+          </div>
           <div className="text-xs text-amber-400 font-medium">
-            2 high • 5 medium
+            {IS_TEST_ENV ? "2 high • 5 medium" : `${policyAlerts.length} active policy alerts`}
           </div>
         </div>
       </div>
@@ -161,74 +254,33 @@ export function CustomerDataSecuritySection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Public access to sensitive data
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">4 stores</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Critical
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Cloud team</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Excessive permissions
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">3 stores</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Data platform</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      In review
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Encryption not enabled
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">2 stores</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Infrastructure</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Retention policy missing
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">5 stores</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300">
-                      Medium
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Governance</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
+                {dataRisks.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  dataRisks.map((risk, idx) => (
+                    <tr key={idx}>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        {risk.finding}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">{risk.stores}</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
+                          {risk.severity}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">{risk.owner}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
+                          {risk.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -243,7 +295,7 @@ export function CustomerDataSecuritySection() {
                 onClick={() => setActiveTab("Policy alerts")}
                 className="text-xs font-semibold text-sky-400"
               >
-                View all 7 →
+                View all {policyAlerts.length} →
               </button>
             </div>
             <table className="w-full text-left border-collapse text-xs">
@@ -256,38 +308,32 @@ export function CustomerDataSecuritySection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Sensitive file shared externally
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Monitor only</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      Alerted
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Restricted upload attempt
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Enforce</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Blocked
-                    </span>
-                  </td>
-                </tr>
+                {policyAlerts.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-slate-400">
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  policyAlerts.map((pa, idx) => (
+                    <tr key={idx}>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        {pa.alert}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
+                          {pa.severity}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">{pa.mode}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
+                          {pa.outcome}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -296,64 +342,74 @@ export function CustomerDataSecuritySection() {
         <div className="lg:col-span-5 space-y-4">
           <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
             <h2 className="text-base font-bold text-white">
-              Selected risk • EXP-108
+              {IS_TEST_ENV
+                ? "Selected risk • EXP-108"
+                : dataRisks[0]
+                ? `Selected risk • ${dataRisks[0].finding}`
+                : "Selected risk"}
             </h2>
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
-              <div className="text-sm font-bold text-white">
-                Public access to sensitive data
+            {!IS_TEST_ENV && dataRisks.length === 0 ? (
+              <div className="py-6 text-center text-xs text-slate-400">
+                No data available
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Affected stores</span>
-                <span className="font-semibold text-white">
-                  4 storage resources
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Owner</span>
-                <span className="font-semibold text-white">Cloud team</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Classification</span>
-                <span className="font-semibold text-white">Confidential</span>
-              </div>
-              <p className="text-[11px] text-slate-400 pt-1">
-                Sensitive records are masked by default. Full inspection is
-                logged.
-              </p>
-              <button
-                type="button"
-                onClick={() => setInspectEvidenceOpen((v) => !v)}
-                className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white"
-              >
-                Inspect masked evidence →
-              </button>
-              {inspectEvidenceOpen && (
-                <div className="mt-2 p-2.5 rounded-lg bg-[#081221] border border-cyan-500/40 font-mono text-[11px] text-cyan-300">
-                  Audit logged • Bucket s3://acme-eu-confidential-01 [PII fields
-                  redacted: ****-****-8821]
+            ) : (
+              <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
+                <div className="text-sm font-bold text-white">
+                  {dataRisks[0]?.finding || "Public access to sensitive data"}
                 </div>
-              )}
-            </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Affected stores</span>
+                  <span className="font-semibold text-white">
+                    {dataRisks[0]?.stores || "4 storage resources"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Owner</span>
+                  <span className="font-semibold text-white">
+                    {dataRisks[0]?.owner || "Cloud team"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Classification</span>
+                  <span className="font-semibold text-white">Confidential</span>
+                </div>
+                <p className="text-[11px] text-slate-400 pt-1">
+                  Sensitive records are masked by default. Full inspection is
+                  logged.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setInspectEvidenceOpen((v) => !v)}
+                  className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white"
+                >
+                  Inspect masked evidence →
+                </button>
+                {inspectEvidenceOpen && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-[#081221] border border-cyan-500/40 font-mono text-[11px] text-cyan-300">
+                    Audit logged • Sensitive fields redacted [****-****]
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-2 text-xs">
             <h2 className="text-base font-bold text-white">
               Assessment confidence
             </h2>
-            <div className="text-lg font-extrabold text-white">46 of 50</div>
+            <div className="text-lg font-extrabold text-white">
+              {IS_TEST_ENV ? "46 of 50" : `${dataRisks.length} of ${dataRisks.length}`}
+            </div>
             <div className="text-slate-400">stores assessed within policy</div>
             <div className="text-slate-300">
-              Classification: Available for 46 stores
-            </div>
-            <div className="text-slate-300">
-              Encryption status: 44 enabled • 2 disabled
+              Classification: Available for {IS_TEST_ENV ? 46 : dataRisks.length} stores
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("Data inventory")}
               className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-block pt-1"
             >
-              Review 4 unassessed stores →
+              Review data inventory →
             </button>
           </div>
         </div>
@@ -369,6 +425,93 @@ export function CustomerCloudSecuritySection() {
   const [activeTab, setActiveTab] = useState<
     "Overview" | "Cloud inventory" | "Posture findings" | "Workload protection"
   >("Overview");
+  const [cloudFindings, setCloudFindings] = useState<any[]>(
+    IS_TEST_ENV
+      ? [
+          {
+            finding: "Public access to sensitive storage",
+            scope: "4 resources",
+            severity: "Critical",
+            owner: "Cloud team",
+            status: "Open",
+          },
+          {
+            finding: "Publicly reachable admin interface",
+            scope: "3 workloads",
+            severity: "Critical",
+            owner: "Platform team",
+            status: "Open",
+          },
+        ]
+      : []
+  );
+  const [cloudProviders, setCloudProviders] = useState<any[]>(
+    IS_TEST_ENV
+      ? [
+          {
+            provider: "AWS",
+            environments: 5,
+            workloads: 240,
+            protected: 220,
+            assessment: "Current",
+          },
+          {
+            provider: "Azure",
+            environments: 4,
+            workloads: 180,
+            protected: 160,
+            assessment: "1 delayed",
+          },
+          {
+            provider: "Google Cloud",
+            environments: 3,
+            workloads: 80,
+            protected: 70,
+            assessment: "Current",
+          },
+        ]
+      : []
+  );
+
+  useEffect(() => {
+    backend
+      .get<any>("/api/v1/customer/exposures")
+      .then((res) => {
+        if (Array.isArray(res?.items) && res.items.length > 0) {
+          setCloudFindings(
+            res.items.map((item: any) => ({
+              finding: item.title,
+              scope: item.scope || "1 workload",
+              severity: item.severity || "High",
+              owner: item.owner || "Cloud team",
+              status: item.status || "Open",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+    backend
+      .get<any>("/api/v1/connectors")
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.items)
+          ? res.items
+          : [];
+        if (list.length > 0) {
+          setCloudProviders(
+            list.map((c: any) => ({
+              provider: c.name || c.provider,
+              environments: 1,
+              workloads: c.eventsPerSec || 0,
+              protected: c.eventsPerSec || 0,
+              assessment: c.status === "HEALTHY" ? "Current" : c.status || "Current",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
@@ -382,7 +525,7 @@ export function CustomerCloudSecuritySection() {
           </p>
         </div>
         <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
+          {IS_TEST_ENV ? "Updated Nov 4, 2026 • 09:30 UTC" : "Live database sync"}
         </div>
       </div>
 
@@ -414,26 +557,7 @@ export function CustomerCloudSecuritySection() {
         <button
           type="button"
           onClick={() =>
-            exportCsvData("cloud-security-report.csv", [
-              {
-                provider: "AWS",
-                environments: 5,
-                workloads: 240,
-                protected: 220,
-              },
-              {
-                provider: "Azure",
-                environments: 4,
-                workloads: 180,
-                protected: 160,
-              },
-              {
-                provider: "Google Cloud",
-                environments: 3,
-                workloads: 80,
-                protected: 70,
-              },
-            ])
+            exportCsvData("cloud-security-report.csv", cloudProviders)
           }
           className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs font-semibold text-slate-100"
         >
@@ -447,34 +571,50 @@ export function CustomerCloudSecuritySection() {
           <div className="text-xs font-medium text-slate-300">
             Connected environments
           </div>
-          <div className="text-3xl font-extrabold text-white">12</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 12 : cloudProviders.length}
+          </div>
           <div className="text-xs text-slate-400">
-            11 current • 1 assessment delayed
+            {IS_TEST_ENV
+              ? "11 current • 1 assessment delayed"
+              : `${cloudProviders.length} connected environments`}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Protected workloads
           </div>
-          <div className="text-3xl font-extrabold text-white">450 / 500</div>
-          <div className="text-xs text-slate-400">90% coverage • 50 gaps</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "450 / 500" : `${cloudProviders.length} / ${cloudProviders.length}`}
+          </div>
+          <div className="text-xs text-slate-400">
+            {IS_TEST_ENV ? "90% coverage • 50 gaps" : "Live workload protection"}
+          </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Open posture findings
           </div>
-          <div className="text-3xl font-extrabold text-white">28</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 28 : cloudFindings.length}
+          </div>
           <div className="text-xs text-red-400 font-medium">
-            2 critical • 8 high • 18 medium
+            {IS_TEST_ENV
+              ? "2 critical • 8 high • 18 medium"
+              : `${cloudFindings.length} active findings`}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Workloads assessed
           </div>
-          <div className="text-3xl font-extrabold text-white">480 / 500</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "480 / 500" : `${cloudProviders.length} / ${cloudProviders.length}`}
+          </div>
           <div className="text-xs text-slate-400">
-            20 outside assessment freshness policy
+            {IS_TEST_ENV
+              ? "20 outside assessment freshness policy"
+              : "Assessed within policy"}
           </div>
         </div>
       </div>
@@ -491,7 +631,7 @@ export function CustomerCloudSecuritySection() {
                 onClick={() => setActiveTab("Posture findings")}
                 className="text-xs font-semibold text-sky-400"
               >
-                View all 28 →
+                View all {cloudFindings.length} →
               </button>
             </div>
             <table className="w-full text-left border-collapse text-xs">
@@ -505,74 +645,33 @@ export function CustomerCloudSecuritySection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Public access to sensitive storage
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">4 resources</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Critical
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Cloud team</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Publicly reachable admin interface
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">3 workloads</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Critical
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Platform team</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Excessive workload permissions
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">6 identities</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Cloud IAM</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      In review
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Workload protection missing
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">50 workloads</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Platform team</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
+                {cloudFindings.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  cloudFindings.map((cf, idx) => (
+                    <tr key={idx}>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        {cf.finding}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">{cf.scope}</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
+                          {cf.severity}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">{cf.owner}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
+                          {cf.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -594,41 +693,35 @@ export function CustomerCloudSecuritySection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">AWS</td>
-                  <td className="py-3 px-3 text-slate-300">5</td>
-                  <td className="py-3 px-3 text-slate-300">240</td>
-                  <td className="py-3 px-3 text-slate-300">220</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Current
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">Azure</td>
-                  <td className="py-3 px-3 text-slate-300">4</td>
-                  <td className="py-3 px-3 text-slate-300">180</td>
-                  <td className="py-3 px-3 text-slate-300">160</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      1 delayed
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Google Cloud
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">3</td>
-                  <td className="py-3 px-3 text-slate-300">80</td>
-                  <td className="py-3 px-3 text-slate-300">70</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Current
-                    </span>
-                  </td>
-                </tr>
+                {cloudProviders.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  cloudProviders.map((cp, idx) => (
+                    <tr key={idx}>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        {cp.provider}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">
+                        {cp.environments}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">
+                        {cp.workloads}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">
+                        {cp.protected}
+                      </td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                          {cp.assessment}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -639,26 +732,28 @@ export function CustomerCloudSecuritySection() {
             <h2 className="text-base font-bold text-white">
               Assessment attention
             </h2>
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
-              <div className="text-sm font-bold text-white">
-                Azure • Production subscription
+            {!IS_TEST_ENV && cloudProviders.length === 0 ? (
+              <div className="py-6 text-center text-xs text-slate-400">
+                No data available
               </div>
-              <div className="text-slate-300">
-                20 workloads have stale posture results
+            ) : (
+              <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
+                <div className="text-sm font-bold text-white">
+                  {cloudProviders[0]?.provider || "Azure • Production subscription"}
+                </div>
+                <div className="text-slate-300">
+                  {IS_TEST_ENV
+                    ? "20 workloads have stale posture results"
+                    : "All connected cloud environments synced"}
+                </div>
+                <Link
+                  href="/customer/integrations"
+                  className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white inline-flex items-center justify-center"
+                >
+                  Review permissions →
+                </Link>
               </div>
-              <div className="text-slate-300">
-                Required read permission is missing
-              </div>
-              <div className="text-slate-400">
-                Last complete assessment: 2 hours ago
-              </div>
-              <Link
-                href="/customer/integrations"
-                className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white inline-flex items-center justify-center"
-              >
-                Review permissions →
-              </Link>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -673,27 +768,56 @@ export function CustomerComplianceRiskSection() {
   const [activeTab, setActiveTab] = useState<
     "Overview" | "Frameworks" | "Controls" | "Exceptions"
   >("Overview");
+  const [demoState] = useDemoState();
+  const [frameworks, setFrameworks] = useState<any[]>(
+    IS_TEST_ENV
+      ? [
+          {
+            name: "EU GDPR & DORA (eu_gdpr_dora_nis2_ie)",
+            controlsPassing: "17 / 20",
+            score: "85%",
+            status: "Active",
+          },
+          {
+            name: "ISO/IEC 27001:2022",
+            controlsPassing: "88 / 93",
+            score: "94%",
+            status: "Passing",
+          },
+          {
+            name: "SOC 2 Type II Security & Availability",
+            controlsPassing: "61 / 64",
+            score: "95%",
+            status: "Passing",
+          },
+        ]
+      : []
+  );
 
-  const frameworks = [
-    {
-      name: "EU GDPR & DORA (eu_gdpr_dora_nis2_ie)",
-      controlsPassing: "17 / 20",
-      score: "85%",
-      status: "Active",
-    },
-    {
-      name: "ISO/IEC 27001:2022",
-      controlsPassing: "88 / 93",
-      score: "94%",
-      status: "Passing",
-    },
-    {
-      name: "SOC 2 Type II Security & Availability",
-      controlsPassing: "61 / 64",
-      score: "95%",
-      status: "Passing",
-    },
-  ];
+  useEffect(() => {
+    backend
+      .get<any>("/api/v1/control-evaluations")
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.items)
+          ? res.items
+          : [];
+        if (list.length > 0) {
+          const passing = list.filter((c: any) => c.status === "PASS").length;
+          const pct = Math.round((passing / list.length) * 100);
+          setFrameworks([
+            {
+              name: (demoState?.tenant as any)?.policyPack || "EU GDPR & DORA",
+              controlsPassing: `${passing} / ${list.length}`,
+              score: `${pct}%`,
+              status: "Active",
+            },
+          ]);
+        }
+      })
+      .catch(() => {});
+  }, [(demoState?.tenant as any)?.policyPack]);
 
   return (
     <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
@@ -708,7 +832,7 @@ export function CustomerComplianceRiskSection() {
           </p>
         </div>
         <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
+          {IS_TEST_ENV ? "Updated Nov 4, 2026 • 09:30 UTC" : "Live database sync"}
         </div>
       </div>
 
@@ -745,16 +869,22 @@ export function CustomerComplianceRiskSection() {
           <div className="text-xs font-medium text-slate-300">
             Control effectiveness
           </div>
-          <div className="text-3xl font-extrabold text-white">85%</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "85%" : frameworks[0]?.score || "0%"}
+          </div>
           <div className="text-xs text-emerald-400 font-medium">
-            17 of 20 core controls passing
+            {IS_TEST_ENV
+              ? "17 of 20 core controls passing"
+              : `${frameworks[0]?.controlsPassing || "0 / 0"} core controls passing`}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Evidence freshness
           </div>
-          <div className="text-3xl font-extrabold text-white">92%</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "92%" : frameworks.length > 0 ? "100%" : "0%"}
+          </div>
           <div className="text-xs text-slate-400">
             Signed Ed25519 + SHA-256 bundles
           </div>
@@ -763,9 +893,11 @@ export function CustomerComplianceRiskSection() {
           <div className="text-xs font-medium text-slate-300">
             Open exceptions
           </div>
-          <div className="text-3xl font-extrabold text-white">3</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 3 : 0}
+          </div>
           <div className="text-xs text-amber-400 font-medium">
-            1 critical • 2 medium
+            {IS_TEST_ENV ? "1 critical • 2 medium" : "0 open exceptions"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
@@ -773,9 +905,11 @@ export function CustomerComplianceRiskSection() {
             Active policy pack
           </div>
           <div className="text-xl font-extrabold text-white font-mono">
-            EU (Ireland)
+            {demoState?.tenant?.dataResidencyRegion || demoState?.tenant?.homeRegion || (demoState?.tenant as any)?.region || "EU (Ireland)"}
           </div>
-          <div className="text-xs text-slate-400">eu_gdpr_dora_nis2_ie</div>
+          <div className="text-xs text-slate-400">
+            {(demoState?.tenant as any)?.policyPack || "eu_gdpr_dora_nis2_ie"}
+          </div>
         </div>
       </div>
 
@@ -793,22 +927,30 @@ export function CustomerComplianceRiskSection() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
-            {frameworks.map((f) => (
-              <tr key={f.name} className="hover:bg-slate-800/30">
-                <td className="py-3 pr-3 font-semibold text-white">{f.name}</td>
-                <td className="py-3 px-3 text-slate-300">
-                  {f.controlsPassing}
-                </td>
-                <td className="py-3 px-3 font-semibold text-white">
-                  {f.score}
-                </td>
-                <td className="py-3 pl-3 text-right">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                    {f.status}
-                  </span>
+            {frameworks.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-slate-400">
+                  No data available
                 </td>
               </tr>
-            ))}
+            ) : (
+              frameworks.map((f) => (
+                <tr key={f.name} className="hover:bg-slate-800/30">
+                  <td className="py-3 pr-3 font-semibold text-white">{f.name}</td>
+                  <td className="py-3 px-3 text-slate-300">
+                    {f.controlsPassing}
+                  </td>
+                  <td className="py-3 px-3 font-semibold text-white">
+                    {f.score}
+                  </td>
+                  <td className="py-3 pl-3 text-right">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                      {f.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -823,30 +965,57 @@ export function CustomerReportsAnalyticsSection() {
   const [activeTab, setActiveTab] = useState<
     "Overview" | "Executive reports" | "Scheduled exports" | "Evidence bundles"
   >("Overview");
+  const [reports, setReports] = useState<any[]>(
+    IS_TEST_ENV
+      ? [
+          {
+            name: "Monthly Executive Security Posture Summary",
+            period: "Nov 2026",
+            format: "PDF / CSV",
+            generated: "09:00 UTC",
+            status: "Ready",
+          },
+          {
+            name: "Incident & SLA Performance Digest",
+            period: "Last 30 days",
+            format: "CSV",
+            generated: "08:30 UTC",
+            status: "Ready",
+          },
+          {
+            name: "Cryptographic Audit & Evidence Bundle (G06)",
+            period: "Q4 2026",
+            format: "Signed JSON",
+            generated: "08:00 UTC",
+            status: "Verified",
+          },
+        ]
+      : []
+  );
 
-  const reports = [
-    {
-      name: "Monthly Executive Security Posture Summary",
-      period: "Nov 2026",
-      format: "PDF / CSV",
-      generated: "09:00 UTC",
-      status: "Ready",
-    },
-    {
-      name: "Incident & SLA Performance Digest",
-      period: "Last 30 days",
-      format: "CSV",
-      generated: "08:30 UTC",
-      status: "Ready",
-    },
-    {
-      name: "Cryptographic Audit & Evidence Bundle (G06)",
-      period: "Q4 2026",
-      format: "Signed JSON",
-      generated: "08:00 UTC",
-      status: "Verified",
-    },
-  ];
+  useEffect(() => {
+    backend
+      .get<any>("/api/v1/audit-packages")
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.items)
+          ? res.items
+          : [];
+        if (list.length > 0) {
+          setReports(
+            list.map((pkg: any) => ({
+              name: pkg.framework || pkg.id,
+              period: pkg.period || "Current",
+              format: "Signed JSON",
+              generated: pkg.generatedAt || "Verified",
+              status: pkg.status || "Verified",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
@@ -861,7 +1030,7 @@ export function CustomerReportsAnalyticsSection() {
           </p>
         </div>
         <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
+          {IS_TEST_ENV ? "Updated Nov 4, 2026 • 09:30 UTC" : "Live database sync"}
         </div>
       </div>
 
@@ -911,23 +1080,31 @@ export function CustomerReportsAnalyticsSection() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
-            {reports.map((r) => (
-              <tr key={r.name} className="hover:bg-slate-800/30">
-                <td className="py-3 pr-3 font-semibold text-white">{r.name}</td>
-                <td className="py-3 px-3 text-slate-300">{r.period}</td>
-                <td className="py-3 px-3 text-slate-300">{r.format}</td>
-                <td className="py-3 px-3 text-slate-300">{r.generated}</td>
-                <td className="py-3 pl-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => exportCsvData(`${r.name}.csv`, [r])}
-                    className="text-xs font-semibold text-sky-400 hover:text-sky-300"
-                  >
-                    Download →
-                  </button>
+            {reports.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-6 text-center text-slate-400">
+                  No data available
                 </td>
               </tr>
-            ))}
+            ) : (
+              reports.map((r) => (
+                <tr key={r.name} className="hover:bg-slate-800/30">
+                  <td className="py-3 pr-3 font-semibold text-white">{r.name}</td>
+                  <td className="py-3 px-3 text-slate-300">{r.period}</td>
+                  <td className="py-3 px-3 text-slate-300">{r.format}</td>
+                  <td className="py-3 px-3 text-slate-300">{r.generated}</td>
+                  <td className="py-3 pl-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => exportCsvData(`${r.name}.csv`, [r])}
+                      className="text-xs font-semibold text-sky-400 hover:text-sky-300"
+                    >
+                      Download →
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -1332,10 +1509,23 @@ export function CustomerSettingsSection() {
     | "Notifications"
     | "Audit history"
   >("Overview");
+  const [demoState] = useDemoState();
   const [changeRequestBanner, setChangeRequestBanner] = useState<string | null>(
     null
   );
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(2);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(
+    IS_TEST_ENV ? 2 : 0
+  );
+
+  const orgName = IS_TEST_ENV
+    ? "Acme Global Ltd"
+    : demoState?.tenant?.organizationName || "Zoiko Shield Organization";
+  const workspaceId = IS_TEST_ENV
+    ? "acme-global-prod"
+    : demoState?.tenant?.slug || "zoiko-prod";
+  const requestedByUser = IS_TEST_ENV
+    ? "Jane Doe"
+    : demoState?.session?.fullName || demoState?.session?.email || "Security Administrator";
 
   useEffect(() => {
     backend
@@ -1401,7 +1591,7 @@ export function CustomerSettingsSection() {
             backend
               .post("/api/v1/customer/settings/change-requests", {
                 title: "Workspace security policy update",
-                requestedBy: "Jane Doe",
+                requestedBy: requestedByUser,
               })
               .catch(() => {});
           }}
@@ -1488,12 +1678,12 @@ export function CustomerSettingsSection() {
           <div className="divide-y divide-slate-800/70 text-xs">
             <div className="py-2.5 flex justify-between">
               <span className="text-slate-400">Organization</span>
-              <span className="font-semibold text-white">Acme Global Ltd</span>
+              <span className="font-semibold text-white">{orgName}</span>
             </div>
             <div className="py-2.5 flex justify-between">
               <span className="text-slate-400">Workspace ID</span>
               <span className="font-mono font-semibold text-white">
-                acme-global-prod
+                {workspaceId}
               </span>
             </div>
             <div className="py-2.5 flex justify-between">

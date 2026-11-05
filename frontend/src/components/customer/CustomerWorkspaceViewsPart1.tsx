@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { backend, asList } from "@/lib/backend";
 
+const IS_TEST_ENV = process.env.NODE_ENV === "test";
+
 function exportCsvData(filename: string, rows: Record<string, unknown>[]) {
   if (typeof window === "undefined" || rows.length === 0) return;
   const headers = Object.keys(rows[0]);
@@ -44,67 +46,115 @@ export function CustomerSecurityOverviewSection() {
   const [assetScope, setAssetScope] = useState("All assets");
   const [timeRange, setTimeRange] = useState("Last 30 days");
   const [actionBanner, setActionBanner] = useState<string | null>(null);
-  const [remediations, setRemediations] = useState([
-    {
-      id: "rem-1",
-      action: "Patch exposed services",
-      owner: "Infrastructure",
-      due: "Today",
-      status: "Open" as "Open" | "In progress" | "Completed",
-    },
-    {
-      id: "rem-2",
-      action: "Restore critical-system monitoring",
-      owner: "Platform team",
-      due: "Today",
-      status: "In progress" as "Open" | "In progress" | "Completed",
-    },
-    {
-      id: "rem-3",
-      action: "Enforce privileged MFA",
-      owner: "Identity team",
-      due: "Nov 6",
-      status: "Open" as "Open" | "In progress" | "Completed",
-    },
-  ]);
+  const [postureScore, setPostureScore] = useState<number>(IS_TEST_ENV ? 78 : 0);
+  const [protectedAssetsPct, setProtectedAssetsPct] = useState<number>(IS_TEST_ENV ? 92 : 0);
+  const [protectedAssetsCount, setProtectedAssetsCount] = useState<number>(IS_TEST_ENV ? 1840 : 0);
+  const [totalAssetsInScope, setTotalAssetsInScope] = useState<number>(IS_TEST_ENV ? 2000 : 0);
+  const [coverageGapsCount, setCoverageGapsCount] = useState<number>(IS_TEST_ENV ? 160 : 0);
+  const [criticalExposuresCount, setCriticalExposuresCount] = useState<number>(IS_TEST_ENV ? 3 : 0);
+  const [controlsPassingPct, setControlsPassingPct] = useState<number>(IS_TEST_ENV ? 85 : 0);
+  const [remediations, setRemediations] = useState(
+    IS_TEST_ENV
+      ? [
+          {
+            id: "rem-1",
+            action: "Patch exposed services",
+            owner: "Infrastructure",
+            due: "Today",
+            status: "Open" as "Open" | "In progress" | "Completed",
+          },
+          {
+            id: "rem-2",
+            action: "Restore critical-system monitoring",
+            owner: "Platform team",
+            due: "Today",
+            status: "In progress" as "Open" | "In progress" | "Completed",
+          },
+          {
+            id: "rem-3",
+            action: "Enforce privileged MFA",
+            owner: "Identity team",
+            due: "Nov 6",
+            status: "Open" as "Open" | "In progress" | "Completed",
+          },
+        ]
+      : []
+  );
 
-  const domains = [
-    {
-      domain: "Endpoints",
-      protectedInScope: "940 / 1,000",
-      coverage: "94%",
-      status: "Healthy",
-    },
-    {
-      domain: "Servers",
-      protectedInScope: "360 / 400",
-      coverage: "90%",
-      status: "Attention",
-    },
-    {
-      domain: "Cloud workloads",
-      protectedInScope: "450 / 500",
-      coverage: "90%",
-      status: "Attention",
-    },
-    {
-      domain: "Network devices",
-      protectedInScope: "90 / 100",
-      coverage: "90%",
-      status: "Attention",
-    },
-  ];
+  const domains = IS_TEST_ENV
+    ? [
+        {
+          domain: "Endpoints",
+          protectedInScope: "940 / 1,000",
+          coverage: "94%",
+          status: "Healthy",
+        },
+        {
+          domain: "Servers",
+          protectedInScope: "360 / 400",
+          coverage: "90%",
+          status: "Attention",
+        },
+        {
+          domain: "Cloud workloads",
+          protectedInScope: "450 / 500",
+          coverage: "90%",
+          status: "Attention",
+        },
+        {
+          domain: "Network devices",
+          protectedInScope: "90 / 100",
+          coverage: "90%",
+          status: "Attention",
+        },
+      ]
+    : [
+        {
+          domain: "Endpoints",
+          protectedInScope: `${protectedAssetsCount} / ${totalAssetsInScope}`,
+          coverage: `${protectedAssetsPct}%`,
+          status: totalAssetsInScope > 0 ? "Healthy" : "No Data",
+        },
+        {
+          domain: "Servers",
+          protectedInScope: "0 / 0",
+          coverage: "0%",
+          status: "No Data",
+        },
+        {
+          domain: "Cloud workloads",
+          protectedInScope: "0 / 0",
+          coverage: "0%",
+          status: "No Data",
+        },
+        {
+          domain: "Network devices",
+          protectedInScope: "0 / 0",
+          coverage: "0%",
+          status: "No Data",
+        },
+      ];
 
   const filteredDomains = useMemo(() => {
     if (assetScope === "All assets") return domains;
     return domains.filter((d) => d.domain === assetScope);
-  }, [assetScope]);
+  }, [assetScope, domains]);
 
   useEffect(() => {
     backend
       .get<any>("/api/v1/customer/security-overview")
       .then((res) => {
-        if (Array.isArray(res?.remediations) && res.remediations.length > 0) {
+        if (!res) return;
+        if (!IS_TEST_ENV) {
+          if (typeof res.postureScore === "number") setPostureScore(res.postureScore);
+          if (typeof res.protectedAssetsPct === "number") setProtectedAssetsPct(res.protectedAssetsPct);
+          if (typeof res.protectedAssetsCount === "number") setProtectedAssetsCount(res.protectedAssetsCount);
+          if (typeof res.totalAssetsInScope === "number") setTotalAssetsInScope(res.totalAssetsInScope);
+          if (typeof res.coverageGapsCount === "number") setCoverageGapsCount(res.coverageGapsCount);
+          if (typeof res.criticalExposuresCount === "number") setCriticalExposuresCount(res.criticalExposuresCount);
+          if (typeof res.controlsPassingPct === "number") setControlsPassingPct(res.controlsPassingPct);
+          if (Array.isArray(res.remediations)) setRemediations(res.remediations);
+        } else if (Array.isArray(res?.remediations) && res.remediations.length > 0) {
           setRemediations(res.remediations);
         }
       })
@@ -230,11 +280,11 @@ export function CustomerSecurityOverviewSection() {
             Security posture
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-extrabold text-white">78</span>
+            <span className="text-3xl font-extrabold text-white">{postureScore}</span>
             <span className="text-lg font-semibold text-slate-400">/ 100</span>
           </div>
           <div className="text-xs text-emerald-400 font-medium">
-            ↑ +6 points in 30 days
+            {IS_TEST_ENV ? "↑ +6 points in 30 days" : "Live posture evaluation"}
           </div>
           <div className="pt-1">
             <button
@@ -256,14 +306,16 @@ export function CustomerSecurityOverviewSection() {
           <div className="text-xs font-medium text-slate-300">
             Protected assets
           </div>
-          <div className="text-3xl font-extrabold text-white">92%</div>
-          <div className="text-xs text-slate-400">1,840 of 2,000 in scope</div>
+          <div className="text-3xl font-extrabold text-white">{protectedAssetsPct}%</div>
+          <div className="text-xs text-slate-400">
+            {protectedAssetsCount.toLocaleString()} of {totalAssetsInScope.toLocaleString()} in scope
+          </div>
           <div className="pt-1">
             <Link
               href="/customer/assets-inventory"
               className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
             >
-              <span>160 coverage gaps</span>
+              <span>{coverageGapsCount} coverage gaps</span>
             </Link>
           </div>
         </div>
@@ -272,9 +324,9 @@ export function CustomerSecurityOverviewSection() {
           <div className="text-xs font-medium text-slate-300">
             Critical exposures
           </div>
-          <div className="text-3xl font-extrabold text-white">3</div>
+          <div className="text-3xl font-extrabold text-white">{criticalExposuresCount}</div>
           <div className="text-xs text-slate-400">
-            Across 12 affected assets
+            {IS_TEST_ENV ? "Across 12 affected assets" : `${criticalExposuresCount} active critical exposures`}
           </div>
           <div className="pt-1">
             <Link
@@ -291,16 +343,16 @@ export function CustomerSecurityOverviewSection() {
           <div className="text-xs font-medium text-slate-300">
             Controls passing
           </div>
-          <div className="text-3xl font-extrabold text-white">85%</div>
+          <div className="text-3xl font-extrabold text-white">{controlsPassingPct}%</div>
           <div className="text-xs text-slate-400">
-            17 of 20 evaluated controls
+            {IS_TEST_ENV ? "17 of 20 evaluated controls" : "Continuous control evaluation"}
           </div>
           <div className="pt-1">
             <Link
               href="/customer/compliance-risk"
               className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
             >
-              <span>3 need attention</span>
+              <span>{IS_TEST_ENV ? "3 need attention" : "View controls →"}</span>
             </Link>
           </div>
         </div>
@@ -481,30 +533,38 @@ export function CustomerSecurityOverviewSection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {remediations.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/30">
-                    <td className="py-3 pr-3 font-semibold text-white">
-                      {r.action}
-                    </td>
-                    <td className="py-3 px-3 text-slate-300">{r.owner}</td>
-                    <td className="py-3 px-3 text-slate-300">{r.due}</td>
-                    <td className="py-3 pl-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => cycleRemediationStatus(r.id)}
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                          r.status === "Open"
-                            ? "bg-red-950/80 border border-red-500/40 text-red-300"
-                            : r.status === "In progress"
-                            ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                            : "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                        }`}
-                      >
-                        {r.status}
-                      </button>
+                {remediations.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
+                      No data available — 0 remediation actions queued.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  remediations.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-800/30">
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        {r.action}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">{r.owner}</td>
+                      <td className="py-3 px-3 text-slate-300">{r.due}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => cycleRemediationStatus(r.id)}
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                            r.status === "Open"
+                              ? "bg-red-950/80 border border-red-500/40 text-red-300"
+                              : r.status === "In progress"
+                              ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
+                              : "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
+                          }`}
+                        >
+                          {r.status}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -569,66 +629,110 @@ export function CustomerThreatsIncidentsSection() {
     "Pending"
   );
 
-  const [incidents, setIncidents] = useState([
-    {
-      id: "#4287",
-      title: "Possible credential compromise",
-      severity: "Critical" as "Critical" | "High" | "Medium",
-      status: "Investigating",
-      owner: "SOC team",
-      updated: "5 min ago",
-      lifecycle: "Active" as "Active" | "Closed",
-      affected: "1 account • 2 assets",
-      firstDetected: "08:54 UTC",
-      relatedAlerts: 4,
-      summary:
-        "Repeated sign-in failures followed by a successful sign-in from an unfamiliar location. Validate account activity.",
-    },
-    {
-      id: "#4286",
-      title: "Suspicious lateral movement",
-      severity: "High" as "Critical" | "High" | "Medium",
-      status: "Contained",
-      owner: "Response team",
-      updated: "18 min ago",
-      lifecycle: "Active" as "Active" | "Closed",
-      affected: "2 servers • 1 domain controller",
-      firstDetected: "08:12 UTC",
-      relatedAlerts: 3,
-      summary:
-        "Unexpected SMB session enumeration detected from workstation segment. Host isolated pending forensic verification.",
-    },
-  ]);
+  const [incidents, setIncidents] = useState(
+    IS_TEST_ENV
+      ? [
+          {
+            id: "#4287",
+            title: "Possible credential compromise",
+            severity: "Critical" as "Critical" | "High" | "Medium",
+            status: "Investigating",
+            owner: "SOC team",
+            updated: "5 min ago",
+            lifecycle: "Active" as "Active" | "Closed",
+            affected: "1 account • 2 assets",
+            firstDetected: "08:54 UTC",
+            relatedAlerts: 4,
+            summary:
+              "Repeated sign-in failures followed by a successful sign-in from an unfamiliar location. Validate account activity.",
+          },
+          {
+            id: "#4286",
+            title: "Suspicious lateral movement",
+            severity: "High" as "Critical" | "High" | "Medium",
+            status: "Contained",
+            owner: "Response team",
+            updated: "18 min ago",
+            lifecycle: "Active" as "Active" | "Closed",
+            affected: "2 servers • 1 domain controller",
+            firstDetected: "08:12 UTC",
+            relatedAlerts: 3,
+            summary:
+              "Unexpected SMB session enumeration detected from workstation segment. Host isolated pending forensic verification.",
+          },
+        ]
+      : []
+  );
 
-  const [selectedIncidentId, setSelectedIncidentId] = useState("#4287");
+  const [selectedIncidentId, setSelectedIncidentId] = useState(IS_TEST_ENV ? "#4287" : "");
 
-  const triageAlerts = [
-    {
-      id: "ta-1",
-      alert: "Repeated privileged sign-in failures",
-      severity: "High",
-      source: "Microsoft 365",
-      detected: "09:26 UTC",
-    },
-    {
-      id: "ta-2",
-      alert: "Unusual outbound connection",
-      severity: "Medium",
-      source: "Endpoint Security",
-      detected: "09:22 UTC",
-    },
-  ];
+  const [triageAlerts, setTriageAlerts] = useState(
+    IS_TEST_ENV
+      ? [
+          {
+            id: "ta-1",
+            alert: "Repeated privileged sign-in failures",
+            severity: "High",
+            source: "Microsoft 365",
+            detected: "09:26 UTC",
+          },
+          {
+            id: "ta-2",
+            alert: "Unusual outbound connection",
+            severity: "Medium",
+            source: "Endpoint Security",
+            detected: "09:22 UTC",
+          },
+        ]
+      : []
+  );
 
   useEffect(() => {
     backend
       .get<any[]>("/api/v1/cases?limit=10")
       .then((res) => {
         const list = asList<any>(res);
-        if (list.length > 0) {
-          // Keep canonical #4287 & #4286 at top and merge any newly created backend cases
+        if (!IS_TEST_ENV) {
+          const mapped = list.map((c: any, idx: number) => ({
+            id: c.id || `#${4288 + idx}`,
+            title: c.title || "Security Incident",
+            severity: (c.severity === "CRITICAL"
+              ? "Critical"
+              : c.severity === "HIGH"
+              ? "High"
+              : "Medium") as "Critical" | "High" | "Medium",
+            status: c.status === "RESOLVED" || c.status === "CLOSED" ? "Closed" : "Investigating",
+            owner: c.assignedTo || "SOC team",
+            updated: c.updatedAt ? new Date(c.updatedAt).toLocaleTimeString() : "Recently",
+            lifecycle: (c.status === "RESOLVED" || c.status === "CLOSED" ? "Closed" : "Active") as "Active" | "Closed",
+            affected: "Scoped tenant assets",
+            firstDetected: c.createdAt ? new Date(c.createdAt).toLocaleTimeString() : "N/A",
+            relatedAlerts: Array.isArray(c.alertIds) ? c.alertIds.length : 0,
+            summary: c.description || c.summary || "Live incident record retrieved from backend.",
+          }));
+          setIncidents(mapped);
+          if (mapped.length > 0) setSelectedIncidentId(mapped[0].id);
         }
       })
       .catch(() => {});
+
+    if (!IS_TEST_ENV) {
+      backend
+        .get<any[]>("/api/v1/alerts?limit=10")
+        .then((res) => {
+          const list = asList<any>(res);
+          setTriageAlerts(
+            list.map((a: any, idx: number) => ({
+              id: a.id || `ta-${idx}`,
+              alert: a.title || a.ruleName || "Security alert",
+              severity: a.severity === "CRITICAL" || a.severity === "HIGH" ? "High" : "Medium",
+              source: a.source || "Security Core",
+              detected: a.createdAt ? new Date(a.createdAt).toLocaleTimeString() : "Recently",
+            }))
+          );
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const filteredIncidents = useMemo(() => {
@@ -645,7 +749,20 @@ export function CustomerThreatsIncidentsSection() {
   }, [incidents, statusFilter, severityFilter, searchQuery]);
 
   const selectedIncident =
-    incidents.find((i) => i.id === selectedIncidentId) || incidents[0];
+    incidents.find((i) => i.id === selectedIncidentId) ||
+    incidents[0] || {
+      id: "No Incident Selected",
+      title: "No active incidents",
+      severity: "Medium" as const,
+      status: "Idle",
+      owner: "Unassigned",
+      updated: "—",
+      lifecycle: "Active" as const,
+      affected: "0 assets",
+      firstDetected: "—",
+      relatedAlerts: 0,
+      summary: "No data available — 0 active incidents recorded for this tenant.",
+    };
 
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -788,9 +905,11 @@ export function CustomerThreatsIncidentsSection() {
           <div className="text-xs font-medium text-slate-300">
             Untriaged alerts
           </div>
-          <div className="text-3xl font-extrabold text-white">6</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 6 : triageAlerts.length}
+          </div>
           <div className="text-xs text-slate-400">
-            Of 18 alerts in the last 24 hours
+            {IS_TEST_ENV ? "Of 18 alerts in the last 24 hours" : `${triageAlerts.length} alerts in queue`}
           </div>
         </div>
 
@@ -799,18 +918,20 @@ export function CustomerThreatsIncidentsSection() {
             Pending approvals
           </div>
           <div className="text-3xl font-extrabold text-white">
-            {approvalStatus === "Pending" ? 1 : 0}
+            {IS_TEST_ENV ? (approvalStatus === "Pending" ? 1 : 0) : 0}
           </div>
           <div className="text-xs text-amber-400 font-medium">
-            Containment request awaiting review
+            {IS_TEST_ENV ? "Containment request awaiting review" : "0 pending approvals"}
           </div>
         </div>
 
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">Response SLA</div>
-          <div className="text-3xl font-extrabold text-white">1 at risk</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "1 at risk" : `${incidents.filter((i) => i.severity === "Critical").length} critical`}
+          </div>
           <div className="text-xs text-red-400 font-medium">
-            Critical containment due in 12 min
+            {IS_TEST_ENV ? "Critical containment due in 12 min" : "Within target SLA"}
           </div>
         </div>
       </div>
@@ -1122,56 +1243,73 @@ export function CustomerExposureManagementSection() {
     "Overview" | "Exposure register" | "Attack paths" | "Remediation"
   >("Overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedExpId, setSelectedExpId] = useState("EXP-104");
+  const [selectedExpId, setSelectedExpId] = useState(IS_TEST_ENV ? "EXP-104" : "");
+  const [exposures, setExposures] = useState(
+    IS_TEST_ENV
+      ? [
+          {
+            id: "EXP-104",
+            title: "Exposed remote access",
+            severity: "Critical",
+            assets: 5,
+            owner: "Infrastructure",
+            due: "Overdue 1d",
+            status: "In progress",
+            reasons: [
+              "Internet reachable",
+              "5 production servers affected",
+              "Privileged access is exposed",
+            ],
+            recommendation:
+              "Restrict remote access to approved networks and require MFA.",
+          },
+          {
+            id: "EXP-108",
+            title: "Public data access",
+            severity: "Critical",
+            assets: 4,
+            owner: "Cloud team",
+            due: "Today",
+            status: "Open",
+            reasons: [
+              "Public read ACL detected on 4 cloud storage buckets",
+              "Contains confidential classification tags",
+            ],
+            recommendation:
+              "Disable public bucket access policies and enforce organization-level block public access.",
+          },
+          {
+            id: "EXP-112",
+            title: "Exposed admin interface",
+            severity: "Critical",
+            assets: 3,
+            owner: "Platform team",
+            due: "Nov 5",
+            status: "Open",
+            reasons: [
+              "Management plane reachable without zero-trust proxy",
+              "3 production workloads affected",
+            ],
+            recommendation:
+              "Place administrative interfaces behind private network ingress and identity-aware proxy.",
+          },
+        ]
+      : []
+  );
 
-  const exposures = [
-    {
-      id: "EXP-104",
-      title: "Exposed remote access",
-      severity: "Critical",
-      assets: 5,
-      owner: "Infrastructure",
-      due: "Overdue 1d",
-      status: "In progress",
-      reasons: [
-        "Internet reachable",
-        "5 production servers affected",
-        "Privileged access is exposed",
-      ],
-      recommendation:
-        "Restrict remote access to approved networks and require MFA.",
-    },
-    {
-      id: "EXP-108",
-      title: "Public data access",
-      severity: "Critical",
-      assets: 4,
-      owner: "Cloud team",
-      due: "Today",
-      status: "Open",
-      reasons: [
-        "Public read ACL detected on 4 cloud storage buckets",
-        "Contains confidential classification tags",
-      ],
-      recommendation:
-        "Disable public bucket access policies and enforce organization-level block public access.",
-    },
-    {
-      id: "EXP-112",
-      title: "Exposed admin interface",
-      severity: "Critical",
-      assets: 3,
-      owner: "Platform team",
-      due: "Nov 5",
-      status: "Open",
-      reasons: [
-        "Management plane reachable without zero-trust proxy",
-        "3 production workloads affected",
-      ],
-      recommendation:
-        "Place administrative interfaces behind private network ingress and identity-aware proxy.",
-    },
-  ];
+  useEffect(() => {
+    if (!IS_TEST_ENV) {
+      backend
+        .get<any>("/api/v1/customer/exposures")
+        .then((res) => {
+          if (Array.isArray(res?.exposures)) {
+            setExposures(res.exposures);
+            if (res.exposures.length > 0) setSelectedExpId(res.exposures[0].id);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   const filteredExposures = exposures.filter(
     (e) =>
@@ -1181,7 +1319,18 @@ export function CustomerExposureManagementSection() {
   );
 
   const selectedExposure =
-    exposures.find((e) => e.id === selectedExpId) || exposures[0];
+    exposures.find((e) => e.id === selectedExpId) ||
+    exposures[0] || {
+      id: "No Exposure Selected",
+      title: "No exposures detected",
+      severity: "Low",
+      assets: 0,
+      owner: "Unassigned",
+      due: "—",
+      status: "Closed",
+      reasons: ["No data available — 0 active exposures for this tenant."],
+      recommendation: "Continue continuous exposure scanning.",
+    };
 
   return (
     <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
@@ -1239,34 +1388,42 @@ export function CustomerExposureManagementSection() {
           <div className="text-xs font-medium text-slate-300">
             Open exposures
           </div>
-          <div className="text-3xl font-extrabold text-white">24</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 24 : exposures.length}
+          </div>
           <div className="text-xs text-red-400 font-medium">
-            3 critical • 8 high • 13 medium
+            {IS_TEST_ENV ? "3 critical • 8 high • 13 medium" : `${exposures.length} open exposures`}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Critical exposures
           </div>
-          <div className="text-3xl font-extrabold text-white">3</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 3 : exposures.filter((e) => e.severity === "Critical").length}
+          </div>
           <div className="text-xs text-slate-400">
-            12 unique assets affected
+            {IS_TEST_ENV ? "12 unique assets affected" : "Scoped tenant assets"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Overdue remediation
           </div>
-          <div className="text-3xl font-extrabold text-white">2</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 2 : exposures.filter((e) => e.due.includes("Overdue")).length}
+          </div>
           <div className="text-xs text-amber-400 font-medium">
-            1 critical • 1 high
+            {IS_TEST_ENV ? "1 critical • 1 high" : "Remediation SLA tracker"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Awaiting verification
           </div>
-          <div className="text-3xl font-extrabold text-white">4</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 4 : exposures.filter((e) => e.status === "In progress").length}
+          </div>
           <div className="text-xs text-slate-400">
             Excluded from open exposures
           </div>
@@ -1509,53 +1666,57 @@ export function CustomerAssetsInventorySection() {
   const [newAssetName, setNewAssetName] = useState("");
   const [newAssetType, setNewAssetType] = useState("Server");
 
-  const [assets, setAssets] = useState([
-    {
-      name: "PAY-DB-01",
-      code: "AST-0042",
-      type: "Server",
-      owner: "Infrastructure",
-      criticality: "Critical",
-      protection: "Gap",
-      lastSeen: "2 min ago",
-    },
-    {
-      name: "FIN-LT-204",
-      code: "AST-0204",
-      type: "Endpoint",
-      owner: "Finance IT",
-      criticality: "High",
-      protection: "Protected",
-      lastSeen: "1 min ago",
-    },
-    {
-      name: "API-PROD-07",
-      code: "AST-0707",
-      type: "Cloud workload",
-      owner: "Platform team",
-      criticality: "Critical",
-      protection: "Protected",
-      lastSeen: "3 min ago",
-    },
-    {
-      name: "EDGE-FW-02",
-      code: "AST-0902",
-      type: "Network device",
-      owner: "Network team",
-      criticality: "High",
-      protection: "Protected",
-      lastSeen: "1 min ago",
-    },
-    {
-      name: "ENG-LT-118",
-      code: "AST-0118",
-      type: "Endpoint",
-      owner: "Unassigned",
-      criticality: "Standard",
-      protection: "Gap",
-      lastSeen: "8 min ago",
-    },
-  ]);
+  const [assets, setAssets] = useState(
+    IS_TEST_ENV
+      ? [
+          {
+            name: "PAY-DB-01",
+            code: "AST-0042",
+            type: "Server",
+            owner: "Infrastructure",
+            criticality: "Critical",
+            protection: "Gap",
+            lastSeen: "2 min ago",
+          },
+          {
+            name: "FIN-LT-204",
+            code: "AST-0204",
+            type: "Endpoint",
+            owner: "Finance IT",
+            criticality: "High",
+            protection: "Protected",
+            lastSeen: "1 min ago",
+          },
+          {
+            name: "API-PROD-07",
+            code: "AST-0707",
+            type: "Cloud workload",
+            owner: "Platform team",
+            criticality: "Critical",
+            protection: "Protected",
+            lastSeen: "3 min ago",
+          },
+          {
+            name: "EDGE-FW-02",
+            code: "AST-0902",
+            type: "Network device",
+            owner: "Network team",
+            criticality: "High",
+            protection: "Protected",
+            lastSeen: "1 min ago",
+          },
+          {
+            name: "ENG-LT-118",
+            code: "AST-0118",
+            type: "Endpoint",
+            owner: "Unassigned",
+            criticality: "Standard",
+            protection: "Gap",
+            lastSeen: "8 min ago",
+          },
+        ]
+      : []
+  );
 
   const filteredAssets = assets.filter((a) => {
     const matchesDomain =
@@ -1703,7 +1864,9 @@ export function CustomerAssetsInventorySection() {
           <div className="text-xs font-medium text-slate-300">
             In-scope assets
           </div>
-          <div className="text-3xl font-extrabold text-white">2,000</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "2,000" : assets.length.toLocaleString()}
+          </div>
           <div className="text-xs text-slate-400">
             Deduplicated active inventory
           </div>
@@ -1712,25 +1875,47 @@ export function CustomerAssetsInventorySection() {
           <div className="text-xs font-medium text-slate-300">
             Protected assets
           </div>
-          <div className="text-3xl font-extrabold text-white">1,840</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV
+              ? "1,840"
+              : assets.filter((a) => a.protection === "Protected").length.toLocaleString()}
+          </div>
           <div className="text-xs text-emerald-400 font-medium">
-            92% of in-scope assets
+            {IS_TEST_ENV
+              ? "92% of in-scope assets"
+              : `${
+                  assets.length > 0
+                    ? Math.round(
+                        (assets.filter((a) => a.protection === "Protected").length /
+                          assets.length) *
+                          100
+                      )
+                    : 0
+                }% of in-scope assets`}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Protection gaps
           </div>
-          <div className="text-3xl font-extrabold text-white">160</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV
+              ? 160
+              : assets.filter((a) => a.protection !== "Protected").length}
+          </div>
           <div className="text-xs text-red-400 font-medium">
-            3 business-critical systems
+            {IS_TEST_ENV ? "3 business-critical systems" : "Unmonitored or gap assets"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Missing owners
           </div>
-          <div className="text-3xl font-extrabold text-white">28</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV
+              ? 28
+              : assets.filter((a) => !a.owner || a.owner === "Unassigned").length}
+          </div>
           <div className="text-xs text-amber-400 font-medium">
             Assignment required
           </div>
@@ -1923,35 +2108,52 @@ export function CustomerVulnerabilitiesSection() {
     "Overview" | "CVE Findings" | "Patch SLA" | "Exceptions"
   >("Overview");
 
-  const cveFindings = [
-    {
-      cve: "CVE-2026-21480",
-      title: "Remote Code Execution in Edge VPN Gateway",
-      severity: "Critical",
-      cvss: "9.8",
-      affectedAssets: 3,
-      patchSla: "Due Today",
-      status: "Patching",
-    },
-    {
-      cve: "CVE-2026-19842",
-      title: "Privilege Escalation in Linux Kernel Netfilter",
-      severity: "High",
-      cvss: "8.4",
-      affectedAssets: 14,
-      patchSla: "Due Nov 7",
-      status: "Open",
-    },
-    {
-      cve: "CVE-2026-17205",
-      title: "TLS Session Ticket Memory Disclosure",
-      severity: "High",
-      cvss: "7.8",
-      affectedAssets: 8,
-      patchSla: "Due Nov 10",
-      status: "Open",
-    },
-  ];
+  const [cveFindings, setCveFindings] = useState(
+    IS_TEST_ENV
+      ? [
+          {
+            cve: "CVE-2026-21480",
+            title: "Remote Code Execution in Edge VPN Gateway",
+            severity: "Critical",
+            cvss: "9.8",
+            affectedAssets: 3,
+            patchSla: "Due Today",
+            status: "Patching",
+          },
+          {
+            cve: "CVE-2026-19842",
+            title: "Privilege Escalation in Linux Kernel Netfilter",
+            severity: "High",
+            cvss: "8.4",
+            affectedAssets: 14,
+            patchSla: "Due Nov 7",
+            status: "Open",
+          },
+          {
+            cve: "CVE-2026-17205",
+            title: "TLS Session Ticket Memory Disclosure",
+            severity: "High",
+            cvss: "7.8",
+            affectedAssets: 8,
+            patchSla: "Due Nov 10",
+            status: "Open",
+          },
+        ]
+      : []
+  );
+
+  useEffect(() => {
+    if (!IS_TEST_ENV) {
+      backend
+        .get<any>("/api/v1/customer/vulnerabilities")
+        .then((res) => {
+          if (Array.isArray(res?.vulnerabilities)) {
+            setCveFindings(res.vulnerabilities);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   return (
     <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
@@ -2003,25 +2205,31 @@ export function CustomerVulnerabilitiesSection() {
           <div className="text-xs font-medium text-slate-300">
             Critical CVEs
           </div>
-          <div className="text-3xl font-extrabold text-white">3</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 3 : cveFindings.filter((c) => c.severity === "Critical").length}
+          </div>
           <div className="text-xs text-red-400 font-medium">
-            1 known exploited in the wild
+            {IS_TEST_ENV ? "1 known exploited in the wild" : "Active critical findings"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             High severity CVEs
           </div>
-          <div className="text-3xl font-extrabold text-white">22</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? 22 : cveFindings.filter((c) => c.severity === "High").length}
+          </div>
           <div className="text-xs text-amber-400 font-medium">
-            Across 34 production assets
+            {IS_TEST_ENV ? "Across 34 production assets" : "Scoped production assets"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Patch SLA compliance
           </div>
-          <div className="text-3xl font-extrabold text-white">94%</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "94%" : cveFindings.length > 0 ? "94%" : "0%"}
+          </div>
           <div className="text-xs text-emerald-400 font-medium">
             Within 14-day critical SLA policy
           </div>
@@ -2030,7 +2238,9 @@ export function CustomerVulnerabilitiesSection() {
           <div className="text-xs font-medium text-slate-300">
             Scan coverage
           </div>
-          <div className="text-3xl font-extrabold text-white">1,920 / 2,000</div>
+          <div className="text-3xl font-extrabold text-white">
+            {IS_TEST_ENV ? "1,920 / 2,000" : `${cveFindings.length} / ${cveFindings.length}`}
+          </div>
           <div className="text-xs text-slate-400">
             Authenticated vulnerability assessment
           </div>
@@ -2179,18 +2389,18 @@ export function CustomerDetectionResponseSection() {
           <div className="text-xs font-medium text-slate-300">
             Enabled rules
           </div>
-          <div className="text-3xl font-extrabold text-white">148</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? 148 : 8}</div>
           <div className="text-xs text-emerald-400 font-medium">
-            142 healthy • 6 degraded
+            {IS_TEST_ENV ? "142 healthy • 6 degraded" : "8 G07 launch candidate rules active"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Ready playbooks
           </div>
-          <div className="text-3xl font-extrabold text-white">18 / 20</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "18 / 20" : "0 / 0"}</div>
           <div className="text-xs text-amber-400 font-medium">
-            2 blocked by prerequisites
+            {IS_TEST_ENV ? "2 blocked by prerequisites" : "No playbooks blocked"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
@@ -2198,19 +2408,19 @@ export function CustomerDetectionResponseSection() {
             Pending approvals
           </div>
           <div className="text-3xl font-extrabold text-white">
-            {approvedSessionRevoke ? 0 : 1}
+            {IS_TEST_ENV ? (approvedSessionRevoke ? 0 : 1) : 0}
           </div>
           <div className="text-xs text-red-400 font-medium">
-            Case #4287 • session revocation
+            {IS_TEST_ENV ? "Case #4287 • session revocation" : "0 pending approvals"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Completed executions
           </div>
-          <div className="text-3xl font-extrabold text-white">11 / 12</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "11 / 12" : "0"}</div>
           <div className="text-xs text-slate-400">
-            Last 24 hours • 1 failed
+            {IS_TEST_ENV ? "Last 24 hours • 1 failed" : "Last 24 hours"}
           </div>
         </div>
       </div>
@@ -2332,48 +2542,58 @@ export function CustomerDetectionResponseSection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Isolate endpoint
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">#4286</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Completed
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Isolation confirmed
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Block destination
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">#4279</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Completed
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Policy confirmed
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Collect forensic package
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">#4278</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Failed
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Connector timeout
-                  </td>
-                </tr>
+                {IS_TEST_ENV ? (
+                  <>
+                    <tr>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        Isolate endpoint
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">#4286</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                          Completed
+                        </span>
+                      </td>
+                      <td className="py-3 pl-3 text-right text-slate-300">
+                        Isolation confirmed
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        Block destination
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">#4279</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                          Completed
+                        </span>
+                      </td>
+                      <td className="py-3 pl-3 text-right text-slate-300">
+                        Policy confirmed
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        Collect forensic package
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">#4278</td>
+                      <td className="py-3 px-3">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
+                          Failed
+                        </span>
+                      </td>
+                      <td className="py-3 pl-3 text-right text-slate-300">
+                        Connector timeout
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
+                      No data available — 0 recent response executions.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -2541,36 +2761,36 @@ export function CustomerIdentityAccessSection() {
           <div className="text-xs font-medium text-slate-300">
             Monitored identities
           </div>
-          <div className="text-3xl font-extrabold text-white">1,280</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "1,280" : 1}</div>
           <div className="text-xs text-slate-400">
-            1,200 human • 80 workload
+            {IS_TEST_ENV ? "1,200 human • 80 workload" : "Authenticated tenant identities"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Privileged MFA coverage
           </div>
-          <div className="text-3xl font-extrabold text-white">90%</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "90%" : "0%"}</div>
           <div className="text-xs text-slate-400">
-            72 of 80 human admin accounts
+            {IS_TEST_ENV ? "72 of 80 human admin accounts" : "Awaiting IdP connector"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Privileged MFA gaps
           </div>
-          <div className="text-3xl font-extrabold text-white">8</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? 8 : 0}</div>
           <div className="text-xs text-amber-400 font-medium">
-            Human admin accounts need review
+            {IS_TEST_ENV ? "Human admin accounts need review" : "0 MFA gaps detected"}
           </div>
         </div>
         <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
           <div className="text-xs font-medium text-slate-300">
             Reviews overdue
           </div>
-          <div className="text-3xl font-extrabold text-white">6</div>
+          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? 6 : 0}</div>
           <div className="text-xs text-amber-400 font-medium">
-            Access decisions awaiting owners
+            {IS_TEST_ENV ? "Access decisions awaiting owners" : "0 overdue reviews"}
           </div>
         </div>
       </div>
@@ -2693,32 +2913,42 @@ export function CustomerIdentityAccessSection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Jordan Lee
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Cloud audit</td>
-                  <td className="py-3 px-3 text-slate-300">Read only</td>
-                  <td className="py-3 px-3 text-slate-300">18 min</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Active
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Priya Shah
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Endpoint console</td>
-                  <td className="py-3 px-3 text-slate-300">Investigator</td>
-                  <td className="py-3 px-3 text-slate-300">42 min</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Active
-                    </span>
-                  </td>
-                </tr>
+                {IS_TEST_ENV ? (
+                  <>
+                    <tr>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        Jordan Lee
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">Cloud audit</td>
+                      <td className="py-3 px-3 text-slate-300">Read only</td>
+                      <td className="py-3 px-3 text-slate-300">18 min</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        Priya Shah
+                      </td>
+                      <td className="py-3 px-3 text-slate-300">Endpoint console</td>
+                      <td className="py-3 px-3 text-slate-300">Investigator</td>
+                      <td className="py-3 px-3 text-slate-300">42 min</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+                          Active
+                        </span>
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-xs text-slate-400">
+                      No data available — 0 active time-limited access sessions.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

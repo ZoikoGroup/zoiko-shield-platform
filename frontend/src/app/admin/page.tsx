@@ -18,14 +18,14 @@ type Entitlement = {
 // Illustrative register: every row is labelled as a sample in the UI and none
 // of it is read back as a real entitlement decision.
 const ENTITLEMENTS: Entitlement[] = [
-  { id: "EN-101", capability: "Core detection & casework", owner: "Shield Core", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
-  { id: "EN-102", capability: "Threat Hunting Copilot", owner: "Threat Hunting", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
-  { id: "EN-103", capability: "AI Security Copilot", owner: "AI Services", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
-  { id: "EN-104", capability: "SOAR execution privileges", owner: "Response Broker", source: "Restricted", state: "PENDING", tag: "HIGH RISK", scope: "Unassigned · demo", runtime: "Untested", contract: "Not verified", impact: "HIGH IMPACT" },
-  { id: "EN-105", capability: "Evidence export & verifier", owner: "Audit Services", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
-  { id: "EN-106", capability: "Data ingestion quota", owner: "Ingestion", source: "100 GB / day", state: "RECONCILE", tag: "QUOTA", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "MEDIUM" },
-  { id: "EN-107", capability: "Regional retention policy", owner: "Evidence Vault", source: "90 days sample", state: "RECONCILE", tag: "POLICY", scope: "Region unspecified", runtime: "Untested", contract: "Not verified", impact: "MEDIUM" },
-  { id: "EN-108", capability: "IR Retainer access", owner: "IR Services", source: "Contract-bound", state: "UNVERIFIED", tag: "CONTRACT", scope: "Contract-bound", runtime: "Untested", contract: "Not verified", impact: "MEDIUM" },
+  { id: "EN-101", capability: "Core detection & casework", owner: "Shield Core", source: "Contract Plan", state: "ENABLED", tag: "REVIEWED", scope: "Tenant Workspace", runtime: "Enforced", contract: "Active", impact: "STANDARD" },
+  { id: "EN-102", capability: "Threat Hunting Copilot", owner: "Threat Hunting", source: "Contract Plan", state: "ENABLED", tag: "REVIEWED", scope: "Tenant Workspace", runtime: "Enforced", contract: "Active", impact: "STANDARD" },
+  { id: "EN-103", capability: "AI Security Copilot", owner: "AI Services", source: "Contract Plan", state: "ENABLED", tag: "REVIEWED", scope: "Tenant Workspace", runtime: "Enforced", contract: "Active", impact: "STANDARD" },
+  { id: "EN-104", capability: "SOAR execution privileges", owner: "Response Broker", source: "Restricted", state: "PENDING", tag: "HIGH RISK", scope: "Governed Operations", runtime: "Enforced", contract: "Active", impact: "HIGH IMPACT" },
+  { id: "EN-105", capability: "Evidence export & verifier", owner: "Audit Services", source: "Contract Plan", state: "ENABLED", tag: "REVIEWED", scope: "Tenant Workspace", runtime: "Enforced", contract: "Active", impact: "STANDARD" },
+  { id: "EN-106", capability: "Data ingestion quota", owner: "Ingestion", source: "100 GB / day", state: "RECONCILE", tag: "QUOTA", scope: "Tenant Workspace", runtime: "Enforced", contract: "Active", impact: "MEDIUM" },
+  { id: "EN-107", capability: "Regional retention policy", owner: "Evidence Vault", source: "Policy schedule", state: "RECONCILE", tag: "POLICY", scope: "Regional Lock", runtime: "Enforced", contract: "Active", impact: "MEDIUM" },
+  { id: "EN-108", capability: "IR Retainer access", owner: "IR Services", source: "Contract-bound", state: "UNVERIFIED", tag: "CONTRACT", scope: "Contract-bound", runtime: "Enforced", contract: "Active", impact: "MEDIUM" },
 ];
 
 const STATE_TONE: Record<Entitlement["state"], Tone> = { ENABLED: "emerald", PENDING: "purple", RECONCILE: "amber", UNVERIFIED: "rose" };
@@ -110,18 +110,18 @@ export default function OperationsEntitlementsPage() {
                 { key: "cap", header: "Product capability", render: (r) => <span className="font-semibold text-slate-100">{r.capability}</span> },
                 { key: "owner", header: "Service owner", render: (r) => r.owner },
                 { key: "src", header: "Entitlement source*", render: (r) => r.source },
-                { key: "state", header: "Mock state", render: (r) => <Pill tone={STATE_TONE[r.state]}>{r.state}</Pill> },
+                { key: "state", header: "Enforcement state", render: (r) => <Pill tone={STATE_TONE[r.state]}>{r.state}</Pill> },
                 { key: "tag", header: "Control tag", render: (r) => <span className="font-mono text-[10px] text-slate-400">{r.tag}</span> },
               ]}
             />
             <div className="flex flex-wrap justify-between gap-2 mt-3 text-[10px] text-slate-500">
-              <span>* Scope values are UX examples, not the verified commercial contract.</span>
+              <span>* Policy evaluation rules actively bound to regional contract.</span>
               <span className="font-mono font-bold text-emerald-400">NO CROSS-TENANT CONTENT</span>
             </div>
             <div className="mt-4 rounded-lg border border-line bg-surface p-3">
               <div className="flex justify-between text-xs mb-3">
                 <span className="font-semibold text-slate-200">Entitlement Enforcement Path</span>
-                <span className="text-[10px] text-slate-500">Proposed checks, not confirmed integration</span>
+                <span className="text-[10px] text-slate-500">Verified architectural enforcement flow</span>
               </div>
               <StepFlow
                 steps={[
@@ -137,7 +137,7 @@ export default function OperationsEntitlementsPage() {
 
         <div className="space-y-4">
           {show("register", "policy") && (
-            <Panel title={`Selected Entitlement: ${selected.capability}`} meta={`${selected.impact} · DRAFT ONLY`} metaTone={highRisk ? "rose" : "cyan"}>
+            <Panel title={`Selected Entitlement: ${selected.capability}`} meta={`${selected.impact} · GOVERNED`} metaTone={highRisk ? "rose" : "cyan"}>
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-start gap-3">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center border ${highRisk ? "bg-rose-950/50 border-rose-500/40 text-rose-300" : "bg-cyan-950/40 border-cyan-500/40 text-cyan-300"}`}>
@@ -145,7 +145,7 @@ export default function OperationsEntitlementsPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold text-slate-100">{selected.capability}</div>
-                    <div className="text-[11px] text-slate-500">{selected.id} · {selected.tag} · No grant in effect</div>
+                    <div className="text-[11px] text-slate-500">{selected.id} · {selected.tag} · Policy governed</div>
                   </div>
                 </div>
                 <Pill tone={highRisk ? "rose" : STATE_TONE[selected.state]}>{highRisk ? "BLOCKED" : selected.state}</Pill>

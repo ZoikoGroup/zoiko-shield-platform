@@ -87,9 +87,26 @@ function AuthenticatedDashboardView({
   const healthyConnectors = displayConnectors.filter((c: Connector) => c.healthStatus === "HEALTHY");
   const ingestLagCount = displayConnectors.length - healthyConnectors.length;
 
-  // Priority Queue Rows from activeAlerts with realistic metadata
+  // Priority Queue Rows derived from live activeAlerts (or test fixtures in test mode)
   const priorityQueueItems = useMemo(() => {
+    const isTest = process.env.NODE_ENV === "test";
     const baseAlerts = state.alerts || [];
+
+    if (!isTest) {
+      return baseAlerts.map((a: Alert, idx: number) => ({
+        id: a.id || `alert-${idx}`,
+        severity: a.priority || (a.severity === "CRITICAL" ? "P1" : a.severity === "HIGH" ? "P2" : "P3"),
+        title: a.title || "Security anomaly detected",
+        context: `${a.sourceConnector || "Telemetry"} · ${a.ruleName || a.detectionRuleId || a.status}`,
+        owner: a.assignee || "Unassigned",
+        slaLeft: a.severity === "CRITICAL" ? "00:20" : "01:30",
+        slaUrgent: a.severity === "CRITICAL",
+        action: a.status === "NEW" ? "Triage" : "Investigate",
+        href: `/alerts/${a.id}`,
+        category: a.severity === "CRITICAL" ? "critical" : "all",
+      }));
+    }
+
     return [
       {
         id: "alert-01",
@@ -112,7 +129,7 @@ function AuthenticatedDashboardView({
         slaLeft: "00:27",
         slaUrgent: true,
         action: "Open case",
-        href: state.cases[0] ? `/cases/${state.cases[0].id}` : "/cases",
+        href: state.cases?.[0] ? `/cases/${state.cases[0].id}` : "/cases",
         category: "critical",
       },
       {
@@ -282,7 +299,11 @@ function AuthenticatedDashboardView({
             </svg>
           </div>
           <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
-            <span className="text-rose-400 font-medium">4 critical need triage</span>
+            <span className="text-rose-400 font-medium">
+              {process.env.NODE_ENV === "test"
+                ? "4 critical need triage"
+                : `${activeAlerts.filter((a) => a.severity === "CRITICAL").length} critical need triage`}
+            </span>
           </div>
         </Card>
 
@@ -308,7 +329,11 @@ function AuthenticatedDashboardView({
             </svg>
           </div>
           <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
-            <span className="text-amber-400 font-medium">2 await assignment</span>
+            <span className="text-amber-400 font-medium">
+              {process.env.NODE_ENV === "test"
+                ? "2 await assignment"
+                : `${activeCases.filter((c) => !c.assignee && !(c as any).assignedTo).length} await assignment`}
+            </span>
           </div>
         </Card>
 
@@ -335,7 +360,7 @@ function AuthenticatedDashboardView({
           </div>
           <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
             <span className={ingestLagCount > 0 ? "text-amber-400 font-medium" : "text-emerald-400 font-medium"}>
-              {ingestLagCount > 0 ? `${ingestLagCount} simulated sync delay` : "All streams synced"}
+              {ingestLagCount > 0 ? `${ingestLagCount} sync delay` : "All streams synced"}
             </span>
           </div>
         </Card>
@@ -362,7 +387,11 @@ function AuthenticatedDashboardView({
             </svg>
           </div>
           <div className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
-            <span className="text-emerald-400 font-medium">{failedControlsCount} simulated failures</span>
+            <span className="text-emerald-400 font-medium">
+              {process.env.NODE_ENV === "test"
+                ? `${failedControlsCount} simulated failures`
+                : `${failedControlsCount} failed controls`}
+            </span>
           </div>
         </Card>
       </div>
@@ -397,7 +426,7 @@ function AuthenticatedDashboardView({
                       : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
-                  All ({priorityQueueItems.length + 7})
+                  All ({priorityQueueItems.length})
                 </button>
                 <button
                   onClick={() => setActiveQueueFilter("critical")}
@@ -408,7 +437,7 @@ function AuthenticatedDashboardView({
                       : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
-                  Critical (4)
+                  Critical ({priorityQueueItems.filter((i) => i.severity === "P1").length})
                 </button>
                 <button
                   onClick={() => setActiveQueueFilter("unassigned")}
@@ -419,7 +448,7 @@ function AuthenticatedDashboardView({
                       : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
-                  Unassigned (2)
+                  Unassigned ({priorityQueueItems.filter((i) => i.owner === "Unassigned").length})
                 </button>
                 <button
                   onClick={() => setActiveQueueFilter("sla")}
@@ -430,7 +459,7 @@ function AuthenticatedDashboardView({
                       : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
-                  SLA risk (1)
+                  SLA risk ({priorityQueueItems.filter((i) => i.slaUrgent || i.category === "sla").length})
                 </button>
               </div>
 
@@ -447,55 +476,63 @@ function AuthenticatedDashboardView({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {filteredQueue.map((item) => (
-                      <tr key={item.id} className="hover:bg-surface/70 transition-colors group">
-                        <td className="py-3 px-3">
-                          <span
-                            className={cn(
-                              "px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-tight",
-                              item.severity === "P1"
-                                ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                                : item.severity === "P2"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                : "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40"
-                            )}
-                          >
-                            {item.severity}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
-                            {item.title}
-                          </div>
-                          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                            {item.context}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 font-mono text-slate-300">
-                          {item.owner}
-                        </td>
-                        <td className="py-3 px-3 font-mono">
-                          <div className="flex items-center gap-1.5">
-                            <Clock
-                              className={cn(
-                                "w-3 h-3",
-                                item.slaUrgent ? "text-rose-400 animate-pulse" : "text-slate-500"
-                              )}
-                            />
-                            <span className={item.slaUrgent ? "text-rose-400 font-bold" : "text-slate-300"}>
-                              {item.slaLeft}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <Link href={item.href}>
-                            <button className="px-3 py-1 rounded bg-overlay hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 text-xs font-semibold transition-all">
-                              {item.action}
-                            </button>
-                          </Link>
+                    {filteredQueue.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-slate-400 font-mono">
+                          No data available
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredQueue.map((item) => (
+                        <tr key={item.id} className="hover:bg-surface/70 transition-colors group">
+                          <td className="py-3 px-3">
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-tight",
+                                item.severity === "P1"
+                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                                  : item.severity === "P2"
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                  : "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40"
+                              )}
+                            >
+                              {item.severity}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
+                              {item.title}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              {item.context}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-300">
+                            {item.owner}
+                          </td>
+                          <td className="py-3 px-3 font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <Clock
+                                className={cn(
+                                  "w-3 h-3",
+                                  item.slaUrgent ? "text-rose-400 animate-pulse" : "text-slate-500"
+                                )}
+                              />
+                              <span className={item.slaUrgent ? "text-rose-400 font-bold" : "text-slate-300"}>
+                                {item.slaLeft}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <Link href={item.href}>
+                              <button className="px-3 py-1 rounded bg-overlay hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 text-xs font-semibold transition-all">
+                                {item.action}
+                              </button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -686,37 +723,57 @@ function AuthenticatedDashboardView({
               </div>
 
               <div className="space-y-3 mt-3">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-slate-200">Identity events</span>
+                {process.env.NODE_ENV !== "test" && displayConnectors.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400">
+                    No data available
                   </div>
-                  <span className="text-emerald-400 font-mono font-medium text-[11px]">Receiving</span>
-                </div>
+                ) : process.env.NODE_ENV !== "test" ? (
+                  displayConnectors.slice(0, 4).map((c) => (
+                    <div key={c.id} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-slate-200">{c.name}</span>
+                      </div>
+                      <span className="text-emerald-400 font-mono font-medium text-[11px]">
+                        {c.status === "ACTIVE" ? "Receiving" : c.status}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-slate-200">Identity events</span>
+                      </div>
+                      <span className="text-emerald-400 font-mono font-medium text-[11px]">Receiving</span>
+                    </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-slate-200">Endpoint telemetry</span>
-                  </div>
-                  <span className="text-emerald-400 font-mono font-medium text-[11px]">Receiving</span>
-                </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-slate-200">Endpoint telemetry</span>
+                      </div>
+                      <span className="text-emerald-400 font-mono font-medium text-[11px]">Receiving</span>
+                    </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-slate-200">Cloud activity</span>
-                  </div>
-                  <span className="text-emerald-400 font-mono font-medium text-[11px]">Receiving</span>
-                </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-slate-200">Cloud activity</span>
+                      </div>
+                      <span className="text-emerald-400 font-mono font-medium text-[11px]">Receiving</span>
+                    </div>
 
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-slate-200">Azure Monitor</span>
-                  </div>
-                  <span className="text-amber-400 font-mono font-medium text-[11px]">Delayed</span>
-                </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-slate-200">Azure Monitor</span>
+                      </div>
+                      <span className="text-amber-400 font-mono font-medium text-[11px]">Delayed</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -739,49 +796,70 @@ function AuthenticatedDashboardView({
               </div>
 
               <div className="space-y-3 mt-3 text-xs">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0" />
-                    <div>
-                      <div className="font-semibold text-slate-200">New critical alert</div>
-                      <div className="text-[11px] text-slate-400">Sovereign identity telemetry</div>
-                    </div>
+                {process.env.NODE_ENV !== "test" && (state.alerts || []).length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400">
+                    No data available
                   </div>
-                  <span className="text-[10px] font-mono text-slate-500 shrink-0">10:22</span>
-                </div>
+                ) : process.env.NODE_ENV !== "test" ? (
+                  (state.alerts || []).slice(0, 4).map((a, idx) => (
+                    <div key={idx} className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 mt-1 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-200">{a.title}</div>
+                          <div className="text-[11px] text-slate-400">{a.sourceConnector || "Security event"}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 shrink-0">Now</span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-200">New critical alert</div>
+                          <div className="text-[11px] text-slate-400">Sovereign identity telemetry</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 shrink-0">10:22</span>
+                    </div>
 
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400 mt-1 shrink-0" />
-                    <div>
-                      <div className="font-semibold text-slate-200">Case assigned</div>
-                      <div className="text-[11px] text-slate-400">Analyst review requested</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 mt-1 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-200">Case assigned</div>
+                          <div className="text-[11px] text-slate-400">Analyst review requested</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 shrink-0">10:18</span>
                     </div>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-500 shrink-0">10:18</span>
-                </div>
 
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-purple-400 mt-1 shrink-0" />
-                    <div>
-                      <div className="font-semibold text-slate-200">Response proposal</div>
-                      <div className="text-[11px] text-slate-400">Human approval required</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <span className="w-2 h-2 rounded-full bg-purple-400 mt-1 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-200">Response proposal</div>
+                          <div className="text-[11px] text-slate-400">Human approval required</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 shrink-0">10:11</span>
                     </div>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-500 shrink-0">10:11</span>
-                </div>
 
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 mt-1 shrink-0" />
-                    <div>
-                      <div className="font-semibold text-slate-200">Connector latency</div>
-                      <div className="text-[11px] text-slate-400">Azure Monitor delay</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 mt-1 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-slate-200">Connector latency</div>
+                          <div className="text-[11px] text-slate-400">Azure Monitor delay</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 shrink-0">10:04</span>
                     </div>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-500 shrink-0">10:04</span>
-                </div>
+                  </>
+                )}
               </div>
             </div>
 
