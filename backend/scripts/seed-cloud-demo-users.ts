@@ -57,6 +57,7 @@ async function main() {
     { email: 'analyst@zoikoshield-demo.com', fullName: 'Lead Security Analyst' },
     { email: 'owner@acme.com', fullName: 'Acme Owner' },
     { email: 'admin@zoikoshield.io', fullName: 'Platform Super Admin' },
+    { email: 'aditya@zoiko.com', fullName: 'Aditya' },
   ];
 
   const tenantOwnerRoleId = '69abe8d2-fc60-4f9e-a606-85fcb203d08d';

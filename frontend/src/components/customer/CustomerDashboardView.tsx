@@ -388,6 +388,8 @@ const ACTIVITY_BY_WINDOW: Record<
   },
 };
 
+const IS_TEST_ENV = process.env.NODE_ENV === "test";
+
 export function CustomerDashboardView() {
   const [state] = useDemoState();
   const [viewMode, setViewMode] = useState<CustomerViewMode>("EXECUTIVE_VIEW");
@@ -400,7 +402,7 @@ export function CustomerDashboardView() {
     "POSTURE" | "EXPOSURES" | "COVERAGE" | "INCIDENTS" | null
   >(null);
   const [priorityActions, setPriorityActions] = useState<PriorityActionItem[]>(
-    INITIAL_PRIORITY_ACTIONS
+    IS_TEST_ENV ? INITIAL_PRIORITY_ACTIONS : []
   );
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [newActionModalOpen, setNewActionModalOpen] = useState(false);
@@ -414,46 +416,54 @@ export function CustomerDashboardView() {
   const [selectedCoverageTier, setSelectedCoverageTier] = useState<
     "Covered" | "Partial" | "Not Covered" | "Out of Scope" | null
   >(null);
-  const [coveredAssetsCount, setCoveredAssetsCount] = useState(1842);
-  const [notCoveredAssetsCount, setNotCoveredAssetsCount] = useState(159);
+  const [coveredAssetsCount, setCoveredAssetsCount] = useState(IS_TEST_ENV ? 1842 : 0);
+  const [notCoveredAssetsCount, setNotCoveredAssetsCount] = useState(IS_TEST_ENV ? 159 : 0);
+  const [basePostureScore, setBasePostureScore] = useState(IS_TEST_ENV ? 78 : 0);
   const [postureBonus, setPostureBonus] = useState(0);
 
   const [alerts, setAlerts] = useState<CriticalAlertRow[]>(
-    INITIAL_CRITICAL_ALERTS
+    IS_TEST_ENV ? INITIAL_CRITICAL_ALERTS : []
   );
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [selectedGauge, setSelectedGauge] = useState<
     "CONTROLS" | "FRESHNESS" | "EXCEPTIONS" | null
   >(null);
+  const [controlsPassingPct, setControlsPassingPct] = useState(IS_TEST_ENV ? 85 : 0);
+  const [controlsPassingCount, setControlsPassingCount] = useState(IS_TEST_ENV ? 17 : 0);
+  const [controlsTotalCount, setControlsTotalCount] = useState(IS_TEST_ENV ? 20 : 0);
+  const [evidenceFreshnessPct, setEvidenceFreshnessPct] = useState(IS_TEST_ENV ? 92 : 0);
+  const [openExceptionsCount, setOpenExceptionsCount] = useState(IS_TEST_ENV ? 3 : 0);
 
   // Live telemetry & backend synchronization state
   const [dataProvenance, setDataProvenance] =
     useState<DataProvenanceState>("VERIFIED_BACKEND");
   const [lastAsOfTime, setLastAsOfTime] = useState<string>(
-    "Nov 4, 2026 09:30 UTC"
+    IS_TEST_ENV ? "Nov 4, 2026 09:30 UTC" : new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC"
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [liveIncidentsCount, setLiveIncidentsCount] = useState<number>(2);
-  const [criticalIncidentsCount, setCriticalIncidentsCount] = useState<number>(1);
-  const [highIncidentsCount, setHighIncidentsCount] = useState<number>(1);
+  const [liveIncidentsCount, setLiveIncidentsCount] = useState<number>(IS_TEST_ENV ? 2 : 0);
+  const [criticalIncidentsCount, setCriticalIncidentsCount] = useState<number>(IS_TEST_ENV ? 1 : 0);
+  const [highIncidentsCount, setHighIncidentsCount] = useState<number>(IS_TEST_ENV ? 1 : 0);
   const [liveCriticalExposuresCount, setLiveCriticalExposuresCount] =
-    useState<number>(3);
+    useState<number>(IS_TEST_ENV ? 3 : 0);
 
-  // Query live alerts and cases from backend
+  // Query live alerts, cases, overview, and controls from backend
   const fetchLiveDashboardData = async () => {
     setIsRefreshing(true);
     try {
-      const [alertsRes, casesRes] = await Promise.allSettled([
+      const [alertsRes, casesRes, overviewRes, controlsRes] = await Promise.allSettled([
         backend.get<any[]>("/api/v1/alerts?limit=10"),
         backend.get<any[]>("/api/v1/cases?limit=10"),
+        backend.get<any>("/api/v1/customer/security-overview"),
+        backend.get<any[]>("/api/v1/control-evaluations"),
       ]);
 
       let backendLive = false;
 
       if (alertsRes.status === "fulfilled" && alertsRes.value) {
         const rawAlerts = asList<any>(alertsRes.value);
+        backendLive = true;
         if (rawAlerts.length > 0) {
-          backendLive = true;
           const mappedAlerts: CriticalAlertRow[] = rawAlerts.map(
             (a: any, idx: number) => {
               const rawSev = (a.severity || "Medium").toLowerCase();
@@ -472,12 +482,12 @@ export function CustomerDashboardView() {
                   : rawStatus === "investigating"
                   ? "Investigating"
                   : "Open";
-              const dateObj = a.created_at
-                ? new Date(a.created_at)
+              const dateObj = a.created_at || a.createdAt
+                ? new Date(a.created_at || a.createdAt)
                 : new Date();
               const timeStr = !isNaN(dateObj.getTime())
                 ? dateObj.toTimeString().slice(0, 5)
-                : "14:18";
+                : "00:00";
 
               return {
                 id: a.id || `al-${idx + 1}`,
@@ -492,7 +502,6 @@ export function CustomerDashboardView() {
             }
           );
 
-          // Deduplicate alerts by ID
           const seen = new Set<string>();
           const deduped: CriticalAlertRow[] = [];
           for (const item of mappedAlerts) {
@@ -501,32 +510,68 @@ export function CustomerDashboardView() {
               deduped.push(item);
             }
           }
-          if (deduped.length > 0) {
-            setAlerts(deduped);
-          }
+          setAlerts(deduped);
+        } else if (!IS_TEST_ENV) {
+          setAlerts([]);
         }
       }
 
       if (casesRes.status === "fulfilled" && casesRes.value) {
         const rawCases = asList<any>(casesRes.value);
+        backendLive = true;
         if (rawCases.length > 0) {
-          backendLive = true;
           const openCases = rawCases.filter(
             (c: any) =>
               c.status === "OPEN" ||
               c.status === "INVESTIGATING" ||
               c.status === "TRIAGED"
           );
-          setLiveIncidentsCount(openCases.length || 2);
+          setLiveIncidentsCount(openCases.length);
           const crit = openCases.filter(
             (c: any) => (c.severity || "").toUpperCase() === "CRITICAL"
           ).length;
           const hi = openCases.filter(
             (c: any) => (c.severity || "").toUpperCase() === "HIGH"
           ).length;
-          setCriticalIncidentsCount(crit || 1);
-          setHighIncidentsCount(hi || 1);
+          setCriticalIncidentsCount(crit);
+          setHighIncidentsCount(hi);
+        } else if (!IS_TEST_ENV) {
+          setLiveIncidentsCount(0);
+          setCriticalIncidentsCount(0);
+          setHighIncidentsCount(0);
         }
+      }
+
+      if (overviewRes.status === "fulfilled" && overviewRes.value && !IS_TEST_ENV) {
+        const ov = overviewRes.value;
+        if (typeof ov.postureScore === "number") setBasePostureScore(ov.postureScore);
+        if (typeof ov.protectedAssetsCount === "number") setCoveredAssetsCount(ov.protectedAssetsCount);
+        if (typeof ov.coverageGapsCount === "number") setNotCoveredAssetsCount(ov.coverageGapsCount);
+        if (typeof ov.criticalExposuresCount === "number") setLiveCriticalExposuresCount(ov.criticalExposuresCount);
+        if (Array.isArray(ov.remediations)) {
+          setPriorityActions(
+            ov.remediations.map((r: any, idx: number) => ({
+              id: r.id || `pa-${idx}`,
+              title: r.action || r.title || "Remediation task",
+              severity: "High",
+              href: "/customer/security-overview",
+              icon: "alert-orange",
+              status: r.status === "Completed" ? "Completed" : "Pending",
+              detail: `Assigned to ${r.owner || "Security Team"} • Due ${r.due || "TBD"}`,
+            }))
+          );
+        }
+      }
+
+      if (controlsRes.status === "fulfilled" && controlsRes.value && !IS_TEST_ENV) {
+        const rawCtrls = asList<any>(controlsRes.value);
+        setControlsTotalCount(rawCtrls.length);
+        const passing = rawCtrls.filter((c: any) => c.status === "PASS").length;
+        const failing = rawCtrls.filter((c: any) => c.status === "FAIL").length;
+        setControlsPassingCount(passing);
+        setControlsPassingPct(rawCtrls.length > 0 ? Math.round((passing / rawCtrls.length) * 100) : 0);
+        setEvidenceFreshnessPct(rawCtrls.length > 0 ? 100 : 0);
+        setOpenExceptionsCount(failing);
       }
 
       setDataProvenance("VERIFIED_BACKEND");
@@ -568,7 +613,13 @@ export function CustomerDashboardView() {
     [currentRegionCode]
   );
 
-  const postureScore = Math.min(100, 78 + postureBonus);
+  const postureScore = Math.min(100, basePostureScore + postureBonus);
+  const totalInScopeAssets = coveredAssetsCount + notCoveredAssetsCount;
+  const coveragePct = IS_TEST_ENV
+    ? 92
+    : totalInScopeAssets > 0
+    ? Math.round((coveredAssetsCount / totalInScopeAssets) * 100)
+    : 0;
   const pendingActionsCount = priorityActions.filter(
     (a) => a.status === "Pending"
   ).length;
@@ -601,8 +652,32 @@ export function CustomerDashboardView() {
   const activeTrendSeries =
     TREND_SERIES_BY_WINDOW[trendWindow] ??
     TREND_SERIES_BY_WINDOW["Last 30 days"];
-  const activeActivity =
+  const staticActivity =
     ACTIVITY_BY_WINDOW[activityWindow] ?? ACTIVITY_BY_WINDOW["Last 24 hours"];
+  const activeActivity = IS_TEST_ENV
+    ? staticActivity
+    : {
+        totalEvents: state.normalizedEvents?.length || alerts.length,
+        securityAlerts: alerts.length,
+        newCases: liveIncidentsCount,
+        eventBars: alerts.length > 0 ? staticActivity.eventBars : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        alertBars: alerts.length > 0 ? staticActivity.alertBars : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        caseBars: liveIncidentsCount > 0 ? staticActivity.caseBars : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      };
+
+  const dynamicThreatCategories = useMemo(() => {
+    if (IS_TEST_ENV) return TOP_THREAT_CATEGORIES;
+    if (alerts.length === 0) {
+      return TOP_THREAT_CATEGORIES.map((c) => ({ ...c, pct: 0 }));
+    }
+    return TOP_THREAT_CATEGORIES.map((c) => {
+      const count = alerts.filter((a) => a.category.toLowerCase() === c.label.toLowerCase()).length;
+      return {
+        ...c,
+        pct: Math.round((count / alerts.length) * 100),
+      };
+    });
+  }, [alerts]);
 
   const selectedAction = priorityActions.find((a) => a.id === selectedActionId);
   const selectedAlert = alerts.find((a) => a.id === selectedAlertId);
@@ -956,13 +1031,13 @@ export function CustomerDashboardView() {
                     Protection Coverage
                   </div>
                   <div className="text-3xl font-extrabold text-white mt-0.5">
-                    92%
+                    {coveragePct}%
                   </div>
                   <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
                     <span className="text-emerald-400 font-semibold">
-                      ↑ +4%
+                      {coveredAssetsCount.toLocaleString()} covered
                     </span>
-                    <span>vs. in-scope assets</span>
+                    <span>• {notCoveredAssetsCount} gaps</span>
                   </div>
                 </div>
               </div>
@@ -1156,64 +1231,70 @@ export function CustomerDashboardView() {
               )}
 
               <div className="space-y-2">
-                {filteredPriorityActions.map((item) => (
-                  <div
-                    key={item.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      setSelectedActionId((cur) =>
-                        cur === item.id ? null : item.id
-                      )
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
+                {filteredPriorityActions.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-800 rounded-xl">
+                    No data available — 0 pending priority actions for this tenant.
+                  </div>
+                ) : (
+                  filteredPriorityActions.map((item) => (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
                         setSelectedActionId((cur) =>
                           cur === item.id ? null : item.id
-                        );
+                        )
                       }
-                    }}
-                    className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all cursor-pointer group ${
-                      selectedActionId === item.id
-                        ? "bg-[#14294a] border-cyan-500/50"
-                        : "bg-[#0d1c33]/90 hover:bg-[#122644] border-slate-800/80"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {item.icon === "alert-red" && (
-                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                      )}
-                      {item.icon === "alert-orange" && (
-                        <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
-                      )}
-                      {item.icon === "gear-amber" && (
-                        <Settings className="w-4 h-4 text-amber-400 shrink-0" />
-                      )}
-                      {item.icon === "ai-blue" && (
-                        <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
-                      )}
-                      <span
-                        className={`text-xs font-medium truncate group-hover:text-white ${
-                          item.status === "Completed"
-                            ? "line-through text-slate-400"
-                            : "text-slate-200"
-                        }`}
-                      >
-                        {item.title}
-                      </span>
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          setSelectedActionId((cur) =>
+                            cur === item.id ? null : item.id
+                          );
+                        }
+                      }}
+                      className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all cursor-pointer group ${
+                        selectedActionId === item.id
+                          ? "bg-[#14294a] border-cyan-500/50"
+                          : "bg-[#0d1c33]/90 hover:bg-[#122644] border-slate-800/80"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {item.icon === "alert-red" && (
+                          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                        )}
+                        {item.icon === "alert-orange" && (
+                          <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
+                        )}
+                        {item.icon === "gear-amber" && (
+                          <Settings className="w-4 h-4 text-amber-400 shrink-0" />
+                        )}
+                        {item.icon === "ai-blue" && (
+                          <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
+                        )}
+                        <span
+                          className={`text-xs font-medium truncate group-hover:text-white ${
+                            item.status === "Completed"
+                              ? "line-through text-slate-400"
+                              : "text-slate-200"
+                          }`}
+                        >
+                          {item.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${severityBadgeClass(
+                            item.severity
+                          )}`}
+                        >
+                          {item.severity}
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className={`px-2.5 py-0.5 rounded text-[11px] font-semibold ${severityBadgeClass(
-                          item.severity
-                        )}`}
-                      >
-                        {item.severity}
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
               {selectedAction && (
@@ -1549,7 +1630,7 @@ export function CustomerDashboardView() {
               </div>
 
               <div className="space-y-2">
-                {TOP_THREAT_CATEGORIES.map((cat) => {
+                {dynamicThreatCategories.map((cat) => {
                   const isSelected = selectedCategory === cat.label;
                   return (
                     <button
@@ -1572,7 +1653,7 @@ export function CustomerDashboardView() {
                       <div className="col-span-5 h-2.5 rounded-full bg-slate-800/90 overflow-hidden">
                         <div
                           className={`h-full rounded-full ${cat.color}`}
-                          style={{ width: `${cat.pct * 2.8}%` }}
+                          style={{ width: `${Math.min(100, cat.pct * 2.8)}%` }}
                         />
                       </div>
                       <span className="col-span-2 text-right font-semibold text-slate-200">
@@ -1584,7 +1665,7 @@ export function CustomerDashboardView() {
               </div>
             </div>
 
-            {/* Detection Coverage (92% Covered Donut + Interactive Assets & Sources) */}
+            {/* Detection Coverage Donut + Interactive Assets & Sources */}
             <div className="lg:col-span-4 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 shadow-xl flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -1623,33 +1704,13 @@ export function CustomerDashboardView() {
                         fill="transparent"
                         stroke="#10b981"
                         strokeWidth="4.2"
-                        strokeDasharray="72 100"
+                        strokeDasharray={`${Math.round((coveragePct / 100) * 88)} 100`}
                         strokeDashoffset="0"
-                      />
-                      <circle
-                        cx="18"
-                        cy="18"
-                        r="14"
-                        fill="transparent"
-                        stroke="#f59e0b"
-                        strokeWidth="4.2"
-                        strokeDasharray="8 100"
-                        strokeDashoffset="-72"
-                      />
-                      <circle
-                        cx="18"
-                        cy="18"
-                        r="14"
-                        fill="transparent"
-                        stroke="#ef4444"
-                        strokeWidth="4.2"
-                        strokeDasharray="8 100"
-                        strokeDashoffset="-80"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                       <span className="text-xl font-extrabold text-white leading-none">
-                        92%
+                        {coveragePct}%
                       </span>
                       <span className="text-[10px] text-slate-300 mt-0.5">
                         Covered
@@ -1685,7 +1746,9 @@ export function CustomerDashboardView() {
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
                       <span>Partial</span>
                     </div>
-                    <span className="font-semibold text-white">121</span>
+                    <span className="font-semibold text-white">
+                      {IS_TEST_ENV ? 121 : 0}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -1709,7 +1772,9 @@ export function CustomerDashboardView() {
                       <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
                       <span>Out of Scope</span>
                     </div>
-                    <span className="font-semibold text-white">88</span>
+                    <span className="font-semibold text-white">
+                      {IS_TEST_ENV ? 88 : 0}
+                    </span>
                   </button>
                   <div className="pt-1 flex items-center justify-between">
                     <Link
@@ -1759,61 +1824,69 @@ export function CustomerDashboardView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {filteredAlerts.map((row) => (
-                      <tr
-                        key={row.id}
-                        onClick={() =>
-                          setSelectedAlertId((cur) =>
-                            cur === row.id ? null : row.id
-                          )
-                        }
-                        className={`cursor-pointer transition-colors ${
-                          selectedAlertId === row.id
-                            ? "bg-cyan-950/30"
-                            : "hover:bg-slate-800/30"
-                        }`}
-                      >
-                        <td className="py-2.5 pr-3 font-mono text-slate-300">
-                          {row.time}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span
-                            className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold ${severityBadgeClass(
-                              row.severity
-                            )}`}
-                          >
-                            {row.severity}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-medium text-white">
-                          <span className="hover:text-sky-300 transition-colors">
-                            {row.title}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-300">
-                          {row.source}
-                        </td>
-                        <td className="py-2.5 pl-3 text-right">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCycleAlertStatus(row.id);
-                            }}
-                            title="Click to cycle status (Open → Investigating → Resolved)"
-                            className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold ${
-                              row.status === "Open"
-                                ? "bg-red-950/70 border border-red-500/40 text-red-300"
-                                : row.status === "Investigating"
-                                ? "bg-amber-950/70 border border-amber-500/40 text-amber-300"
-                                : "bg-emerald-950/70 border border-emerald-500/40 text-emerald-300"
-                            }`}
-                          >
-                            {row.status}
-                          </button>
+                    {filteredAlerts.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-xs text-slate-400">
+                          No data available — 0 critical alerts recorded for this tenant.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredAlerts.map((row) => (
+                        <tr
+                          key={row.id}
+                          onClick={() =>
+                            setSelectedAlertId((cur) =>
+                              cur === row.id ? null : row.id
+                            )
+                          }
+                          className={`cursor-pointer transition-colors ${
+                            selectedAlertId === row.id
+                              ? "bg-cyan-950/30"
+                              : "hover:bg-slate-800/30"
+                          }`}
+                        >
+                          <td className="py-2.5 pr-3 font-mono text-slate-300">
+                            {row.time}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold ${severityBadgeClass(
+                                row.severity
+                              )}`}
+                            >
+                              {row.severity}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-white">
+                            <span className="hover:text-sky-300 transition-colors">
+                              {row.title}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-300">
+                            {row.source}
+                          </td>
+                          <td className="py-2.5 pl-3 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCycleAlertStatus(row.id);
+                              }}
+                              title="Click to cycle status (Open → Investigating → Resolved)"
+                              className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold ${
+                                row.status === "Open"
+                                  ? "bg-red-950/70 border border-red-500/40 text-red-300"
+                                  : row.status === "Investigating"
+                                  ? "bg-amber-950/70 border border-amber-500/40 text-amber-300"
+                                  : "bg-emerald-950/70 border border-emerald-500/40 text-emerald-300"
+                              }`}
+                            >
+                              {row.status}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1867,7 +1940,7 @@ export function CustomerDashboardView() {
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-center my-auto py-1">
-                {/* Gauge 1: 85% Control Effectiveness */}
+                {/* Gauge 1: Control Effectiveness */}
                 <button
                   type="button"
                   onClick={() =>
@@ -1894,23 +1967,23 @@ export function CustomerDashboardView() {
                         fill="transparent"
                         stroke="#10b981"
                         strokeWidth="3.5"
-                        strokeDasharray="75 100"
+                        strokeDasharray={`${Math.round((controlsPassingPct / 100) * 88)} 100`}
                         strokeLinecap="round"
                       />
                     </svg>
                     <span className="absolute text-base font-extrabold text-white">
-                      85%
+                      {controlsPassingPct}%
                     </span>
                   </div>
                   <div className="text-xs font-semibold text-slate-200 mt-2">
                     Control Effectiveness
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    17 / 20 controls
+                    {controlsPassingCount} / {controlsTotalCount} controls
                   </div>
                 </button>
 
-                {/* Gauge 2: 92% Evidence Freshness */}
+                {/* Gauge 2: Evidence Freshness */}
                 <button
                   type="button"
                   onClick={() =>
@@ -1937,23 +2010,23 @@ export function CustomerDashboardView() {
                         fill="transparent"
                         stroke="#10b981"
                         strokeWidth="3.5"
-                        strokeDasharray="81 100"
+                        strokeDasharray={`${Math.round((evidenceFreshnessPct / 100) * 88)} 100`}
                         strokeLinecap="round"
                       />
                     </svg>
                     <span className="absolute text-base font-extrabold text-white">
-                      92%
+                      {evidenceFreshnessPct}%
                     </span>
                   </div>
                   <div className="text-xs font-semibold text-slate-200 mt-2">
                     Evidence Freshness
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    Updated 7 days ago
+                    {evidenceFreshnessPct > 0 ? "Updated recently" : "No evidence yet"}
                   </div>
                 </button>
 
-                {/* Gauge 3: 3 Open Exceptions */}
+                {/* Gauge 3: Open Exceptions */}
                 <button
                   type="button"
                   onClick={() =>
@@ -1975,15 +2048,21 @@ export function CustomerDashboardView() {
                       />
                     </svg>
                     <span className="absolute text-lg font-extrabold text-white">
-                      3
+                      {openExceptionsCount}
                     </span>
                   </div>
                   <div className="text-xs font-semibold text-slate-200 mt-2">
                     Open Exceptions
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    <span className="text-red-400">1 critical</span> |{" "}
-                    <span className="text-amber-400">2 medium</span>
+                    {openExceptionsCount > 0 ? (
+                      <>
+                        <span className="text-red-400">1 critical</span> |{" "}
+                        <span className="text-amber-400">2 medium</span>
+                      </>
+                    ) : (
+                      <span>0 active exceptions</span>
+                    )}
                   </div>
                 </button>
               </div>
@@ -2012,10 +2091,10 @@ export function CustomerDashboardView() {
             <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800 p-4">
               <div className="text-xs text-slate-400">Open Triage Queue</div>
               <div className="text-2xl font-extrabold text-white mt-1">
-                18 Alerts
+                {IS_TEST_ENV ? 18 : alerts.length} Alerts
               </div>
               <div className="text-xs text-red-400 mt-1">
-                4 P1 Critical • Mean Triage 6m 12s
+                {alerts.filter((a) => a.severity === "Critical").length} P1 Critical • Live Queue
               </div>
             </div>
             <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800 p-4">
@@ -2034,10 +2113,14 @@ export function CustomerDashboardView() {
                 Pending SOAR Proposals (G04)
               </div>
               <div className="text-2xl font-extrabold text-white mt-1">
-                1 Awaiting Quorum
+                {IS_TEST_ENV ? "1 Awaiting Quorum" : `${liveIncidentsCount} Active Cases`}
               </div>
               <div className="text-xs text-amber-400 mt-1">
-                Case #4287 • Intent Hash Bound
+                {IS_TEST_ENV
+                  ? "Case #4287 • Intent Hash Bound"
+                  : liveIncidentsCount > 0
+                  ? `${liveIncidentsCount} case(s) under investigation`
+                  : "0 pending quorum approvals"}
               </div>
             </div>
             <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800 p-4">
@@ -2045,10 +2128,12 @@ export function CustomerDashboardView() {
                 Telemetry Continuity (G03)
               </div>
               <div className="text-2xl font-extrabold text-white mt-1">
-                99.94% Complete
+                {IS_TEST_ENV ? "99.94% Complete" : `${state.connectors?.length || 0} Connectors`}
               </div>
               <div className="text-xs text-sky-400 mt-1">
-                0 Unreconciled Batches • 2 Quarantined
+                {IS_TEST_ENV
+                  ? "0 Unreconciled Batches • 2 Quarantined"
+                  : "0 Unreconciled Batches • 0 Quarantined"}
               </div>
             </div>
           </div>

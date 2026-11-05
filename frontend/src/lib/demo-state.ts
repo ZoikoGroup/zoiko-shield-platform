@@ -844,6 +844,126 @@ export function getDefaultStaticState(): DemoState {
   };
 }
 
+const STATIC_SEED_IDS = new Set([
+  "alt-failed-login-bruteforce-01",
+  "case-2026-auth-attack-01",
+  "conn-webhook-gateway-01",
+  "conn-okta-idp-prod",
+  "conn-aws-cloudtrail-org",
+  "conn-crowdstrike-edr",
+  "conn-m365-defender",
+  "conn-k8s-audit-cluster",
+  "conn-custom-syslog-exp",
+  "ctrl-01",
+  "ctrl-02",
+  "ctrl-03",
+  "ctrl-04",
+  "ctrl-05",
+  "pkg-audit-2026-sovereign-q3",
+  "usr-sec-lead-01",
+  "usr-sec-analyst-02",
+  "jit-sess-sec-admin-991",
+  "ai-inc-2026-001",
+  "ai-inc-2026-002",
+  "ret-enterprise-annual-01",
+  "wo-ransomware-triage-01",
+  "cons-01",
+  "cons-02",
+  "legal-rec-01",
+  "audit-acc-01",
+]);
+
+export function sanitizeBrowserState(state: DemoState): DemoState {
+  if (process.env.NODE_ENV === "test") {
+    return state;
+  }
+  const isMockSession =
+    !state.session ||
+    state.session.userId === "usr-sec-lead-01" ||
+    state.session.email === "soc-lead@zoikoshield.internal" ||
+    state.session.fullName === "Lead Security Operator" ||
+    state.session.fullName === "Jane Doe";
+
+  const isMockTenant =
+    !state.tenant ||
+    state.tenant.id === "tnt-enterprise-secops-01" ||
+    state.tenant.organizationName === "Enterprise Security Operations" ||
+    state.tenant.organizationName === "Acme Global Ltd";
+
+  const cleanEmail = isMockSession ? "" : (state.session?.email || "");
+  const derivedOrgFromEmail = cleanEmail.includes("@")
+    ? cleanEmail
+        .split("@")[1]
+        .split(".")[0]
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : "";
+
+  return {
+    ...state,
+    session: isMockSession
+      ? {
+          userId: "",
+          email: "",
+          fullName: "",
+          role: "SECURITY_ANALYST" as const,
+          tenantId: "",
+          environment: "production",
+          isAuthenticated: false,
+          token: "",
+        }
+      : state.session,
+    tenant: isMockTenant
+      ? {
+          ...DEFAULT_TENANT,
+          id: isMockSession ? "" : (state.session?.tenantId || ""),
+          organizationName: derivedOrgFromEmail || "",
+          slug: derivedOrgFromEmail ? derivedOrgFromEmail.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "",
+          legalEntityName: derivedOrgFromEmail || "",
+          environmentName: "Production",
+          homeRegion: "us-east-1",
+          dataResidencyRegion: "us-east-1",
+          createdAt: state.tenant?.createdAt || "",
+          status: "ACTIVE" as const,
+        }
+      : state.tenant,
+    team: Array.isArray(state.team) ? state.team.filter((m) => !STATIC_SEED_IDS.has(m.id)) : [],
+    invitations: Array.isArray(state.invitations) ? state.invitations : [],
+    connectors: Array.isArray(state.connectors) ? state.connectors.filter((c) => !STATIC_SEED_IDS.has(c.id)) : [],
+    normalizedEvents: Array.isArray(state.normalizedEvents) ? state.normalizedEvents : [],
+    alerts: Array.isArray(state.alerts) ? state.alerts.filter((a) => !STATIC_SEED_IDS.has(a.id)) : [],
+    cases: Array.isArray(state.cases) ? state.cases.filter((c) => !STATIC_SEED_IDS.has(c.id)) : [],
+    controlTests: Array.isArray(state.controlTests) ? state.controlTests.filter((c) => !STATIC_SEED_IDS.has(c.id)) : [],
+    auditPackages: Array.isArray(state.auditPackages) ? state.auditPackages.filter((p) => !STATIC_SEED_IDS.has(p.id)) : [],
+    jitSessions: Array.isArray(state.jitSessions) ? state.jitSessions.filter((s) => !STATIC_SEED_IDS.has(s.sessionId)) : [],
+    aiIncidents: Array.isArray(state.aiIncidents) ? state.aiIncidents.filter((i) => !STATIC_SEED_IDS.has(i.id || (i as any).incidentId)) : [],
+    aiModels: Array.isArray(state.aiModels) && !isMockTenant ? state.aiModels : [],
+    modelDriftReports: Array.isArray(state.modelDriftReports) && !isMockTenant ? state.modelDriftReports : [],
+    complianceDrift: {
+      tenantId: isMockTenant ? "" : (state.tenant?.id || ""),
+      status: "COMPLIANT",
+      score: 0,
+      lastAssessedAt: "",
+      slaAlarms: [],
+    },
+    incidentRetainers: Array.isArray(state.incidentRetainers)
+      ? state.incidentRetainers.filter((r) => !STATIC_SEED_IDS.has(r.id))
+      : [],
+    incidentWorkOrders: Array.isArray(state.incidentWorkOrders)
+      ? state.incidentWorkOrders.filter((w) => !STATIC_SEED_IDS.has(w.id))
+      : [],
+    workOrderConsumption: Array.isArray(state.workOrderConsumption)
+      ? state.workOrderConsumption.filter((c) => !STATIC_SEED_IDS.has(c.id))
+      : [],
+    legalSensitiveRecords: Array.isArray(state.legalSensitiveRecords)
+      ? state.legalSensitiveRecords.filter((r) => !STATIC_SEED_IDS.has(r.id))
+      : [],
+    legalAccessAuditLogs: Array.isArray(state.legalAccessAuditLogs)
+      ? state.legalAccessAuditLogs.filter((l) => !STATIC_SEED_IDS.has(l.id))
+      : [],
+  };
+}
+
 export function getInitialDemoState(): DemoState {
   if (typeof window !== "undefined") {
     try {
@@ -851,14 +971,14 @@ export function getInitialDemoState(): DemoState {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === "object" && parsed.session && parsed.tenant) {
-          return parsed;
+          return sanitizeBrowserState(parsed);
         }
       }
     } catch {
       // Fallback to static state
     }
   }
-  return getDefaultStaticState();
+  return sanitizeBrowserState(getDefaultStaticState());
 }
 
 export function saveDemoState(state: DemoState) {

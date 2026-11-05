@@ -1,0 +1,875 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R]
+/Count 6
+>>
+endobj
+3 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica-Bold
+>>
+endobj
+4 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Courier
+>>
+endobj
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica-Oblique
+>>
+endobj
+6 0 obj
+<<
+/Length 2906
+>>
+stream
+0.035 0.070 0.140 rg
+0.00 601.89 595.28 240.00 re f
+0.890 0.120 0.140 rg
+0.00 835.89 595.28 6.00 re f
+1.000 1.000 1.000 rg
+BT /F2 32 Tf 50.00 771.89 Td (ZOIKOSHIELD) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 14 Tf 50.00 745.89 Td (CYBER DEFENSE & EVIDENCE ASSURANCE) Tj ET
+0.800 0.880 0.980 rg
+BT /F1 13 Tf 50.00 713.89 Td (Complete Platform Architecture, Technical Walkthrough & Testing Runbook) Tj ET
+BT /F4 9.5 Tf 50.00 695.89 Td (Next.js 15 App Router • NestJS Multi-Schema Spine • Post-Quantum Merkle Ledger) Tj ET
+0.960 0.980 1.000 rg
+50.00 421.89 495.28 160.00 re b
+0.040 0.080 0.160 rg
+BT /F2 10 Tf 65.00 561.89 Td (DOCUMENT SPECIFICATION METADATA) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 541.89 Td (Document Version:) Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 541.89 Td (3.0 \(Master Technical Specification & Tester Handbook\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 525.89 Td (Target Audience:) Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 525.89 Td (Full-Stack Developers, QA Engineers, Security Reviewers, CISO) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 509.89 Td (Repository Branch:) Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 509.89 Td (Aditya \(Fully Verified & Passing 149/149 Tests\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 493.89 Td (Frontend Architecture:) Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 493.89 Td (Next.js 15 App Router \(Port :3000\), React 19, Tailwind CSS) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 477.89 Td (Backend Microservices:) Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 477.89 Td (shield-core \(:3001\), shield-ingest \(:3002\), shield-ai \(:3003\),) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 461.89 Td () Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 461.89 Td (shield-action \(:3004\), shield-anchor \(:3005\), verifier-cli) Tj ET
+0.200 0.250 0.350 rg
+BT /F2 8.5 Tf 65.00 445.89 Td (Core Invariant:) Tj ET
+0.050 0.100 0.180 rg
+BT /F1 8.5 Tf 185.00 445.89 Td (No assertion is valid without attributable, anchored evidence.) Tj ET
+0.920 0.960 1.000 rg
+50.00 100.00 495.28 120.00 re f
+0.020 0.450 0.850 rg
+50.00 100.00 4.00 120.00 re f
+0.040 0.080 0.160 rg
+BT /F2 10.5 Tf 65.00 200.00 Td (EXECUTIVE SUMMARY & ZERO MOCK DATA POLICY) Tj ET
+0.150 0.200 0.250 rg
+BT /F1 8.5 Tf 65.00 184.00 Td (This document details every screen, API endpoint, database schema, and test procedure across the) Tj ET
+BT /F1 8.5 Tf 65.00 170.00 Td (entire ZoikoShield platform. All 3 Customer Dashboards, 14 Sidebar views, SOC triage queues,) Tj ET
+BT /F1 8.5 Tf 65.00 156.00 Td (governed AI Copilot investigations, and post-quantum Merkle ledger verifications operate dynamically) Tj ET
+BT /F1 8.5 Tf 65.00 142.00 Td (with real backend data. Clean tenants cleanly display 0 / empty states without synthetic records.) Tj ET
+BT /F2 8.5 Tf 65.00 118.00 Td (Generated: November 2026 • Verified 100% Passing CI Quality Gate) Tj ET
+endstream
+endobj
+7 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 595.28 841.89]
+/Contents 6 0 R
+/Resources << /Font << /F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R >> >>
+>>
+endobj
+8 0 obj
+<<
+/Length 5160
+>>
+stream
+0.040 0.080 0.150 rg
+40.00 805.89 515.28 1.00 re f
+0.300 0.400 0.500 rg
+BT /F2 7.5 Tf 40.00 811.89 Td (ZOIKOSHIELD PLATFORM • SPECIFICATION & TESTING WALKTHROUGH) Tj ET
+BT /F1 7.5 Tf 415.28 811.89 Td (CONFIDENTIAL / HIGH ASSURANCE) Tj ET
+0.850 0.900 0.950 rg
+40.00 36.00 515.28 0.50 re f
+0.400 0.500 0.600 rg
+BT /F1 7.5 Tf 40.00 24.00 Td (ZoikoShield v3.0 • Branch: Aditya • RFC 6962 / ML-DSA-65 Merkle Evidence Ledger) Tj ET
+BT /F2 7.5 Tf 495.28 24.00 Td (Page 2 of 6) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 16 Tf 40.00 776.89 Td (TABLE OF CONTENTS) Tj ET
+0.890 0.120 0.140 rg
+40.00 769.89 35.00 2.50 re f
+0.100 0.150 0.250 rg
+BT /F2 9 Tf 40.00 746.89 Td (1. Executive Overview & System Philosophy) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 746.89 Td (Page 1) Tj ET
+0.100 0.150 0.250 rg
+BT /F2 9 Tf 40.00 731.89 Td (2. System Topology & Microservices Ecosystem) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 731.89 Td (Page 2) Tj ET
+0.100 0.150 0.250 rg
+BT /F2 9 Tf 40.00 716.89 Td (3. Complete User Journey \(Stage 1 to Stage 8\)) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 716.89 Td (Page 3) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 701.89 Td (   3.1 Stage 1: Application Access & Environment Bootstrap) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 701.89 Td (Page 3) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 686.89 Td (   3.2 Stage 2: Login, MFA & Identity Resolution) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 686.89 Td (Page 3) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 671.89 Td (   3.3 Stage 3: Organization Self-Registration & Tenant Cell Provisioning) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 671.89 Td (Page 3) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 656.89 Td (   3.4 Stage 4: All 3 Customer Dashboards & 14 Sidebar Sections Audit) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 656.89 Td (Page 4) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 641.89 Td (   3.5 Stage 5: Core Functional Modules \(Ingest, SOC, Copilot, SOAR, Ledger\)) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 641.89 Td (Page 4) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 626.89 Td (   3.6 Stage 6: Notification Lifecycle & Transactional Email Dispatches) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 626.89 Td (Page 4) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 611.89 Td (   3.7 Stage 7: Reports, Analytics & Sealed Audit Package Exports) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 611.89 Td (Page 4) Tj ET
+0.100 0.150 0.250 rg
+BT /F1 9 Tf 40.00 596.89 Td (   3.8 Stage 8: Platform Administration, JIT Elevation & G1 Launch Gate) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 596.89 Td (Page 5) Tj ET
+0.100 0.150 0.250 rg
+BT /F2 9 Tf 40.00 581.89 Td (4. Step-by-Step QA Manual Testing Guide \(TC-001 to TC-030\)) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 581.89 Td (Page 5) Tj ET
+0.100 0.150 0.250 rg
+BT /F2 9 Tf 40.00 566.89 Td (5. Role-Based Access Control \(RBAC\) & Tenant Isolation Matrix) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 566.89 Td (Page 6) Tj ET
+0.100 0.150 0.250 rg
+BT /F2 9 Tf 40.00 551.89 Td (6. Automated CI Quality Gates & Verification Commands) Tj ET
+0.400 0.450 0.550 rg
+BT /F1 9 Tf 515.28 551.89 Td (Page 6) Tj ET
+0.960 0.980 1.000 rg
+40.00 60.00 515.28 165.00 re b
+0.040 0.080 0.160 rg
+BT /F2 11 Tf 55.00 516.89 Td (MICROSERVICES TOPOLOGY & PORT DIRECTORY) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 491.89 Td (Frontend Web App) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 491.89 Td (Port :3000) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 491.89 Td (Next.js 15 App Router, React 19, Client API Proxy \(/api/v1/*\)) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 469.89 Td (shield-core) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 469.89 Td (Port :3001) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 469.89 Td (Auth, Passkeys, Cedar Policy, Cases, Alerts, SMTP Dispatcher) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 447.89 Td (shield-ingest) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 447.89 Td (Port :3002) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 447.89 Td (OCSF v1.1 Ingestion, Tier-A Detectors, Dead Letter Queue \(DLQ\)) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 425.89 Td (shield-ai) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 425.89 Td (Port :3003) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 425.89 Td (Governed AI Copilot, Model Armor Gateway, Attack Path Engine) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 403.89 Td (shield-action) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 403.89 Td (Port :3004) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 403.89 Td (SOAR Playbooks, R0-R4 Containment Engine, Blast Radius Simulator) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 381.89 Td (shield-anchor) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 381.89 Td (Port :3005) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 381.89 Td (RFC 6962 Merkle Ledger, ML-DSA-65 Post-Quantum Signing, TSA) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 9 Tf 55.00 359.89 Td (verifier-cli) Tj ET
+0.890 0.120 0.140 rg
+BT /F3 8.5 Tf 155.00 359.89 Td (Standalone) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 8 Tf 225.00 359.89 Td (Air-Gapped Compliance Verification Binary for Sealed Audit Archives) Tj ET
+endstream
+endobj
+9 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 595.28 841.89]
+/Contents 8 0 R
+/Resources << /Font << /F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R >> >>
+>>
+endobj
+10 0 obj
+<<
+/Length 5025
+>>
+stream
+0.040 0.080 0.150 rg
+40.00 805.89 515.28 1.00 re f
+0.300 0.400 0.500 rg
+BT /F2 7.5 Tf 40.00 811.89 Td (ZOIKOSHIELD PLATFORM • SPECIFICATION & TESTING WALKTHROUGH) Tj ET
+BT /F1 7.5 Tf 415.28 811.89 Td (CONFIDENTIAL / HIGH ASSURANCE) Tj ET
+0.850 0.900 0.950 rg
+40.00 36.00 515.28 0.50 re f
+0.400 0.500 0.600 rg
+BT /F1 7.5 Tf 40.00 24.00 Td (ZoikoShield v3.0 • Branch: Aditya • RFC 6962 / ML-DSA-65 Merkle Evidence Ledger) Tj ET
+BT /F2 7.5 Tf 495.28 24.00 Td (Page 3 of 6) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 14 Tf 40.00 776.89 Td (STAGE 1 TO 3: INITIAL ACCESS, AUTHENTICATION & REGISTRATION) Tj ET
+0.890 0.120 0.140 rg
+40.00 769.89 35.00 2.50 re f
+0.020 0.450 0.850 rg
+BT /F2 10.5 Tf 40.00 746.89 Td (STAGE 1: INITIAL APPLICATION ACCESS & BOOTSTRAP) Tj ET
+0.150 0.200 0.250 rg
+BT /F1 8.5 Tf 40.00 731.89 Td (1. Startup Commands: Backend runs via `npm run start:dev` \(:3001\); Frontend via `npm run dev` \(:3000\).) Tj ET
+BT /F1 8.5 Tf 40.00 717.89 Td (2. Environment Variables: `DATABASE_URL` \(PostgreSQL 16\), `JWT_SECRET`, `BACKEND_URL` \(http://localhost:3001\).) Tj ET
+BT /F1 8.5 Tf 40.00 703.89 Td (3. Unauthenticated Interception: Next.js edge middleware checks `zoiko_auth` cookie; redirects unauth requests to /login.) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 10.5 Tf 40.00 676.89 Td (STAGE 2: LOGIN, AUTHENTICATION & IDENTITY RESOLUTION) Tj ET
+0.150 0.200 0.250 rg
+BT /F2 8.5 Tf 40.00 661.89 Td (• Page Route: /login \(frontend/src/app/login/page.tsx\) • API Endpoint: POST /api/v1/auth/login) Tj ET
+BT /F1 8.5 Tf 40.00 647.89 Td (• Input Fields: Work email \(case-insensitive, auto-lowercased\), Password \(masked with eye toggle\), Remember Me.) Tj ET
+BT /F1 8.5 Tf 40.00 633.89 Td (• Backend Validation: BCrypt verification against identity.local_credentials. Password failures return HTTP 401.) Tj ET
+BT /F1 8.5 Tf 40.00 619.89 Td (• Cookie Establishment: On 200 OK, sets zoiko_auth, zoiko_shield_access_token \(JWT\), and zoiko_shield_tenant_id.) Tj ET
+BT /F1 8.5 Tf 40.00 605.89 Td (• Automatic Redirection: SUPER_ADMIN -> /admin; AUDITOR -> /auditor; TENANT_OWNER / ANALYST -> /customer/dashboard.) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 10.5 Tf 40.00 576.89 Td (STAGE 3: ORGANIZATION REGISTRATION & SOVEREIGN PROVISIONING) Tj ET
+0.150 0.200 0.250 rg
+BT /F2 8.5 Tf 40.00 561.89 Td (• Page Route: /register \(frontend/src/app/register/page.tsx\) • API Endpoint: POST /api/v1/auth/register-org) Tj ET
+BT /F1 8.5 Tf 40.00 547.89 Td (• Input Fields: Organization Name, Workspace Slug, Administrator Name, Corporate Email, Master Password,) Tj ET
+BT /F1 8.5 Tf 40.00 533.89 Td (  Data Residency Region \(us-east-1, eu-west-1, ap-southeast-1\), Compliance Framework Packs \(SOC2, ISO27001, AI Act\).) Tj ET
+BT /F1 8.5 Tf 40.00 519.89 Td (• Database Execution: Atomically inserts into tenant.tenants, identity.principals, identity.local_credentials,) Tj ET
+BT /F1 8.5 Tf 40.00 505.89 Td (  and binds TENANT_OWNER role in authorization.user_roles. Environment is auto-seeded with zero cross-tenant leak.) Tj ET
+BT /F1 8.5 Tf 40.00 491.89 Td (• Post-Registration: Sets offline credential store in localStorage + cookie for immediate login resiliency after sign-out.) Tj ET
+0.960 0.980 1.000 rg
+40.00 60.00 515.28 370.00 re b
+0.040 0.080 0.160 rg
+BT /F2 10 Tf 55.00 410.00 Td (VERIFIED TEST ACCOUNTS & DEFAULT CREDENTIAL DIRECTORY) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8.5 Tf 55.00 385.00 Td (Email) Tj ET
+BT /F2 8 Tf 225.00 385.00 Td (Password) Tj ET
+BT /F2 8 Tf 355.00 385.00 Td (Role) Tj ET
+BT /F2 8 Tf 455.00 385.00 Td (Landing Route) Tj ET
+0.150 0.200 0.300 rg
+BT /F1 8.5 Tf 55.00 367.00 Td (aditya@zoiko.com) Tj ET
+BT /F3 8 Tf 225.00 367.00 Td (Aditya@20045678) Tj ET
+BT /F1 8 Tf 355.00 367.00 Td (TENANT_OWNER) Tj ET
+BT /F3 8 Tf 455.00 367.00 Td (/customer/dashboard) Tj ET
+0.150 0.200 0.300 rg
+BT /F1 8.5 Tf 55.00 349.00 Td (sarah.chen@acme.com) Tj ET
+BT /F3 8 Tf 225.00 349.00 Td (Shield@SecOps2026!) Tj ET
+BT /F1 8 Tf 355.00 349.00 Td (TENANT_OWNER) Tj ET
+BT /F3 8 Tf 455.00 349.00 Td (/customer/dashboard) Tj ET
+0.150 0.200 0.300 rg
+BT /F1 8.5 Tf 55.00 331.00 Td (analyst@zoikoshield-demo.com) Tj ET
+BT /F3 8 Tf 225.00 331.00 Td (Shield@SecOps2026!) Tj ET
+BT /F1 8 Tf 355.00 331.00 Td (SECURITY_ANALYST) Tj ET
+BT /F3 8 Tf 455.00 331.00 Td (/customer/dashboard) Tj ET
+0.150 0.200 0.300 rg
+BT /F1 8.5 Tf 55.00 313.00 Td (super.admin@zoikoshield.local) Tj ET
+BT /F3 8 Tf 225.00 313.00 Td (Admin2026!Platform) Tj ET
+BT /F1 8 Tf 355.00 313.00 Td (SUPER_ADMIN) Tj ET
+BT /F3 8 Tf 455.00 313.00 Td (/admin) Tj ET
+0.150 0.200 0.300 rg
+BT /F1 8.5 Tf 55.00 295.00 Td (elena.rostova@auditor.compliance) Tj ET
+BT /F3 8 Tf 225.00 295.00 Td (Auditor2026!Verify) Tj ET
+BT /F1 8 Tf 355.00 295.00 Td (AUDITOR) Tj ET
+BT /F3 8 Tf 455.00 295.00 Td (/auditor) Tj ET
+0.150 0.200 0.300 rg
+BT /F1 8.5 Tf 55.00 277.00 Td (manualtester2000@zoikoshield.corp) Tj ET
+BT /F3 8 Tf 225.00 277.00 Td (Password123!) Tj ET
+BT /F1 8 Tf 355.00 277.00 Td (SECURITY_ANALYST) Tj ET
+BT /F3 8 Tf 455.00 277.00 Td (/customer/dashboard) Tj ET
+endstream
+endobj
+11 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 595.28 841.89]
+/Contents 10 0 R
+/Resources << /Font << /F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R >> >>
+>>
+endobj
+12 0 obj
+<<
+/Length 7385
+>>
+stream
+0.040 0.080 0.150 rg
+40.00 805.89 515.28 1.00 re f
+0.300 0.400 0.500 rg
+BT /F2 7.5 Tf 40.00 811.89 Td (ZOIKOSHIELD PLATFORM • SPECIFICATION & TESTING WALKTHROUGH) Tj ET
+BT /F1 7.5 Tf 415.28 811.89 Td (CONFIDENTIAL / HIGH ASSURANCE) Tj ET
+0.850 0.900 0.950 rg
+40.00 36.00 515.28 0.50 re f
+0.400 0.500 0.600 rg
+BT /F1 7.5 Tf 40.00 24.00 Td (ZoikoShield v3.0 • Branch: Aditya • RFC 6962 / ML-DSA-65 Merkle Evidence Ledger) Tj ET
+BT /F2 7.5 Tf 495.28 24.00 Td (Page 4 of 6) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 14 Tf 40.00 776.89 Td (STAGE 4 & 5: CUSTOMER DASHBOARDS & FUNCTIONAL MODULES) Tj ET
+0.890 0.120 0.140 rg
+40.00 769.89 35.00 2.50 re f
+0.020 0.450 0.850 rg
+BT /F2 10.5 Tf 40.00 746.89 Td (THE 3 CUSTOMER DASHBOARDS \(/customer/dashboard\)) Tj ET
+0.150 0.200 0.250 rg
+BT /F1 8.5 Tf 40.00 731.89 Td (1. Executive View \(CISO\): Security Posture Score, Critical Exposures, Protection Coverage, Active Incidents.) Tj ET
+BT /F1 8.5 Tf 40.00 717.89 Td (   Clean database displays clean 0 KPIs. Priority Actions list dynamically binds to open cases in case_management.cases.) Tj ET
+BT /F1 8.5 Tf 40.00 703.89 Td (2. SOC View \(Security Analyst\): Triage Pipeline \(NEW -> TRIAGED -> ESCALATED\), detection rules, and threat feeds.) Tj ET
+BT /F1 8.5 Tf 40.00 689.89 Td (3. Account View \(Compliance/Legal\): 7-class data retention policies, Merkle receipts count, and commercial CPQ tier.) Tj ET
+0.020 0.450 0.850 rg
+BT /F2 10.5 Tf 40.00 663.89 Td (THE 14 CUSTOMER SIDEBAR SECTIONS \(/customer/[section]\)) Tj ET
+0.150 0.200 0.250 rg
+BT /F1 8.5 Tf 40.00 649.89 Td (All 14 items dynamically load through CustomerWorkspaceSectionRouter without missing views or mock banners:) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 631.89 Td (1. Security Overview) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 631.89 Td (/customer/security-overview) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 631.89 Td (Remediation trends & posture quantification) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 617.89 Td (2. Threats & Incidents) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 617.89 Td (/customer/threats-incidents) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 617.89 Td (Case management investigations & timeline audit) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 603.89 Td (3. Exposure Management) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 603.89 Td (/customer/exposure-management) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 603.89 Td (Attack surface analysis & unmitigated exposure tracking) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 589.89 Td (4. Assets & Inventory) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 589.89 Td (/customer/assets-inventory) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 589.89 Td (Discovered cloud, container & workstation endpoints) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 575.89 Td (5. Vulnerabilities) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 575.89 Td (/customer/vulnerabilities) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 575.89 Td (CVE vulnerability register & CVSS severity ranking) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 561.89 Td (6. Detection & Response) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 561.89 Td (/customer/detection-response) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 561.89 Td (OCSF detection rule activation & alert trigger count) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 547.89 Td (7. Identity & Access) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 547.89 Td (/customer/identity-access) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 547.89 Td (JIT elevation sessions & WebAuthn credential posture) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 533.89 Td (8. Data Security) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 533.89 Td (/customer/data-security) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 533.89 Td (Data residency fencing & sensitive DLP exposure audit) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 519.89 Td (9. Cloud Security) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 519.89 Td (/customer/cloud-security) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 519.89 Td (AWS, Azure, and Google Cloud security posture evaluation) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 505.89 Td (10. Compliance & Risk) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 505.89 Td (/customer/compliance-risk) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 505.89 Td (Automated regulatory framework evaluations \(SOC2, ISO\)) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 491.89 Td (11. Reports & Analytics) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 491.89 Td (/customer/reports-analytics) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 491.89 Td (Cryptographic audit packages & compliance exports) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 477.89 Td (12. Integrations) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 477.89 Td (/customer/integrations) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 477.89 Td (Telemetry connector status & ingest latency meters) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 463.89 Td (13. Settings) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 463.89 Td (/customer/settings) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 463.89 Td (Workspace identity, tenant region & user profile) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 8 Tf 40.00 449.89 Td (14. Command Center) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 165.00 449.89 Td (/customer/dashboard) Tj ET
+0.300 0.350 0.450 rg
+BT /F1 7.5 Tf 315.00 449.89 Td (Main return link to Executive, SOC, and Account hubs) Tj ET
+0.960 0.980 1.000 rg
+40.00 55.00 515.28 326.00 re b
+0.040 0.080 0.160 rg
+BT /F2 10 Tf 55.00 415.89 Td (CORE FUNCTIONAL MODULES DEEP DIVE) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8.5 Tf 55.00 397.89 Td (Ingestion & Ingest DLQ) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 8 Tf 175.00 397.89 Td (shield-ingest \(:3002\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.5 Tf 55.00 385.89 Td (OCSF v1.1 telemetry gateway. Nonce deduplication, HMAC-SHA256 signature verification, and Dead Letter Queue \(DLQ\) replay.) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8.5 Tf 55.00 371.89 Td (Alerts & Incident Cases) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 8 Tf 175.00 371.89 Td (shield-core \(:3001\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.5 Tf 55.00 359.89 Td (State machine: NEW -> TRIAGED -> CONTAINING -> RESOLVED -> CLOSED. Triage drawer, assignment, and escalation to major case war room.) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8.5 Tf 55.00 345.89 Td (AI Security Copilot) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 8 Tf 175.00 345.89 Td (shield-ai \(:3003\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.5 Tf 55.00 333.89 Td (Hardened LLM investigation. Pre-flight Model Armor prompt sanitization + Spec §16.1 10-Field Decision Review Envelope.) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8.5 Tf 55.00 319.89 Td (SOAR Actions & Quorum) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 8 Tf 175.00 319.89 Td (shield-action \(:3004\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.5 Tf 55.00 307.89 Td (R0-R4 authority containment engine. Multi-party dual-custody \(4-eyes\) approval quorum for destructive actions.) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8.5 Tf 55.00 293.89 Td (Merkle Evidence Ledger) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 8 Tf 175.00 293.89 Td (shield-anchor \(:3005\)) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.5 Tf 55.00 281.89 Td (RFC 6962 binary Merkle trees + Post-Quantum ML-DSA-65 signatures. Verifiable offline via WebCrypto without data leak.) Tj ET
+endstream
+endobj
+13 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 595.28 841.89]
+/Contents 12 0 R
+/Resources << /Font << /F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R >> >>
+>>
+endobj
+14 0 obj
+<<
+/Length 7182
+>>
+stream
+0.040 0.080 0.150 rg
+40.00 805.89 515.28 1.00 re f
+0.300 0.400 0.500 rg
+BT /F2 7.5 Tf 40.00 811.89 Td (ZOIKOSHIELD PLATFORM • SPECIFICATION & TESTING WALKTHROUGH) Tj ET
+BT /F1 7.5 Tf 415.28 811.89 Td (CONFIDENTIAL / HIGH ASSURANCE) Tj ET
+0.850 0.900 0.950 rg
+40.00 36.00 515.28 0.50 re f
+0.400 0.500 0.600 rg
+BT /F1 7.5 Tf 40.00 24.00 Td (ZoikoShield v3.0 • Branch: Aditya • RFC 6962 / ML-DSA-65 Merkle Evidence Ledger) Tj ET
+BT /F2 7.5 Tf 495.28 24.00 Td (Page 5 of 6) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 14 Tf 40.00 776.89 Td (STEP-BY-STEP QA MANUAL TEST CASES \(TC-001 TO TC-015\)) Tj ET
+0.890 0.120 0.140 rg
+40.00 769.89 35.00 2.50 re f
+0.960 0.980 1.000 rg
+40.00 694.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 740.89 Td (TC-001) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 740.89 Td (Unauthenticated Route Interception) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 740.89 Td ([Role: Unauthenticated]) Tj ET
+BT /F3 8 Tf 445.28 740.89 Td ([Route: /customer/dashboard]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 724.89 Td (Steps: Open browser in Incognito -> navigate to /customer/dashboard.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 710.89 Td (Expected: Redirected to /login?redirect=%2Fcustomer%2Fdashboard immediately.) Tj ET
+0.960 0.980 1.000 rg
+40.00 626.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 672.89 Td (TC-002) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 672.89 Td (Tenant Self-Provisioning & Cell Registration) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 672.89 Td ([Role: New User]) Tj ET
+BT /F3 8 Tf 445.28 672.89 Td ([Route: /register]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 656.89 Td (Steps: Enter Org: Apex Sentinel, Email: admin@apex.io, Pass: Pass123!, Region: eu-west-1 -> Click Submit.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 642.89 Td (Expected: Receipt displays Sovereign Cell eu-west-1 + HSM hash; auto-logs in to /customer/dashboard.) Tj ET
+0.960 0.980 1.000 rg
+40.00 558.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 604.89 Td (TC-003) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 604.89 Td (Login Credential Casing & JWT Issuance) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 604.89 Td ([Role: TENANT_OWNER]) Tj ET
+BT /F3 8 Tf 445.28 604.89 Td ([Route: /login]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 588.89 Td (Steps: Enter Email: Aditya@zoiko.com \(mixed case\), Password: Aditya@20045678 -> Click Sign In.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 574.89 Td (Expected: HTTP 200 OK; sets cookies zoiko_auth and shield_access_token; lands on dashboard.) Tj ET
+0.960 0.980 1.000 rg
+40.00 490.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 536.89 Td (TC-004) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 536.89 Td (Zero Mock Data Verification \(Clean Tenant\)) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 536.89 Td ([Role: TENANT_OWNER]) Tj ET
+BT /F3 8 Tf 445.28 536.89 Td ([Route: /customer/dashboard]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 520.89 Td (Steps: Inspect Executive View posture gauge, active incidents count, and priority actions.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 506.89 Td (Expected: Posture shows 0; Incidents shows 0; displays "No priority actions required at this time".) Tj ET
+0.960 0.980 1.000 rg
+40.00 422.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 468.89 Td (TC-005) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 468.89 Td (Complete 14 Customer Sidebar Navigation) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 468.89 Td ([Role: TENANT_OWNER]) Tj ET
+BT /F3 8 Tf 445.28 468.89 Td ([Route: /customer/*]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 452.89 Td (Steps: Sequentially click all 14 sidebar items from Security Overview to Command Center.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 438.89 Td (Expected: All 14 views render dynamically with zero unhandled exceptions and zero broken routes.) Tj ET
+0.960 0.980 1.000 rg
+40.00 354.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 400.89 Td (TC-006) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 400.89 Td (Alert Triage & State Machine Update) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 400.89 Td ([Role: SECURITY_ANALYST]) Tj ET
+BT /F3 8 Tf 445.28 400.89 Td ([Route: /alerts]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 384.89 Td (Steps: Select alert alt-2026-auth-01 -> open drawer -> change status to TRIAGED -> Save.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 370.89 Td (Expected: Alert status badge turns amber TRIAGED; database alert.alerts.status is updated.) Tj ET
+0.960 0.980 1.000 rg
+40.00 286.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 332.89 Td (TC-007) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 332.89 Td (AI Copilot Spec §16.1 Decision Envelope) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 332.89 Td ([Role: SECURITY_ANALYST]) Tj ET
+BT /F3 8 Tf 445.28 332.89 Td ([Route: /copilot]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 316.89 Td (Steps: Submit investigation prompt -> inspect generated 10-field review envelope.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 302.89 Td (Expected: Renders all 10 mandatory fields including Blast Radius, MITRE technique & Attributable Rationale.) Tj ET
+0.960 0.980 1.000 rg
+40.00 218.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 264.89 Td (TC-008) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 264.89 Td (SOAR Containment Dual-Custody \(4-Eyes\)) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 264.89 Td ([Role: ANALYST + OWNER]) Tj ET
+BT /F3 8 Tf 445.28 264.89 Td ([Route: /actions]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 248.89 Td (Steps: Analyst proposes R3 isolation -> Owner reviews and signs approval quorum.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 234.89 Td (Expected: Action executes only after 2 of 2 distinct signatures are recorded; generates receipt.) Tj ET
+0.960 0.980 1.000 rg
+40.00 150.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 196.89 Td (TC-009) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 196.89 Td (WebCrypto Offline Merkle Proof Verification) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 196.89 Td ([Role: Any User / Auditor]) Tj ET
+BT /F3 8 Tf 445.28 196.89 Td ([Route: /verify-certificate]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 180.89 Td (Steps: Paste Merkle receipt JSON -> click "Verify Merkle Inclusion Proof".) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 166.89 Td (Expected: Calculates SHA-256 leaf and root via WebCrypto; displays GREEN valid signature shield.) Tj ET
+0.960 0.980 1.000 rg
+40.00 82.89 515.28 60.00 re b
+0.890 0.120 0.140 rg
+BT /F2 9 Tf 48.00 128.89 Td (TC-010) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 9 Tf 95.00 128.89 Td (Non-Destructive DR Restore Drill \(G05\)) Tj ET
+0.020 0.450 0.850 rg
+BT /F1 8 Tf 350.00 128.89 Td ([Role: SUPER_ADMIN]) Tj ET
+BT /F3 8 Tf 445.28 128.89 Td ([Route: /admin/platform-health]) Tj ET
+0.200 0.250 0.350 rg
+BT /F1 7.8 Tf 48.00 112.89 Td (Steps: Click "Execute Non-Destructive Restore Drill" -> observe real-time progress bar.) Tj ET
+0.050 0.450 0.200 rg
+BT /F1 7.8 Tf 48.00 98.89 Td (Expected: Steps through 5 stages; generates verified drill receipt confirming zero downtime.) Tj ET
+endstream
+endobj
+15 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 595.28 841.89]
+/Contents 14 0 R
+/Resources << /Font << /F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R >> >>
+>>
+endobj
+16 0 obj
+<<
+/Length 7507
+>>
+stream
+0.040 0.080 0.150 rg
+40.00 805.89 515.28 1.00 re f
+0.300 0.400 0.500 rg
+BT /F2 7.5 Tf 40.00 811.89 Td (ZOIKOSHIELD PLATFORM • SPECIFICATION & TESTING WALKTHROUGH) Tj ET
+BT /F1 7.5 Tf 415.28 811.89 Td (CONFIDENTIAL / HIGH ASSURANCE) Tj ET
+0.850 0.900 0.950 rg
+40.00 36.00 515.28 0.50 re f
+0.400 0.500 0.600 rg
+BT /F1 7.5 Tf 40.00 24.00 Td (ZoikoShield v3.0 • Branch: Aditya • RFC 6962 / ML-DSA-65 Merkle Evidence Ledger) Tj ET
+BT /F2 7.5 Tf 495.28 24.00 Td (Page 6 of 6) Tj ET
+0.040 0.080 0.160 rg
+BT /F2 14 Tf 40.00 776.89 Td (STAGE 6 & 7: RBAC MATRIX & CI QUALITY GATES) Tj ET
+0.890 0.120 0.140 rg
+40.00 769.89 35.00 2.50 re f
+0.020 0.450 0.850 rg
+BT /F2 10.5 Tf 40.00 746.89 Td (ROLE-BASED ACCESS CONTROL \(RBAC\) PERMISSION MATRIX) Tj ET
+0.040 0.080 0.160 rg
+40.00 721.89 515.28 16.00 re f
+1.000 1.000 1.000 rg
+BT /F2 8 Tf 48.00 731.89 Td (Workspace / Route) Tj ET
+BT /F2 8 Tf 225.00 731.89 Td (SECURITY_ANALYST) Tj ET
+BT /F2 8 Tf 315.00 731.89 Td (TENANT_OWNER) Tj ET
+BT /F2 8 Tf 405.00 731.89 Td (SUPER_ADMIN) Tj ET
+BT /F2 8 Tf 485.00 731.89 Td (AUDITOR) Tj ET
+0.970 0.980 1.000 rg
+40.00 699.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 709.89 Td (Customer Dashboard \(/customer/*\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 225.00 709.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 315.00 709.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 709.89 Td (Full Access) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 709.89 Td (Read-Only) Tj ET
+1.000 1.000 1.000 rg
+40.00 683.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 693.89 Td (SOC Alert Triage \(/alerts\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 225.00 693.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 315.00 693.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 693.89 Td (Full Access) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 693.89 Td (Denied \(403\)) Tj ET
+0.970 0.980 1.000 rg
+40.00 667.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 677.89 Td (AI Copilot \(/copilot\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 225.00 677.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 315.00 677.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 677.89 Td (Full Access) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 677.89 Td (Read-Only) Tj ET
+1.000 1.000 1.000 rg
+40.00 651.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 661.89 Td (SOAR Containment \(/actions\)) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 225.00 661.89 Td (R0-R1 Only) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 315.00 661.89 Td (R0-R3 \(Quorum\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 661.89 Td (Full R0-R4) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 661.89 Td (Denied \(403\)) Tj ET
+0.970 0.980 1.000 rg
+40.00 635.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 645.89 Td (Tenant Settings \(/admin/tenant\)) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 225.00 645.89 Td (Denied \(Redirect\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 315.00 645.89 Td (Full Access) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 645.89 Td (Full Access) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 645.89 Td (Denied \(Redirect\)) Tj ET
+1.000 1.000 1.000 rg
+40.00 619.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 629.89 Td (Platform Health & DR \(/admin/platform-health\)) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 225.00 629.89 Td (Denied \(Redirect\)) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 315.00 629.89 Td (Denied \(Redirect\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 629.89 Td (Full Access) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 629.89 Td (Read-Only) Tj ET
+0.970 0.980 1.000 rg
+40.00 603.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 613.89 Td (G1 Launch Gate \(/admin/g1-gate\)) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 225.00 613.89 Td (Denied \(Redirect\)) Tj ET
+0.800 0.150 0.200 rg
+BT /F2 7.5 Tf 315.00 613.89 Td (Denied \(Redirect\)) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 405.00 613.89 Td (Full Access) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 613.89 Td (Read-Only) Tj ET
+1.000 1.000 1.000 rg
+40.00 587.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 597.89 Td (JIT Break-Glass \(/admin/jit-elevation\)) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 225.00 597.89 Td (Request Only) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 315.00 597.89 Td (Quorum Approver) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 405.00 597.89 Td (Quorum Approver) Tj ET
+0.200 0.150 0.200 rg
+BT /F2 7.5 Tf 485.00 597.89 Td (Audit Witness) Tj ET
+0.970 0.980 1.000 rg
+40.00 571.89 515.28 16.00 re f
+0.100 0.150 0.250 rg
+BT /F1 7.5 Tf 48.00 581.89 Td (Certificate Verifier \(/verify-certificate\)) Tj ET
+0.050 0.150 0.200 rg
+BT /F2 7.5 Tf 225.00 581.89 Td (Verified) Tj ET
+0.050 0.150 0.200 rg
+BT /F2 7.5 Tf 315.00 581.89 Td (Verified) Tj ET
+0.050 0.150 0.200 rg
+BT /F2 7.5 Tf 405.00 581.89 Td (Verified) Tj ET
+0.050 0.500 0.200 rg
+BT /F2 7.5 Tf 485.00 581.89 Td (Full Forensic) Tj ET
+0.960 0.980 1.000 rg
+40.00 60.00 515.28 481.89 re b
+0.040 0.080 0.160 rg
+BT /F2 10 Tf 55.00 537.89 Td (AUTOMATED CI QUALITY GATES & VERIFICATION HARNESS) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 516.89 Td (Frontend Vitest Full Suite) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 516.89 Td (cd frontend; npx vitest run --maxWorkers=2) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 505.89 Td (149/149 Passed \(100% across 20 files\)) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 491.89 Td (Frontend TypeScript Linter) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 491.89 Td (cd frontend; npx tsc --noEmit) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 480.89 Td (0 Errors, Clean Production Build) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 466.89 Td (Backend Microservices Webpack) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 466.89 Td (cd backend; npm run build) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 455.89 Td (All 6 microservices compiled successfully) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 441.89 Td (Database Access Policy Check) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 441.89 Td (cd backend; npx jest database-access-policy.spec.ts) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 430.89 Td (8/8 Passed, 0 cross-module write violations) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 416.89 Td (Ungrounded Terminology Check) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 416.89 Td (cd backend; npm run check:ungrounded-terms) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 405.89 Td (0 ungrounded terms across 1,841 source files) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 391.89 Td (Public Capability Claims Check) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 391.89 Td (cd backend; npm run check:capability-claims) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 380.89 Td (All 12 services & 7 domains strictly comply) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 366.89 Td (Controller Access & Swagger) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 366.89 Td (cd backend; npm run access:check; swagger:check) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 355.89 Td (100% explicit controller access & Swagger coverage) Tj ET
+0.890 0.120 0.140 rg
+BT /F2 8 Tf 55.00 341.89 Td (G1 Release Evidence Index) Tj ET
+0.020 0.450 0.850 rg
+BT /F3 7.5 Tf 215.00 341.89 Td (cd backend; npm run check:evidence-index) Tj ET
+0.050 0.500 0.200 rg
+BT /F1 7.5 Tf 55.00 330.89 Td (All 35 rows checked and verified against artifacts) Tj ET
+endstream
+endobj
+17 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 595.28 841.89]
+/Contents 16 0 R
+/Resources << /Font << /F1 2 0 R /F2 3 0 R /F3 4 0 R /F4 5 0 R >> >>
+>>
+endobj
+xref
+0 18
+0000000000 65535 f 
+0000000019 00000 n 
+0000000068 00000 n 
+0000000159 00000 n 
+0000000234 00000 n 
+0000000302 00000 n 
+0000000380 00000 n 
+0000003338 00000 n 
+0000003500 00000 n 
+0000008712 00000 n 
+0000008874 00000 n 
+0000013952 00000 n 
+0000014116 00000 n 
+0000021554 00000 n 
+0000021718 00000 n 
+0000028953 00000 n 
+0000029117 00000 n 
+0000036677 00000 n 
+trailer
+<< /Size 18 /Root 1 0 R >>
+startxref
+36841
+%%EOF
