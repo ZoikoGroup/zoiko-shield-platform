@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { trustedClientIp } from "@/lib/client-ip";
 
 /**
  * ZoikoShield Resilient Multi-Service Browser -> Backend API Proxy & Autonomous Fallback Engine.
@@ -12,20 +13,45 @@ import crypto from "crypto";
  * the x-zoiko-fallback: true header.
  */
 
+function coreBaseUrl(): string {
+  return process.env.SHIELD_CORE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+}
+
+/**
+ * shield-ingest, -ai, -action and -anchor accept only workload tokens, never a
+ * user's session, so the browser cannot call them directly. Every call goes to
+ * shield-core, which authenticates the user and forwards to those services.
+ * The one exception is an ingestion webhook, which ingest authenticates by the
+ * HMAC signature this proxy adds.
+ */
 function resolveServiceBaseUrl(path: string): string {
-  if (path.startsWith("ingestion/") || path.startsWith("events") || path.startsWith("streaming/")) {
+  if (path.startsWith("ingestion/webhooks/")) {
     return process.env.SHIELD_INGEST_URL || "http://127.0.0.1:3002";
   }
-  if (path.startsWith("ai/") || path.startsWith("copilot")) {
-    return process.env.SHIELD_AI_URL || "http://127.0.0.1:3003";
+  return coreBaseUrl();
+}
+
+/**
+ * true: shield-core shows this connector to the caller's session (so it is in
+ * their tenant). false: it does not. null: the check itself failed.
+ */
+async function callerOwnsConnector(connectorId: string, headers: Record<string, string>): Promise<boolean | null> {
+  if (!connectorId || !headers["Authorization"]) return false;
+  try {
+    const res = await fetch(`${coreBaseUrl()}/api/v1/connectors/${encodeURIComponent(connectorId)}`, {
+      headers: {
+        Authorization: headers["Authorization"],
+        ...(headers["x-tenant-id"] ? { "x-tenant-id": headers["x-tenant-id"] } : {}),
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    });
+    if (res.ok) return true;
+    if (res.status === 401 || res.status === 403 || res.status === 404) return false;
+    return null;
+  } catch {
+    return null;
   }
-  if (path.startsWith("actions/") || path.startsWith("response/")) {
-    return process.env.SHIELD_ACTION_URL || process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
-  }
-  if (path.startsWith("anchor/") || path.startsWith("ledger/")) {
-    return process.env.SHIELD_ANCHOR_URL || process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
-  }
-  return process.env.SHIELD_CORE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
 }
 
 const BACKEND_TIMEOUT_MS = Number(process.env.BACKEND_PROXY_TIMEOUT_MS ?? 15000);
@@ -707,6 +733,11 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   const cookieHeader = req.headers.get("cookie");
   if (cookieHeader) outboundHeaders["Cookie"] = cookieHeader;
 
+  // Pass the browser's address on, so shield-core rate-limits each client
+  // rather than lumping every user behind this proxy's own address.
+  const clientIp = trustedClientIp(req.headers.get("x-forwarded-for"));
+  if (clientIp) outboundHeaders["x-forwarded-for"] = clientIp;
+
   const tenantId = req.headers.get("x-tenant-id");
   if (tenantId) {
     outboundHeaders["x-tenant-id"] = tenantId;
@@ -733,9 +764,34 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
 
   // Webhook ingestion signing
   if (path.startsWith("ingestion/webhooks/")) {
-    const webhookSecret = process.env.WEBHOOK_HMAC_SECRET || "zoikoshield_default_dev_hmac_secret_key_32bytes";
+    // This proxy holds the ingest HMAC secret, so signing a request vouches
+    // for it. Sign only for a signed-in caller whose own tenant owns the
+    // connector, as shield-core confirms; otherwise anyone could inject
+    // telemetry into any tenant's connector through this endpoint.
+    const webhookSecret = process.env.WEBHOOK_HMAC_SECRET;
+    if (!webhookSecret) {
+      return NextResponse.json(
+        { statusCode: 503, error: "Service Unavailable", message: "Webhook signing is not configured on this server." },
+        { status: 503 }
+      );
+    }
+    const connectorId = path.split("/").filter(Boolean).pop() ?? "";
+    const allowed = await callerOwnsConnector(connectorId, outboundHeaders);
+    if (allowed !== true) {
+      return NextResponse.json(
+        {
+          statusCode: allowed === null ? 503 : 403,
+          error: allowed === null ? "Service Unavailable" : "Forbidden",
+          message:
+            allowed === null
+              ? "Could not confirm that this connector belongs to your workspace."
+              : "This connector does not belong to your workspace.",
+        },
+        { status: allowed === null ? 503 : 403 }
+      );
+    }
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const nonce = req.headers.get("x-webhook-nonce") ?? crypto.randomUUID();
+    const nonce = crypto.randomUUID();
     const hmac = crypto
       .createHmac("sha256", webhookSecret)
       .update(`${timestamp}.${nonce}.${rawBodyText}`)
