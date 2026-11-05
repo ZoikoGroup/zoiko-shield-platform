@@ -68,9 +68,8 @@ export const Sidebar: React.FC = () => {
 
   const activeHref = findActiveNav(pathname)?.item.href;
   const currentRole = state.session?.role || "TENANT_OWNER";
-  const regionMeta = resolveRegionMetadata(
-    state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || "eu-west-1"
-  );
+  const tenantRegion = state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || "";
+  const regionMeta = tenantRegion ? resolveRegionMetadata(tenantRegion) : null;
 
   // Role-based filtering of navigation sections (Separates Customer / Tenant Admin / Super Admin)
   const roleFilteredGroups = NAV_GROUPS.filter(
@@ -147,21 +146,23 @@ export const Sidebar: React.FC = () => {
                   <Building className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <div className="truncate">
                     <div className="text-xs font-semibold text-slate-100 truncate">
-                      {state.tenant.organizationName || "ZoikoShield Enterprise"}
+                      {state.tenant.organizationName || ""}
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      {state.tenant.planTier || "Enterprise Tenant"}
-                    </div>
+                    {state.tenant.planTier && (
+                      <div className="text-[10px] text-slate-400">{state.tenant.planTier}</div>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] font-mono pt-1.5 border-t border-line text-slate-400">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span>{regionMeta.shortLabel} ({regionMeta.code})</span>
+                {regionMeta && (
+                  <div className="flex items-center justify-between text-[10px] font-mono pt-1.5 border-t border-line text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span>{regionMeta.shortLabel} ({regionMeta.code})</span>
+                    </div>
+                    <span className="text-cyan-400">{regionMeta.countryCode}</span>
                   </div>
-                  <span className="text-cyan-400">{regionMeta.countryCode}</span>
-                </div>
+                )}
               </div>
 
               {/* Separated Portal Switcher Pills (Role-Scoped) */}
@@ -344,12 +345,8 @@ export const Sidebar: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 px-1">
-                <span>Zoiko Shield Inc. (C22)</span>
-                <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">
-                  G01-G12 VERIFIED
-                </span>
-              </div>
+              {/* A fixed "G01-G12 VERIFIED" claim used to sit here; nothing verified it. */}
+              <div className="text-[10px] font-mono text-slate-500 px-1">Zoiko Shield Inc. (C22)</div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-3">

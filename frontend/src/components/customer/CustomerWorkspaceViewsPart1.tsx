@@ -1,20 +1,136 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, ChevronDown, Search, X } from "lucide-react";
+import { asList, backend } from "@/lib/backend";
 import {
-  ArrowRight,
-  ArrowUpRight,
-  ChevronDown,
-  Download,
-  Plus,
-  Search,
-  CheckCircle2,
-  X,
-} from "lucide-react";
-import { backend, asList } from "@/lib/backend";
+  customerApi,
+  percent,
+  timeAgo,
+  type Alert,
+  type Asset,
+  type Case,
+  type DetectionDefinition,
+  type Finding,
+  type IdentityEntity,
+  type Severity,
+} from "@/lib/customer-api";
 
-const IS_TEST_ENV = process.env.NODE_ENV === "test";
+/* ============================================================================
+ * Shared plumbing
+ *
+ * Every number, row and action in these sections comes from shield-core. When
+ * the backend has nothing, the section says so; when a call fails, the error
+ * is shown in place of the data it would have produced.
+ * ========================================================================== */
+
+const PAGE =
+  "w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5";
+const BAR =
+  "rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3";
+const KPI = "rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl";
+const CARD = "rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl";
+const INNER = "p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800";
+const PILL = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold";
+const BTN_SECONDARY =
+  "px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#12243d] border border-slate-700/80 text-xs font-semibold text-slate-100 transition-colors disabled:opacity-50";
+const BTN_PRIMARY =
+  "px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] hover:from-[#ef4444] hover:to-[#dc2626] text-xs font-semibold text-white shadow-[0_0_15px_rgba(220,38,38,0.35)] disabled:opacity-50";
+const INPUT =
+  "px-3 py-1.5 rounded-xl bg-[#07101e] border border-slate-700 text-xs text-white placeholder:text-slate-500";
+const SELECT =
+  "appearance-none bg-[#0c1829] border border-slate-700/80 rounded-xl pl-3.5 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none cursor-pointer";
+const TH = "py-2 px-3 font-medium";
+const TD = "py-3 px-3";
+const LINK = "text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1";
+
+const SEVERITIES: Severity[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+const CLOSED_CASE = ["RESOLVED", "CLOSED"];
+const CLOSED_ALERT = ["CLOSED", "RESOLVED", "FALSE_POSITIVE", "DUPLICATE", "SUPPRESSED"];
+const CLOSED_FINDING = ["RESOLVED", "FALSE_POSITIVE", "ACCEPTED", "CLOSED"];
+const STALE_ASSET_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Alert lifecycle, mirroring ALLOWED_TRANSITIONS in shield-core's
+ * alert-state-machine.service.ts. ESCALATED_TO_CASE is left out: setting it by
+ * hand would claim a case exists when none was created.
+ */
+const ALERT_NEXT_STATES: Record<string, string[]> = {
+  NEW: ["ACKNOWLEDGED", "SUPPRESSED", "FALSE_POSITIVE", "DUPLICATE"],
+  ACKNOWLEDGED: ["TRIAGED", "SUPPRESSED", "FALSE_POSITIVE", "DUPLICATE"],
+  TRIAGED: ["FALSE_POSITIVE", "DUPLICATE", "CLOSED"],
+  ESCALATED_TO_CASE: ["CLOSED"],
+  FALSE_POSITIVE: ["CLOSED"],
+  DUPLICATE: ["CLOSED"],
+  SUPPRESSED: ["CLOSED"],
+  CLOSED: [],
+};
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** "MISCONFIGURATION" -> "Misconfiguration", "CLOUD_INFRA" -> "Cloud infra". */
+function humanize(value: string | null | undefined): string {
+  if (!value) return "";
+  const s = value.replace(/_/g, " ").toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function shortId(id: string | null | undefined): string {
+  return id ? id.slice(0, 8) : "";
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+
+function severityClass(severity: string | null | undefined): string {
+  switch ((severity || "").toUpperCase()) {
+    case "CRITICAL":
+      return "bg-red-950/80 border border-red-500/40 text-red-300";
+    case "HIGH":
+      return "bg-amber-950/80 border border-amber-500/40 text-amber-300";
+    case "MEDIUM":
+      return "bg-sky-950/80 border border-sky-500/40 text-sky-300";
+    default:
+      return "bg-slate-800 border border-slate-700 text-slate-300";
+  }
+}
+
+function statusClass(status: string | null | undefined): string {
+  const s = (status || "").toUpperCase();
+  if (["RESOLVED", "CLOSED", "ACTIVE", "COMPLETED", "APPROVED", "PUBLISHED", "SUCCEEDED"].includes(s)) {
+    return "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300";
+  }
+  if (["NEW", "OPEN", "FAILED", "REJECTED"].includes(s)) {
+    return "bg-red-950/80 border border-red-500/40 text-red-300";
+  }
+  return "bg-amber-950/80 border border-amber-500/40 text-amber-300";
+}
+
+function countBy<T>(rows: T[], key: (row: T) => string | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const row of rows) {
+    const k = key(row) || "UNKNOWN";
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+/** "2 critical • 1 high", from the severities actually present. */
+function severityBreakdown(rows: Array<{ severity: string }>): string {
+  return severityCounts(countBy(rows, (r) => r.severity));
+}
+
+function severityCounts(counts: Partial<Record<string, number>>): string {
+  return SEVERITIES.filter((s) => counts[s])
+    .map((s) => `${counts[s]} ${s.toLowerCase()}`)
+    .join(" • ");
+}
 
 function exportCsvData(filename: string, rows: Record<string, unknown>[]) {
   if (typeof window === "undefined" || rows.length === 0) return;
@@ -23,8 +139,12 @@ function exportCsvData(filename: string, rows: Record<string, unknown>[]) {
     headers.join(","),
     ...rows.map((r) =>
       headers
-        .map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`)
-        .join(",")
+        .map((h) => {
+          const v = r[h];
+          const text = v !== null && typeof v === "object" ? JSON.stringify(v) : String(v ?? "");
+          return `"${text.replace(/"/g, '""')}"`;
+        })
+        .join(","),
     ),
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -36,531 +156,649 @@ function exportCsvData(filename: string, rows: Record<string, unknown>[]) {
   URL.revokeObjectURL(url);
 }
 
-/* ============================================================================
- * 1. SECURITY OVERVIEW (Matches Image 1: 2.07.25 PM.jpeg)
- * ========================================================================== */
-export function CustomerSecurityOverviewSection() {
-  const [activeTab, setActiveTab] = useState<
-    "Overview" | "Coverage" | "Control health"
-  >("Overview");
-  const [assetScope, setAssetScope] = useState("All assets");
-  const [timeRange, setTimeRange] = useState("Last 30 days");
-  const [actionBanner, setActionBanner] = useState<string | null>(null);
-  const [postureScore, setPostureScore] = useState<number>(IS_TEST_ENV ? 78 : 0);
-  const [protectedAssetsPct, setProtectedAssetsPct] = useState<number>(IS_TEST_ENV ? 92 : 0);
-  const [protectedAssetsCount, setProtectedAssetsCount] = useState<number>(IS_TEST_ENV ? 1840 : 0);
-  const [totalAssetsInScope, setTotalAssetsInScope] = useState<number>(IS_TEST_ENV ? 2000 : 0);
-  const [coverageGapsCount, setCoverageGapsCount] = useState<number>(IS_TEST_ENV ? 160 : 0);
-  const [criticalExposuresCount, setCriticalExposuresCount] = useState<number>(IS_TEST_ENV ? 3 : 0);
-  const [controlsPassingPct, setControlsPassingPct] = useState<number>(IS_TEST_ENV ? 85 : 0);
-  const [remediations, setRemediations] = useState(
-    IS_TEST_ENV
-      ? [
-          {
-            id: "rem-1",
-            action: "Patch exposed services",
-            owner: "Infrastructure",
-            due: "Today",
-            status: "Open" as "Open" | "In progress" | "Completed",
-          },
-          {
-            id: "rem-2",
-            action: "Restore critical-system monitoring",
-            owner: "Platform team",
-            due: "Today",
-            status: "In progress" as "Open" | "In progress" | "Completed",
-          },
-          {
-            id: "rem-3",
-            action: "Enforce privileged MFA",
-            owner: "Identity team",
-            due: "Nov 6",
-            status: "Open" as "Open" | "In progress" | "Completed",
-          },
-        ]
-      : []
-  );
+interface Loaded<T> {
+  data: T | null;
+  error: string | null;
+  loading: boolean;
+  loadedAt: string | null;
+  reload: () => void;
+}
 
-  const domains = IS_TEST_ENV
-    ? [
-        {
-          domain: "Endpoints",
-          protectedInScope: "940 / 1,000",
-          coverage: "94%",
-          status: "Healthy",
-        },
-        {
-          domain: "Servers",
-          protectedInScope: "360 / 400",
-          coverage: "90%",
-          status: "Attention",
-        },
-        {
-          domain: "Cloud workloads",
-          protectedInScope: "450 / 500",
-          coverage: "90%",
-          status: "Attention",
-        },
-        {
-          domain: "Network devices",
-          protectedInScope: "90 / 100",
-          coverage: "90%",
-          status: "Attention",
-        },
-      ]
-    : [
-        {
-          domain: "Endpoints",
-          protectedInScope: `${protectedAssetsCount} / ${totalAssetsInScope}`,
-          coverage: `${protectedAssetsPct}%`,
-          status: totalAssetsInScope > 0 ? "Healthy" : "No Data",
-        },
-        {
-          domain: "Servers",
-          protectedInScope: "0 / 0",
-          coverage: "0%",
-          status: "No Data",
-        },
-        {
-          domain: "Cloud workloads",
-          protectedInScope: "0 / 0",
-          coverage: "0%",
-          status: "No Data",
-        },
-        {
-          domain: "Network devices",
-          protectedInScope: "0 / 0",
-          coverage: "0%",
-          status: "No Data",
-        },
-      ];
-
-  const filteredDomains = useMemo(() => {
-    if (assetScope === "All assets") return domains;
-    return domains.filter((d) => d.domain === assetScope);
-  }, [assetScope, domains]);
+/** One backend read: its data, its failure, and a way to re-run it after a write. */
+function useBackend<T>(load: () => Promise<T>, deps: unknown[] = []): Loaded<T> {
+  const [state, setState] = useState<Omit<Loaded<T>, "reload">>({
+    data: null,
+    error: null,
+    loading: true,
+    loadedAt: null,
+  });
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    backend
-      .get<any>("/api/v1/customer/security-overview")
-      .then((res) => {
-        if (!res) return;
-        if (!IS_TEST_ENV) {
-          if (typeof res.postureScore === "number") setPostureScore(res.postureScore);
-          if (typeof res.protectedAssetsPct === "number") setProtectedAssetsPct(res.protectedAssetsPct);
-          if (typeof res.protectedAssetsCount === "number") setProtectedAssetsCount(res.protectedAssetsCount);
-          if (typeof res.totalAssetsInScope === "number") setTotalAssetsInScope(res.totalAssetsInScope);
-          if (typeof res.coverageGapsCount === "number") setCoverageGapsCount(res.coverageGapsCount);
-          if (typeof res.criticalExposuresCount === "number") setCriticalExposuresCount(res.criticalExposuresCount);
-          if (typeof res.controlsPassingPct === "number") setControlsPassingPct(res.controlsPassingPct);
-          if (Array.isArray(res.remediations)) setRemediations(res.remediations);
-        } else if (Array.isArray(res?.remediations) && res.remediations.length > 0) {
-          setRemediations(res.remediations);
-        }
+    let cancelled = false;
+    setState((s) => ({ ...s, loading: true, error: null }));
+    load()
+      .then((data) => {
+        if (!cancelled) setState({ data, error: null, loading: false, loadedAt: new Date().toISOString() });
       })
-      .catch(() => {});
-  }, []);
+      .catch((err) => {
+        if (!cancelled) setState((s) => ({ ...s, error: errorMessage(err), loading: false }));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nonce, ...deps]);
 
-  const cycleRemediationStatus = (id: string) => {
-    setRemediations((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status:
-                r.status === "Open"
-                  ? "In progress"
-                  : r.status === "In progress"
-                  ? "Completed"
-                  : "Open",
-            }
-          : r
-      )
-    );
-    backend.patch(`/api/v1/customer/remediations/${id}`, {}).catch(() => {});
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+  return { ...state, reload };
+}
+
+function latest(...stamps: Array<string | null>): string | null {
+  const valid = stamps.filter((s): s is string => Boolean(s)).sort();
+  return valid.length ? valid[valid.length - 1] : null;
+}
+
+function SectionHeader({
+  title,
+  subtitle,
+  updatedAt,
+}: {
+  title: string;
+  subtitle: string;
+  updatedAt: string | null;
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div>
+        <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">{title}</h1>
+        <p className="text-xs sm:text-sm text-slate-400 mt-0.5">{subtitle}</p>
+      </div>
+      {updatedAt && <div className="text-xs text-slate-400">Loaded {formatDateTime(updatedAt)}</div>}
+    </div>
+  );
+}
+
+function Tabs<T extends string>({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: readonly T[];
+  active: T;
+  onChange: (tab: T) => void;
+}) {
+  return (
+    <div role="tablist" className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          role="tab"
+          aria-selected={active === tab}
+          onClick={() => onChange(tab)}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            active === tab
+              ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white shadow-[0_0_15px_rgba(220,38,38,0.35)]"
+              : "text-slate-300 hover:text-white"
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ErrorNote({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <div role="alert" className="rounded-xl bg-red-950/50 border border-red-500/40 px-4 py-2.5 text-xs text-red-200">
+      {message}
+    </div>
+  );
+}
+
+function Banner({ message, onClose }: { message: string | null; onClose: () => void }) {
+  if (!message) return null;
+  return (
+    <div
+      role="status"
+      className="rounded-xl bg-emerald-950/50 border border-emerald-500/40 px-4 py-2.5 text-xs text-emerald-200 flex items-center justify-between"
+    >
+      <span>{message}</span>
+      <button type="button" aria-label="Dismiss" onClick={onClose} className="text-slate-400 hover:text-white">
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+/** Table body row for loading / failure / empty, so the table keeps its shape. */
+function StateRow({
+  colSpan,
+  loading,
+  error,
+  empty,
+}: {
+  colSpan: number;
+  loading: boolean;
+  error: string | null;
+  empty: string;
+}) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="py-6 text-center text-xs text-slate-400">
+        {error ? <span className="text-red-300">Could not load: {error}</span> : loading ? "Loading…" : empty}
+      </td>
+    </tr>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  subClass = "text-slate-400",
+  footer,
+  loading,
+  error,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+  subClass?: string;
+  footer?: React.ReactNode;
+  loading: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className={KPI}>
+      <div className="text-xs font-medium text-slate-300">{label}</div>
+      <div className="text-3xl font-extrabold text-white">{error ? "—" : loading ? "…" : value}</div>
+      <div className={`text-xs font-medium ${error ? "text-red-300" : subClass}`}>
+        {error ? "Unavailable" : loading ? "Loading" : sub}
+      </div>
+      {footer && <div className="pt-1">{footer}</div>}
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <div className="relative">
+      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+    </div>
+  );
+}
+
+const SEVERITY_FILTER_OPTIONS = [
+  { value: "ALL", label: "Severity: All" },
+  ...SEVERITIES.map((s) => ({ value: s, label: humanize(s) })),
+];
+
+function isOpenFinding(f: Finding) {
+  return !CLOSED_FINDING.includes(f.status);
+}
+function isActiveCase(c: Case) {
+  return !CLOSED_CASE.includes(c.status);
+}
+function isOpenAlert(a: Alert) {
+  return !CLOSED_ALERT.includes(a.status);
+}
+
+/* ---------------------------------------------------------------------------
+ * Response proposals (shared by Threats & Incidents and Detection & Response)
+ * ------------------------------------------------------------------------- */
+
+interface ResponseProposal {
+  id: string;
+  case_id: string | null;
+  alert_id: string | null;
+  target_type: string;
+  target_id: string;
+  action_type: string;
+  reason: string;
+  authority_level: string;
+  requested_by: string;
+  recommendation_source: string;
+  reversible: boolean;
+  status: string;
+  expires_at: string;
+  created_at: string;
+}
+
+async function loadProposalsForCases(caseIds: string[]): Promise<ResponseProposal[]> {
+  const lists = await Promise.all(
+    caseIds.map(async (id) => {
+      const res = await backend.get<{ proposals?: ResponseProposal[] }>(
+        `/api/v1/cases/${encodeURIComponent(id)}/response-proposals`,
+      );
+      return Array.isArray(res?.proposals) ? res.proposals : asList<ResponseProposal>(res);
+    }),
+  );
+  return lists.flat();
+}
+
+/** Pending response actions across the tenant's active cases. */
+async function loadPendingProposals(): Promise<{ proposals: ResponseProposal[]; cases: Case[] }> {
+  const cases = await customerApi.cases(50);
+  const active = cases.filter(isActiveCase);
+  const proposals = await loadProposalsForCases(active.map((c) => c.id));
+  return { proposals: proposals.filter((p) => p.status === "PROPOSED"), cases };
+}
+
+function ProposalCard({
+  proposal,
+  caseTitle,
+  onDecided,
+}: {
+  proposal: ResponseProposal;
+  caseTitle?: string;
+  onDecided: (message: string) => void;
+}) {
+  const [mode, setMode] = useState<"approve" | "reject" | null>(null);
+  const [text, setText] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const statement = text.trim();
+    if (mode === "approve") {
+      if (statement.length < 12) {
+        setError("Authority statement must be at least 12 characters.");
+        return;
+      }
+      if (!confirmed) {
+        setError("Confirm that you are making this decision yourself.");
+        return;
+      }
+    } else if (!statement) {
+      setError("A reason is required to reject.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === "approve") {
+        await backend.post(
+          `/api/v1/response-proposals/${encodeURIComponent(proposal.id)}/approve`,
+          {
+            reason: statement,
+            humanAuthority: { decisionOrigin: "HUMAN", humanConfirmation: true, authorityStatement: statement },
+          },
+          { confirmed: true },
+        );
+        onDecided(`Approved: ${humanize(proposal.action_type)}.`);
+      } else {
+        await backend.post(
+          `/api/v1/response-proposals/${encodeURIComponent(proposal.id)}/reject`,
+          { reason: statement },
+          { confirmed: true },
+        );
+        onDecided(`Rejected: ${humanize(proposal.action_type)}.`);
+      }
+      setMode(null);
+      setText("");
+      setConfirmed(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Security Overview
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Understand your posture. Close protection gaps.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
+    <div className={`${INNER} space-y-2 text-xs`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-bold text-white">{humanize(proposal.action_type)}</span>
+        <span className={`${PILL} ${statusClass(proposal.status)}`}>{humanize(proposal.status)}</span>
       </div>
+      {caseTitle !== undefined && (
+        <div className="flex justify-between gap-2">
+          <span className="text-slate-400">Case</span>
+          <span className="font-semibold text-white text-right">{caseTitle || shortId(proposal.case_id)}</span>
+        </div>
+      )}
+      <div className="flex justify-between gap-2">
+        <span className="text-slate-400">Target</span>
+        <span className="font-semibold text-white text-right">
+          {humanize(proposal.target_type)} {proposal.target_id}
+        </span>
+      </div>
+      <div className="flex justify-between gap-2">
+        <span className="text-slate-400">Reason</span>
+        <span className="font-semibold text-white text-right">{proposal.reason}</span>
+      </div>
+      <div className="flex justify-between gap-2">
+        <span className="text-slate-400">Requested</span>
+        <span className="font-semibold text-white text-right">
+          {humanize(proposal.recommendation_source)} • {timeAgo(proposal.created_at)}
+        </span>
+      </div>
+      <div className="flex justify-between gap-2">
+        <span className="text-slate-400">Authority</span>
+        <span className="font-semibold text-white">{proposal.authority_level}</span>
+      </div>
+      <div className="flex justify-between gap-2">
+        <span className="text-slate-400">Expires</span>
+        <span className="font-semibold text-white">{formatDateTime(proposal.expires_at)}</span>
+      </div>
+      <div className="text-[11px] text-slate-400">Execution remains blocked until an authorized approval is recorded.</div>
 
-      {/* Sub-header Bar */}
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(["Overview", "Coverage", "Control health"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab
-                  ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white shadow-[0_0_15px_rgba(220,38,38,0.35)]"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              {tab}
+      {mode ? (
+        <form onSubmit={submit} className="space-y-2 pt-1">
+          <textarea
+            aria-label={mode === "approve" ? "Authority statement" : "Rejection reason"}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={
+              mode === "approve"
+                ? "State the authority under which you approve this action"
+                : "Why this action should not run"
+            }
+            className={`${INPUT} w-full min-h-[60px]`}
+          />
+          {mode === "approve" && (
+            <label className="flex items-center gap-2 text-slate-300">
+              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+              I am making this decision myself.
+            </label>
+          )}
+          <ErrorNote message={error} />
+          <div className="flex gap-2">
+            <button type="submit" disabled={busy} className={BTN_PRIMARY}>
+              {busy ? "Submitting…" : mode === "approve" ? "Approve action" : "Reject action"}
             </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative">
-            <select
-              aria-label="Asset scope filter"
-              value={assetScope}
-              onChange={(e) => setAssetScope(e.target.value)}
-              className="appearance-none bg-[#0c1829] border border-slate-700/80 rounded-xl pl-3.5 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none cursor-pointer"
-            >
-              <option>All assets</option>
-              <option>Endpoints</option>
-              <option>Servers</option>
-              <option>Cloud workloads</option>
-              <option>Network devices</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <button type="button" onClick={() => setMode(null)} className={BTN_SECONDARY}>
+              Cancel
+            </button>
           </div>
-
-          <div className="relative">
-            <select
-              aria-label="Time range filter"
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="appearance-none bg-[#0c1829] border border-slate-700/80 rounded-xl pl-3.5 pr-8 py-1.5 text-xs text-slate-200 focus:outline-none cursor-pointer"
-            >
-              <option>Last 30 days</option>
-              <option>Last 7 days</option>
-              <option>Last 90 days</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              exportCsvData("security-overview-report.csv", domains);
-              setActionBanner("Exported Security Overview posture report.");
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#12243d] border border-slate-700/80 text-xs font-semibold text-slate-100 transition-colors"
-          >
-            Export report
+        </form>
+      ) : (
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={() => setMode("approve")} className={`${BTN_PRIMARY} flex-1`}>
+            Review &amp; approve
           </button>
-        </div>
-      </div>
-
-      {actionBanner && (
-        <div className="rounded-xl bg-emerald-950/50 border border-emerald-500/40 px-4 py-2.5 text-xs text-emerald-200 flex items-center justify-between">
-          <span>{actionBanner}</span>
-          <button
-            type="button"
-            onClick={() => setActionBanner(null)}
-            className="text-slate-400 hover:text-white"
-          >
-            <X className="w-3.5 h-3.5" />
+          <button type="button" onClick={() => setMode("reject")} className={`${BTN_SECONDARY} flex-1`}>
+            Reject
           </button>
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* 4 KPI Cards */}
+/* ============================================================================
+ * 1. SECURITY OVERVIEW
+ * ========================================================================== */
+export function CustomerSecurityOverviewSection() {
+  const summary = useBackend(() => customerApi.findingSummary());
+  const findings = useBackend(() => customerApi.findings({ limit: 50 }));
+  const assets = useBackend(() => customerApi.assets());
+  const assurance = useBackend(() => customerApi.assuranceReport());
+  const health = useBackend(() => customerApi.serviceHealth());
+  const [assetScope, setAssetScope] = useState("ALL");
+  const [banner, setBanner] = useState<string | null>(null);
+
+  const assetRows = useMemo(() => assets.data ?? [], [assets.data]);
+  const byType = useMemo(() => {
+    const groups: Record<string, Asset[]> = {};
+    for (const a of assetRows) (groups[a.asset_type] ??= []).push(a);
+    return Object.entries(groups)
+      .map(([type, rows]) => ({
+        type,
+        count: rows.length,
+        criticalOrHigh: rows.filter((a) => a.criticality === "CRITICAL" || a.criticality === "HIGH").length,
+        lastSeen: latest(...rows.map((a) => a.last_seen_at)),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [assetRows]);
+  const visibleTypes = assetScope === "ALL" ? byType : byType.filter((t) => t.type === assetScope);
+
+  const m = summary.data?.metrics;
+  const openBySeverity = summary.data?.openBySeverity ?? {};
+  const openByType = Object.entries(summary.data?.openByType ?? {}).sort((a, b) => b[1] - a[1]);
+  const drivers = (findings.data ?? []).filter(isOpenFinding).slice(0, 3);
+
+  const am = assurance.data?.metrics;
+  const assessedControls = am
+    ? am.controlsEffective + am.controlsPartiallyEffective + am.controlsIneffective + am.controlsUnknown
+    : 0;
+  const controlsPct = am ? percent(am.controlsEffective, assessedControls) : null;
+  const criticalOrHighAssets = assetRows.filter((a) => a.criticality === "CRITICAL" || a.criticality === "HIGH").length;
+
+  const findingPage = (type: string) =>
+    type === "VULNERABILITY" ? "/customer/vulnerabilities" : "/customer/exposure-management";
+
+  return (
+    <div className={PAGE}>
+      <SectionHeader
+        title="Security Overview"
+        subtitle="Understand your posture. Close protection gaps."
+        updatedAt={latest(summary.loadedAt, assets.loadedAt, assurance.loadedAt, health.loadedAt)}
+      />
+
+      <div className={BAR}>
+        <FilterSelect
+          label="Asset scope filter"
+          value={assetScope}
+          onChange={setAssetScope}
+          options={[
+            { value: "ALL", label: "All asset types" },
+            ...byType.map((t) => ({ value: t.type, label: humanize(t.type) })),
+          ]}
+        />
+        <button
+          type="button"
+          disabled={!summary.data}
+          onClick={() => {
+            if (!summary.data) return;
+            exportCsvData("security-overview-report.csv", [
+              ...Object.entries(summary.data.metrics).map(([metric, value]) => ({ group: "findings", metric, value })),
+              ...byType.map((t) => ({ group: "assets", metric: t.type, value: t.count })),
+            ]);
+            setBanner("Exported the Security Overview figures shown on this page.");
+          }}
+          className={BTN_SECONDARY}
+        >
+          Export report
+        </button>
+      </div>
+
+      <Banner message={banner} onClose={() => setBanner(null)} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-2 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Security posture
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-extrabold text-white">{postureScore}</span>
-            <span className="text-lg font-semibold text-slate-400">/ 100</span>
-          </div>
-          <div className="text-xs text-emerald-400 font-medium">
-            {IS_TEST_ENV ? "↑ +6 points in 30 days" : "Live posture evaluation"}
-          </div>
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() =>
-                setActionBanner(
-                  "Posture score methodology: Weighted across Endpoint (30%), Identity (25%), Cloud (25%), and Network (20%) controls."
-                )
-              }
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-            >
-              <span>Score methodology</span>
+        <KpiCard
+          label="Open findings"
+          loading={summary.loading}
+          error={summary.error}
+          value={m?.open ?? 0}
+          sub={severityCounts(openBySeverity) || "No open findings"}
+          subClass="text-red-400"
+          footer={
+            <Link href="/customer/exposure-management" className={LINK}>
+              <span>Review findings</span>
               <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-2 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Protected assets
-          </div>
-          <div className="text-3xl font-extrabold text-white">{protectedAssetsPct}%</div>
-          <div className="text-xs text-slate-400">
-            {protectedAssetsCount.toLocaleString()} of {totalAssetsInScope.toLocaleString()} in scope
-          </div>
-          <div className="pt-1">
-            <Link
-              href="/customer/assets-inventory"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-            >
-              <span>{coverageGapsCount} coverage gaps</span>
             </Link>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-2 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Critical exposures
-          </div>
-          <div className="text-3xl font-extrabold text-white">{criticalExposuresCount}</div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "Across 12 affected assets" : `${criticalExposuresCount} active critical exposures`}
-          </div>
-          <div className="pt-1">
-            <Link
-              href="/customer/exposure-management"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-            >
+          }
+        />
+        <KpiCard
+          label="Assets in inventory"
+          loading={assets.loading}
+          error={assets.error}
+          value={assetRows.length.toLocaleString()}
+          sub={assetRows.length ? `${criticalOrHighAssets} rated critical or high` : "No assets reported yet"}
+          footer={
+            <Link href="/customer/assets-inventory" className={LINK}>
+              <span>View inventory</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          }
+        />
+        <KpiCard
+          label="Critical findings"
+          loading={summary.loading}
+          error={summary.error}
+          value={openBySeverity.CRITICAL ?? 0}
+          sub="Open, across all finding types"
+          footer={
+            <Link href="/customer/exposure-management" className={LINK}>
               <span>Review exposures</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-2 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Controls passing
-          </div>
-          <div className="text-3xl font-extrabold text-white">{controlsPassingPct}%</div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "17 of 20 evaluated controls" : "Continuous control evaluation"}
-          </div>
-          <div className="pt-1">
-            <Link
-              href="/customer/compliance-risk"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-            >
-              <span>{IS_TEST_ENV ? "3 need attention" : "View controls →"}</span>
+          }
+        />
+        <KpiCard
+          label="Controls effective"
+          loading={assurance.loading}
+          error={assurance.error}
+          value={controlsPct === null ? "—" : `${controlsPct}%`}
+          sub={
+            assessedControls
+              ? `${am?.controlsEffective} of ${assessedControls} assessed controls`
+              : "No controls assessed yet"
+          }
+          footer={
+            <Link href="/customer/compliance-risk" className={LINK}>
+              <span>View controls</span>
+              <ArrowRight className="w-3 h-3" />
             </Link>
-          </div>
-        </div>
+          }
+        />
       </div>
 
-      {/* Middle Row: Protection coverage by domain (7 cols) + Posture drivers (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl flex flex-col justify-between">
+        <div className={`lg:col-span-7 ${CARD} flex flex-col justify-between`}>
           <div>
             <div className="flex items-start justify-between gap-2 mb-3">
               <div>
-                <h2 className="text-base font-bold text-white">
-                  Protection coverage by domain
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Each domain has its own eligible asset population.
-                </p>
+                <h2 className="text-base font-bold text-white">Inventory by asset type</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Assets reported by your connectors and manual entries.</p>
               </div>
-              <Link
-                href="/customer/assets-inventory"
-                className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-              >
-                <span>View coverage</span>
+              <Link href="/customer/assets-inventory" className={LINK}>
+                <span>View inventory</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="py-2.5 pr-3 font-medium">Domain</th>
-                    <th className="py-2.5 px-3 font-medium">
-                      Protected / In scope
-                    </th>
-                    <th className="py-2.5 px-3 font-medium">Coverage</th>
-                    <th className="py-2.5 pl-3 font-medium text-right">
-                      Status
-                    </th>
+                    <th className="py-2.5 pr-3 font-medium">Asset type</th>
+                    <th className={TH}>Assets</th>
+                    <th className={TH}>Critical / high</th>
+                    <th className="py-2.5 pl-3 font-medium text-right">Last seen</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {filteredDomains.map((row) => (
-                    <tr key={row.domain} className="hover:bg-slate-800/30">
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        {row.domain}
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">
-                        {row.protectedInScope}
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-white">
-                        {row.coverage}
-                      </td>
-                      <td className="py-3 pl-3 text-right">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            row.status === "Healthy"
-                              ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                              : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                          }`}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {visibleTypes.length === 0 ? (
+                    <StateRow
+                      colSpan={4}
+                      loading={assets.loading}
+                      error={assets.error}
+                      empty="No assets yet. Assets appear when a connector reports them or you add one in Assets & Inventory."
+                    />
+                  ) : (
+                    visibleTypes.map((row) => (
+                      <tr key={row.type} className="hover:bg-slate-800/30">
+                        <td className="py-3 pr-3 font-semibold text-white">{humanize(row.type)}</td>
+                        <td className={`${TD} text-slate-300`}>{row.count}</td>
+                        <td className={`${TD} font-semibold text-white`}>{row.criticalOrHigh}</td>
+                        <td className="py-3 pl-3 text-right text-slate-400">{timeAgo(row.lastSeen)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-
-          <div className="pt-3 mt-3 border-t border-slate-800/80 text-xs text-slate-400">
-            Total: 1,840 / 2,000 assets protected • 160 gaps
-          </div>
+          {assetRows.length > 0 && (
+            <div className="pt-3 mt-3 border-t border-slate-800/80 text-xs text-slate-400">
+              Total: {assetRows.length} assets across {byType.length} types
+            </div>
+          )}
         </div>
 
-        {/* Posture drivers */}
-        <div className="lg:col-span-5 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
+        <div className={`lg:col-span-5 ${CARD} space-y-3`}>
           <div>
             <h2 className="text-base font-bold text-white">Posture drivers</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Highest-impact findings
-            </p>
+            <p className="text-xs text-slate-400 mt-0.5">Highest-priority open findings</p>
           </div>
-
+          <ErrorNote message={findings.error} />
+          {!findings.error && drivers.length === 0 && (
+            <p className="text-xs text-slate-400">
+              {findings.loading
+                ? "Loading…"
+                : "No open findings. Findings appear when a scanner or cloud connector reports them — see Integrations."}
+            </p>
+          )}
           <div className="space-y-2.5">
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/50 text-red-300 shrink-0">
-                  Critical
-                </span>
-                <div>
-                  <div className="text-xs font-bold text-white">
-                    3 internet-facing exposures
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    12 assets affected
+            {drivers.map((f) => (
+              <div key={f.id} className={`${INNER} flex items-center justify-between gap-3`}>
+                <div className="flex items-start gap-3">
+                  <span className={`${PILL} shrink-0 ${severityClass(f.severity)}`}>{humanize(f.severity)}</span>
+                  <div>
+                    <div className="text-xs font-bold text-white">{f.title}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {humanize(f.finding_type)} • {f.source_system} • {f.assertion?.reason}
+                    </div>
                   </div>
                 </div>
+                <Link href={findingPage(f.finding_type)} className="text-xs font-semibold text-sky-400 hover:text-sky-300 shrink-0">
+                  Review →
+                </Link>
               </div>
-              <Link
-                href="/customer/exposure-management"
-                className="text-xs font-semibold text-sky-400 hover:text-sky-300 shrink-0"
-              >
-                Review exposures →
-              </Link>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/50 text-amber-300 shrink-0">
-                  High
-                </span>
-                <div>
-                  <div className="text-xs font-bold text-white">
-                    3 critical systems unmonitored
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    Included in the 160 coverage gaps
-                  </div>
-                </div>
-              </div>
-              <Link
-                href="/customer/assets-inventory"
-                className="text-xs font-semibold text-sky-400 hover:text-sky-300 shrink-0"
-              >
-                Inspect systems →
-              </Link>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/50 text-amber-300 shrink-0">
-                  High
-                </span>
-                <div>
-                  <div className="text-xs font-bold text-white">
-                    8 privileged accounts without MFA
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    Identity control requires attention
-                  </div>
-                </div>
-              </div>
-              <Link
-                href="/customer/identity-access"
-                className="text-xs font-semibold text-sky-400 hover:text-sky-300 shrink-0"
-              >
-                Review access →
-              </Link>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Bottom Row: Remediation priorities (7 cols) + Assessment confidence (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl">
+        <div className={`lg:col-span-7 ${CARD}`}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-white">
-              Remediation priorities
-            </h2>
-            <Link
-              href="/customer/exposure-management"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300"
-            >
-              View all →
-            </Link>
+            <h2 className="text-base font-bold text-white">Open findings by type</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 pr-3 font-medium">Action</th>
-                  <th className="py-2 px-3 font-medium">Owner</th>
-                  <th className="py-2 px-3 font-medium">Due</th>
-                  <th className="py-2 pl-3 font-medium text-right">Status</th>
+                  <th className="py-2 pr-3 font-medium">Finding type</th>
+                  <th className={TH}>Open</th>
+                  <th className="py-2 pl-3 font-medium text-right">Where</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {remediations.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
-                      No data available — 0 remediation actions queued.
-                    </td>
-                  </tr>
+                {openByType.length === 0 ? (
+                  <StateRow colSpan={3} loading={summary.loading} error={summary.error} empty="No open findings." />
                 ) : (
-                  remediations.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-800/30">
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        {r.action}
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">{r.owner}</td>
-                      <td className="py-3 px-3 text-slate-300">{r.due}</td>
+                  openByType.map(([type, n]) => (
+                    <tr key={type} className="hover:bg-slate-800/30">
+                      <td className="py-3 pr-3 font-semibold text-white">{humanize(type)}</td>
+                      <td className={`${TD} text-slate-300`}>{n}</td>
                       <td className="py-3 pl-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => cycleRemediationStatus(r.id)}
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            r.status === "Open"
-                              ? "bg-red-950/80 border border-red-500/40 text-red-300"
-                              : r.status === "In progress"
-                              ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                              : "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                          }`}
-                        >
-                          {r.status}
-                        </button>
+                        <Link href={findingPage(type)} className="text-xs font-semibold text-sky-400 hover:text-sky-300">
+                          Open →
+                        </Link>
                       </td>
                     </tr>
                   ))
@@ -570,35 +808,41 @@ export function CustomerSecurityOverviewSection() {
           </div>
         </div>
 
-        <div className="lg:col-span-5 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl flex flex-col justify-between space-y-3">
-          <h2 className="text-base font-bold text-white">
-            Assessment confidence
-          </h2>
+        <div className={`lg:col-span-5 ${CARD} flex flex-col justify-between space-y-3`}>
+          <h2 className="text-base font-bold text-white">Assessment confidence</h2>
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between py-1.5 border-b border-slate-800/70">
               <span className="text-slate-400">Telemetry</span>
               <span className="font-semibold text-white">
-                23 of 24 connectors reporting
+                {health.error
+                  ? "Unavailable"
+                  : health.loading
+                    ? "Loading…"
+                    : health.data?.connectorHealth.total
+                      ? `${health.data.connectorHealth.healthy} of ${health.data.connectorHealth.total} connectors healthy`
+                      : "No connectors configured"}
               </span>
             </div>
             <div className="flex items-center justify-between py-1.5 border-b border-slate-800/70">
               <span className="text-slate-400">Freshness</span>
-              <span className="font-semibold text-amber-300">
-                1 identity source delayed by 12 min
+              <span className={`font-semibold ${m && (m.staleAssertions || m.ageingAssertions) ? "text-amber-300" : "text-white"}`}>
+                {summary.error
+                  ? "Unavailable"
+                  : !m
+                    ? "Loading…"
+                    : `${m.staleAssertions} stale • ${m.ageingAssertions} ageing finding assertions`}
               </span>
             </div>
             <div className="flex items-center justify-between py-1.5">
-              <span className="text-slate-400">Assessment</span>
+              <span className="text-slate-400">Service health</span>
               <span className="font-semibold text-slate-200">
-                Partial • identity findings may lag
+                {health.error ? "Unavailable" : health.data ? humanize(health.data.overallHealth) : "Loading…"}
               </span>
             </div>
           </div>
+          <ErrorNote message={health.error} />
           <div className="pt-1">
-            <Link
-              href="/customer/integrations"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-flex items-center gap-1"
-            >
+            <Link href="/customer/integrations" className={LINK}>
               <span>Review data sources →</span>
             </Link>
           </div>
@@ -609,1042 +853,883 @@ export function CustomerSecurityOverviewSection() {
 }
 
 /* ============================================================================
- * 2. THREATS & INCIDENTS (Matches Image 2: 2.10.01 PM.jpeg)
+ * 2. THREATS & INCIDENTS
  * ========================================================================== */
+interface TimelineEntry {
+  id: string;
+  title: string;
+  summary: string | null;
+  occurred_at: string;
+}
+
+function AlertStatusControl({ alert, onChanged }: { alert: Alert; onChanged: (message: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const next = ALERT_NEXT_STATES[alert.status] ?? [];
+  if (next.length === 0) return <span className="text-slate-500">—</span>;
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <select
+        aria-label={`Change status of ${alert.title}`}
+        value=""
+        disabled={busy}
+        onChange={async (e) => {
+          const status = e.target.value;
+          if (!status) return;
+          setBusy(true);
+          setError(null);
+          try {
+            await customerApi.updateAlertStatus(alert.id, status);
+            onChanged(`Alert "${alert.title}" moved to ${humanize(status)}.`);
+          } catch (err) {
+            setError(errorMessage(err));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="px-2 py-1 rounded-lg bg-[#0c1829] border border-slate-700/80 text-[11px] text-slate-200"
+      >
+        <option value="">{busy ? "Updating…" : "Move to…"}</option>
+        {next.map((s) => (
+          <option key={s} value={s}>
+            {humanize(s)}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <span role="alert" className="text-[11px] text-red-300">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function CustomerThreatsIncidentsSection() {
-  const [activeTab, setActiveTab] = useState<
-    "Incidents" | "Alerts" | "Threat intelligence"
-  >("Incidents");
+  const [activeTab, setActiveTab] = useState<"Incidents" | "Alerts">("Incidents");
   const [searchQuery, setSearchQuery] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState<"Active" | "Closed">(
-    "Active"
-  );
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [newIncidentTitle, setNewIncidentTitle] = useState("");
-  const [newIncidentSeverity, setNewIncidentSeverity] = useState<
-    "Critical" | "High" | "Medium"
-  >("Critical");
-  const [approvalStatus, setApprovalStatus] = useState<"Pending" | "Approved">(
-    "Pending"
-  );
+  const [severityFilter, setSeverityFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState<"Active" | "Closed">("Active");
+  const [alertFilter, setAlertFilter] = useState<"Open" | "All">("Open");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newSeverity, setNewSeverity] = useState<Severity>("HIGH");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState("");
 
-  const [incidents, setIncidents] = useState(
-    IS_TEST_ENV
-      ? [
-          {
-            id: "#4287",
-            title: "Possible credential compromise",
-            severity: "Critical" as "Critical" | "High" | "Medium",
-            status: "Investigating",
-            owner: "SOC team",
-            updated: "5 min ago",
-            lifecycle: "Active" as "Active" | "Closed",
-            affected: "1 account • 2 assets",
-            firstDetected: "08:54 UTC",
-            relatedAlerts: 4,
-            summary:
-              "Repeated sign-in failures followed by a successful sign-in from an unfamiliar location. Validate account activity.",
-          },
-          {
-            id: "#4286",
-            title: "Suspicious lateral movement",
-            severity: "High" as "Critical" | "High" | "Medium",
-            status: "Contained",
-            owner: "Response team",
-            updated: "18 min ago",
-            lifecycle: "Active" as "Active" | "Closed",
-            affected: "2 servers • 1 domain controller",
-            firstDetected: "08:12 UTC",
-            relatedAlerts: 3,
-            summary:
-              "Unexpected SMB session enumeration detected from workstation segment. Host isolated pending forensic verification.",
-          },
-        ]
-      : []
-  );
+  const cases = useBackend(() => customerApi.cases(50));
+  const alerts = useBackend(() => customerApi.alerts(100));
+  const report = useBackend(() => customerApi.securityReport());
+  const pending = useBackend(() => loadPendingProposals());
 
-  const [selectedIncidentId, setSelectedIncidentId] = useState(IS_TEST_ENV ? "#4287" : "");
+  const caseRows = useMemo(() => cases.data ?? [], [cases.data]);
+  const alertRows = alerts.data ?? [];
+  const activeCases = caseRows.filter(isActiveCase);
+  const untriaged = alertRows.filter((a) => a.status === "NEW" || a.status === "ACKNOWLEDGED");
+  const openAlerts = alertRows.filter(isOpenAlert);
 
-  const [triageAlerts, setTriageAlerts] = useState(
-    IS_TEST_ENV
-      ? [
-          {
-            id: "ta-1",
-            alert: "Repeated privileged sign-in failures",
-            severity: "High",
-            source: "Microsoft 365",
-            detected: "09:26 UTC",
-          },
-          {
-            id: "ta-2",
-            alert: "Unusual outbound connection",
-            severity: "Medium",
-            source: "Endpoint Security",
-            detected: "09:22 UTC",
-          },
-        ]
-      : []
-  );
-
-  useEffect(() => {
-    backend
-      .get<any[]>("/api/v1/cases?limit=10")
-      .then((res) => {
-        const list = asList<any>(res);
-        if (!IS_TEST_ENV) {
-          const mapped = list.map((c: any, idx: number) => ({
-            id: c.id || `#${4288 + idx}`,
-            title: c.title || "Security Incident",
-            severity: (c.severity === "CRITICAL"
-              ? "Critical"
-              : c.severity === "HIGH"
-              ? "High"
-              : "Medium") as "Critical" | "High" | "Medium",
-            status: c.status === "RESOLVED" || c.status === "CLOSED" ? "Closed" : "Investigating",
-            owner: c.assignedTo || "SOC team",
-            updated: c.updatedAt ? new Date(c.updatedAt).toLocaleTimeString() : "Recently",
-            lifecycle: (c.status === "RESOLVED" || c.status === "CLOSED" ? "Closed" : "Active") as "Active" | "Closed",
-            affected: "Scoped tenant assets",
-            firstDetected: c.createdAt ? new Date(c.createdAt).toLocaleTimeString() : "N/A",
-            relatedAlerts: Array.isArray(c.alertIds) ? c.alertIds.length : 0,
-            summary: c.description || c.summary || "Live incident record retrieved from backend.",
-          }));
-          setIncidents(mapped);
-          if (mapped.length > 0) setSelectedIncidentId(mapped[0].id);
-        }
-      })
-      .catch(() => {});
-
-    if (!IS_TEST_ENV) {
-      backend
-        .get<any[]>("/api/v1/alerts?limit=10")
-        .then((res) => {
-          const list = asList<any>(res);
-          setTriageAlerts(
-            list.map((a: any, idx: number) => ({
-              id: a.id || `ta-${idx}`,
-              alert: a.title || a.ruleName || "Security alert",
-              severity: a.severity === "CRITICAL" || a.severity === "HIGH" ? "High" : "Medium",
-              source: a.source || "Security Core",
-              detected: a.createdAt ? new Date(a.createdAt).toLocaleTimeString() : "Recently",
-            }))
-          );
-        })
-        .catch(() => {});
-    }
-  }, []);
-
-  const filteredIncidents = useMemo(() => {
-    return incidents.filter((inc) => {
-      const matchesLifecycle = inc.lifecycle === statusFilter;
-      const matchesSeverity =
-        severityFilter === "All" || inc.severity === severityFilter;
-      const matchesSearch =
-        !searchQuery.trim() ||
-        inc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inc.id.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesLifecycle && matchesSeverity && matchesSearch;
+  const filteredCases = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return caseRows.filter((c) => {
+      const lifecycle = isActiveCase(c) ? "Active" : "Closed";
+      return (
+        lifecycle === statusFilter &&
+        (severityFilter === "ALL" || c.severity === severityFilter) &&
+        (!q || c.title.toLowerCase().includes(q) || c.id.toLowerCase().includes(q))
+      );
     });
-  }, [incidents, statusFilter, severityFilter, searchQuery]);
+  }, [caseRows, statusFilter, severityFilter, searchQuery]);
 
-  const selectedIncident =
-    incidents.find((i) => i.id === selectedIncidentId) ||
-    incidents[0] || {
-      id: "No Incident Selected",
-      title: "No active incidents",
-      severity: "Medium" as const,
-      status: "Idle",
-      owner: "Unassigned",
-      updated: "—",
-      lifecycle: "Active" as const,
-      affected: "0 assets",
-      firstDetected: "—",
-      relatedAlerts: 0,
-      summary: "No data available — 0 active incidents recorded for this tenant.",
-    };
+  const selectedCase =
+    caseRows.find((c) => c.id === selectedId) ?? filteredCases[0] ?? null;
+  const selectedCaseId = selectedCase?.id ?? "";
 
-  const handleCreateIncident = async (e: React.FormEvent) => {
+  const timeline = useBackend<TimelineEntry[]>(
+    async () =>
+      selectedCaseId
+        ? asList<TimelineEntry>(await backend.get(`/api/v1/cases/${encodeURIComponent(selectedCaseId)}/timeline`))
+        : [],
+    [selectedCaseId],
+  );
+  const evidence = useBackend<unknown[]>(
+    async () =>
+      selectedCaseId
+        ? asList<unknown>(await backend.get(`/api/v1/cases/${encodeURIComponent(selectedCaseId)}/evidence`))
+        : [],
+    [selectedCaseId],
+  );
+  const caseProposals = useBackend<ResponseProposal[]>(
+    async () => (selectedCaseId ? loadProposalsForCases([selectedCaseId]) : []),
+    [selectedCaseId],
+  );
+  const selectedPending = (caseProposals.data ?? []).filter((p) => p.status === "PROPOSED");
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newIncidentTitle.trim()) return;
-    const nextId = `#${4288 + incidents.length}`;
-    const created = {
-      id: nextId,
-      title: newIncidentTitle.trim(),
-      severity: newIncidentSeverity,
-      status: "Investigating",
-      owner: "SOC team",
-      updated: "Just now",
-      lifecycle: "Active" as const,
-      affected: "1 account • 1 asset",
-      firstDetected: "09:30 UTC",
-      relatedAlerts: 1,
-      summary:
-        "Customer-initiated incident investigation queued for SOC triage and forensic correlation.",
-    };
-    setIncidents((prev) => [created, ...prev]);
-    setSelectedIncidentId(nextId);
-    setNewIncidentTitle("");
-    setCreateModalOpen(false);
+    const title = newTitle.trim();
+    if (!title) {
+      setCreateError("A title is required.");
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
     try {
-      await backend.post("/api/v1/cases", {
-        title: created.title,
-        severity: created.severity.toUpperCase(),
+      const created = await customerApi.createCase({
+        title,
+        description: newDescription.trim() || undefined,
+        severity: newSeverity,
       });
-    } catch {
-      // Handled gracefully
+      setBanner(`Incident "${created?.title ?? title}" created.`);
+      setNewTitle("");
+      setNewDescription("");
+      setCreateOpen(false);
+      setStatusFilter("Active");
+      if (created?.id) setSelectedId(created.id);
+      cases.reload();
+      report.reload();
+    } catch (err) {
+      setCreateError(errorMessage(err));
+    } finally {
+      setCreating(false);
     }
   };
 
+  const afterAlertChange = (message: string) => {
+    setBanner(message);
+    alerts.reload();
+    report.reload();
+  };
+
+  const afterDecision = (message: string) => {
+    setBanner(message);
+    caseProposals.reload();
+    pending.reload();
+  };
+
+  const visibleAlerts = alertFilter === "Open" ? openAlerts : alertRows;
+
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Threats &amp; Incidents
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Prioritize threats. Investigate with evidence.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
-      </div>
+    <div className={PAGE}>
+      <SectionHeader
+        title="Threats & Incidents"
+        subtitle="Prioritize threats. Investigate with evidence."
+        updatedAt={latest(cases.loadedAt, alerts.loadedAt)}
+      />
 
-      {/* Sub-header Bar */}
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(["Incidents", "Alerts", "Threat intelligence"] as const).map(
-            (tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  activeTab === tab
-                    ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white shadow-[0_0_15px_rgba(220,38,38,0.35)]"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                {tab}
-              </button>
-            )
-          )}
-        </div>
-
+      <div className={BAR}>
+        <Tabs tabs={["Incidents", "Alerts"] as const} active={activeTab} onChange={setActiveTab} />
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => exportCsvData("incidents-queue.csv", incidents)}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#12243d] border border-slate-700/80 text-xs font-semibold text-slate-100"
+            disabled={activeTab === "Incidents" ? caseRows.length === 0 : alertRows.length === 0}
+            onClick={() =>
+              activeTab === "Incidents"
+                ? exportCsvData("incidents.csv", caseRows as unknown as Record<string, unknown>[])
+                : exportCsvData("alerts.csv", alertRows as unknown as Record<string, unknown>[])
+            }
+            className={BTN_SECONDARY}
           >
             Export
           </button>
-          <button
-            type="button"
-            onClick={() => setCreateModalOpen((v) => !v)}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] hover:from-[#ef4444] hover:to-[#dc2626] text-xs font-semibold text-white shadow-[0_0_15px_rgba(220,38,38,0.35)]"
-          >
+          <button type="button" onClick={() => setCreateOpen((v) => !v)} className={BTN_PRIMARY}>
             + Create incident
           </button>
         </div>
       </div>
 
-      {createModalOpen && (
+      {createOpen && (
         <form
-          onSubmit={handleCreateIncident}
-          className="rounded-2xl bg-[#0b1629] border border-red-500/40 p-4 flex flex-wrap items-center gap-3"
+          onSubmit={handleCreate}
+          aria-label="Create incident"
+          className="rounded-2xl bg-[#0b1629] border border-red-500/40 p-4 space-y-3"
         >
-          <input
-            type="text"
-            value={newIncidentTitle}
-            onChange={(e) => setNewIncidentTitle(e.target.value)}
-            placeholder="Incident title (e.g., Suspicious OAuth token grant)..."
-            className="flex-1 min-w-[240px] px-3 py-1.5 rounded-xl bg-[#07101e] border border-slate-700 text-xs text-white"
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Incident title"
+              aria-label="Incident title"
+              className={`${INPUT} flex-1 min-w-[240px]`}
+            />
+            <select
+              aria-label="New incident severity"
+              value={newSeverity}
+              onChange={(e) => setNewSeverity(e.target.value as Severity)}
+              className={INPUT}
+            >
+              {SEVERITIES.map((s) => (
+                <option key={s} value={s}>
+                  {humanize(s)}
+                </option>
+              ))}
+            </select>
+            <button type="submit" disabled={creating} className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white disabled:opacity-50">
+              {creating ? "Creating…" : "Create"}
+            </button>
+          </div>
+          <textarea
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+            placeholder="What was observed (optional)"
+            aria-label="Incident description"
+            className={`${INPUT} w-full min-h-[56px]`}
           />
-          <select
-            aria-label="New incident severity"
-            value={newIncidentSeverity}
-            onChange={(e) =>
-              setNewIncidentSeverity(
-                e.target.value as "Critical" | "High" | "Medium"
-              )
-            }
-            className="px-3 py-1.5 rounded-xl bg-[#07101e] border border-slate-700 text-xs text-slate-200"
-          >
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-          </select>
-          <button
-            type="submit"
-            className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white"
-          >
-            Create
-          </button>
+          <ErrorNote message={createError} />
         </form>
       )}
 
-      {/* 4 KPI Cards */}
+      <Banner message={banner} onClose={() => setBanner(null)} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Active incidents
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {incidents.filter((i) => i.lifecycle === "Active").length}
-          </div>
-          <div className="text-xs text-red-400 font-medium">
-            1 critical • 1 high
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Untriaged alerts
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 6 : triageAlerts.length}
-          </div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "Of 18 alerts in the last 24 hours" : `${triageAlerts.length} alerts in queue`}
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Pending approvals
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? (approvalStatus === "Pending" ? 1 : 0) : 0}
-          </div>
-          <div className="text-xs text-amber-400 font-medium">
-            {IS_TEST_ENV ? "Containment request awaiting review" : "0 pending approvals"}
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">Response SLA</div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? "1 at risk" : `${incidents.filter((i) => i.severity === "Critical").length} critical`}
-          </div>
-          <div className="text-xs text-red-400 font-medium">
-            {IS_TEST_ENV ? "Critical containment due in 12 min" : "Within target SLA"}
-          </div>
-        </div>
+        <KpiCard
+          label="Active incidents"
+          loading={cases.loading}
+          error={cases.error}
+          value={activeCases.length}
+          sub={severityBreakdown(activeCases) || "No active incidents"}
+          subClass="text-red-400"
+        />
+        <KpiCard
+          label="Untriaged alerts"
+          loading={alerts.loading}
+          error={alerts.error}
+          value={untriaged.length}
+          sub={`Of ${openAlerts.length} open alerts`}
+        />
+        <KpiCard
+          label="Pending approvals"
+          loading={pending.loading}
+          error={pending.error}
+          value={pending.data?.proposals.length ?? 0}
+          sub={pending.data?.proposals.length ? "Response actions awaiting a decision" : "No response actions awaiting approval"}
+          subClass="text-amber-400"
+        />
+        <KpiCard
+          label="Awaiting your team"
+          loading={report.loading}
+          error={report.error}
+          value={report.data?.metrics.casesAwaitingCustomer ?? 0}
+          sub="Cases waiting on a customer response"
+        />
       </div>
 
-      {/* Main Content Split: Left (Incident queue + Alerts requiring triage) | Right (#4287 Detail) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 space-y-4">
-          {/* Incident Queue */}
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">Incident queue</h2>
-              <span className="text-xs text-slate-400">
-                {filteredIncidents.length} active
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[160px]">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search incidents"
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-400"
-                />
-              </div>
-
-              <select
-                aria-label="Incident severity filter"
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-200"
-              >
-                <option value="All">Severity: All</option>
-                <option value="Critical">Critical</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-              </select>
-
-              <div className="inline-flex rounded-xl bg-[#07101e] p-0.5 border border-slate-800">
-                {(["Active", "Closed"] as const).map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold ${
-                      statusFilter === st
-                        ? "bg-red-600 text-white"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="py-2 pr-3 font-medium">Incident</th>
-                    <th className="py-2 px-3 font-medium">Severity</th>
-                    <th className="py-2 px-3 font-medium">Status</th>
-                    <th className="py-2 px-3 font-medium">Owner</th>
-                    <th className="py-2 pl-3 font-medium text-right">
-                      Updated
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredIncidents.map((inc) => (
-                    <tr
-                      key={inc.id}
-                      onClick={() => setSelectedIncidentId(inc.id)}
-                      className={`cursor-pointer transition-colors ${
-                        selectedIncident.id === inc.id
-                          ? "bg-red-950/25"
-                          : "hover:bg-slate-800/30"
-                      }`}
-                    >
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        {inc.id} • {inc.title}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            inc.severity === "Critical"
-                              ? "bg-red-950/80 border border-red-500/40 text-red-300"
-                              : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                          }`}
-                        >
-                          {inc.severity}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            inc.status === "Investigating"
-                              ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                              : "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                          }`}
-                        >
-                          {inc.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">{inc.owner}</td>
-                      <td className="py-3 pl-3 text-right text-slate-400">
-                        {inc.updated}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="pt-2 border-t border-slate-800/80 text-xs text-slate-400">
-              Showing {filteredIncidents.length} of {incidents.length} active
-              incidents
+      {activeTab === "Alerts" ? (
+        <div className={`${CARD} space-y-3`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-white">Alerts</h2>
+            <div className="inline-flex rounded-xl bg-[#07101e] p-0.5 border border-slate-800">
+              {(["Open", "All"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setAlertFilter(f)}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                    alertFilter === f ? "bg-red-600 text-white" : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* Alerts requiring triage */}
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Alerts requiring triage
-              </h2>
-              <button
-                type="button"
-                onClick={() => setActiveTab("Alerts")}
-                className="text-xs font-semibold text-sky-400 hover:text-sky-300"
-              >
-                View all 6 →
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="py-2 pr-3 font-medium">Alert</th>
-                    <th className="py-2 px-3 font-medium">Severity</th>
-                    <th className="py-2 px-3 font-medium">Source</th>
-                    <th className="py-2 pl-3 font-medium text-right">
-                      Detected
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {triageAlerts.map((a) => (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400">
+                  <th className="py-2 pr-3 font-medium">Alert</th>
+                  <th className={TH}>Severity</th>
+                  <th className={TH}>Status</th>
+                  <th className={TH}>Detected</th>
+                  <th className="py-2 pl-3 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {visibleAlerts.length === 0 ? (
+                  <StateRow
+                    colSpan={5}
+                    loading={alerts.loading}
+                    error={alerts.error}
+                    empty="No alerts. Alerts appear when detection rules match telemetry from your connectors."
+                  />
+                ) : (
+                  visibleAlerts.map((a) => (
                     <tr key={a.id} className="hover:bg-slate-800/30">
                       <td className="py-3 pr-3 font-semibold text-white">
-                        {a.alert}
+                        {a.title}
+                        {a.description && <div className="text-[11px] font-normal text-slate-400">{a.description}</div>}
                       </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            a.severity === "High"
-                              ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                              : "bg-sky-950/80 border border-sky-500/40 text-sky-300"
-                          }`}
-                        >
-                          {a.severity}
-                        </span>
+                      <td className={TD}>
+                        <span className={`${PILL} ${severityClass(a.severity)}`}>{humanize(a.severity)}</span>
                       </td>
-                      <td className="py-3 px-3 text-slate-300">{a.source}</td>
-                      <td className="py-3 pl-3 text-right text-slate-400">
-                        {a.detected}
+                      <td className={TD}>
+                        <span className={`${PILL} ${statusClass(a.status)}`}>{humanize(a.status)}</span>
+                      </td>
+                      <td className={`${TD} text-slate-400`}>{timeAgo(a.created_at)}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <AlertStatusControl alert={a} onChanged={afterAlertChange} />
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-
-        {/* Right Detail Panel (#4287) */}
-        <div className="lg:col-span-5 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-4">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-xs text-slate-400 font-mono">
-                {selectedIncident.id}
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-7 space-y-4">
+            <div className={`${CARD} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-white">Incident queue</h2>
+                <span className="text-xs text-slate-400">
+                  {filteredCases.length} {statusFilter.toLowerCase()}
+                </span>
               </div>
-              <h2 className="text-lg font-bold text-white mt-0.5">
-                {selectedIncident.title}
-              </h2>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[160px]">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search incidents"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-400"
+                  />
+                </div>
+                <FilterSelect
+                  label="Incident severity filter"
+                  value={severityFilter}
+                  onChange={setSeverityFilter}
+                  options={SEVERITY_FILTER_OPTIONS}
+                />
+                <div className="inline-flex rounded-xl bg-[#07101e] p-0.5 border border-slate-800">
+                  {(["Active", "Closed"] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setStatusFilter(st)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                        statusFilter === st ? "bg-red-600 text-white" : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400">
+                      <th className="py-2 pr-3 font-medium">Incident</th>
+                      <th className={TH}>Severity</th>
+                      <th className={TH}>Status</th>
+                      <th className={TH}>Owner</th>
+                      <th className="py-2 pl-3 font-medium text-right">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredCases.length === 0 ? (
+                      <StateRow
+                        colSpan={5}
+                        loading={cases.loading}
+                        error={cases.error}
+                        empty={
+                          caseRows.length === 0
+                            ? "No incidents yet. Create one, or open one from an alert."
+                            : "No incidents match these filters."
+                        }
+                      />
+                    ) : (
+                      filteredCases.map((c) => (
+                        <tr
+                          key={c.id}
+                          onClick={() => setSelectedId(c.id)}
+                          className={`cursor-pointer transition-colors ${
+                            selectedCase?.id === c.id ? "bg-red-950/25" : "hover:bg-slate-800/30"
+                          }`}
+                        >
+                          <td className="py-3 pr-3 font-semibold text-white">{c.title}</td>
+                          <td className={TD}>
+                            <span className={`${PILL} ${severityClass(c.severity)}`}>{humanize(c.severity)}</span>
+                          </td>
+                          <td className={TD}>
+                            <span className={`${PILL} ${statusClass(c.status)}`}>{humanize(c.status)}</span>
+                          </td>
+                          <td className={`${TD} text-slate-300`}>{c.owner_id ? shortId(c.owner_id) : "Unassigned"}</td>
+                          <td className="py-3 pl-3 text-right text-slate-400">{timeAgo(c.updated_at ?? c.created_at)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {caseRows.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+                  Showing {filteredCases.length} of {caseRows.length} incidents
+                </div>
+              )}
             </div>
-            <Link
-              href="/customer/detection-response"
-              className="px-3 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#12243d] border border-slate-700 text-xs font-semibold text-slate-200 inline-flex items-center gap-1"
-            >
-              <span>Open full case</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+
+            <div className={`${CARD} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-white">Alerts requiring triage</h2>
+                {untriaged.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("Alerts")}
+                    className="text-xs font-semibold text-sky-400 hover:text-sky-300"
+                  >
+                    View all {untriaged.length} →
+                  </button>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400">
+                      <th className="py-2 pr-3 font-medium">Alert</th>
+                      <th className={TH}>Severity</th>
+                      <th className={TH}>Status</th>
+                      <th className="py-2 pl-3 font-medium text-right">Detected</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {untriaged.length === 0 ? (
+                      <StateRow colSpan={4} loading={alerts.loading} error={alerts.error} empty="No alerts waiting for triage." />
+                    ) : (
+                      untriaged.slice(0, 5).map((a) => (
+                        <tr key={a.id} className="hover:bg-slate-800/30">
+                          <td className="py-3 pr-3 font-semibold text-white">{a.title}</td>
+                          <td className={TD}>
+                            <span className={`${PILL} ${severityClass(a.severity)}`}>{humanize(a.severity)}</span>
+                          </td>
+                          <td className={`${TD} text-slate-300`}>{humanize(a.status)}</td>
+                          <td className="py-3 pl-3 text-right text-slate-400">{timeAgo(a.created_at)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-              {selectedIncident.severity}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-              {selectedIncident.status}
-            </span>
-          </div>
+          <div className={`lg:col-span-5 ${CARD} space-y-4`}>
+            {!selectedCase ? (
+              <p className="text-xs text-slate-400">
+                {cases.loading ? "Loading…" : "Select an incident to see its details."}
+              </p>
+            ) : (
+              <>
+                <div>
+                  <div className="text-xs text-slate-400 font-mono">{selectedCase.id}</div>
+                  <h2 className="text-lg font-bold text-white mt-0.5">{selectedCase.title}</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`${PILL} ${severityClass(selectedCase.severity)}`}>{humanize(selectedCase.severity)}</span>
+                  <span className={`${PILL} ${statusClass(selectedCase.status)}`}>{humanize(selectedCase.status)}</span>
+                </div>
+                <div className="space-y-2 text-xs border-y border-slate-800/80 py-3">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Owner</span>
+                    <span className="font-semibold text-white">
+                      {selectedCase.owner_id ? shortId(selectedCase.owner_id) : "Unassigned"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Priority</span>
+                    <span className="font-semibold text-white">{selectedCase.priority}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Queue</span>
+                    <span className="font-semibold text-white">{selectedCase.queue_id ?? "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Opened</span>
+                    <span className="font-semibold text-white">{formatDateTime(selectedCase.created_at)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Evidence items</span>
+                    <span className="font-semibold text-white">
+                      {evidence.error ? "Unavailable" : evidence.loading ? "…" : (evidence.data ?? []).length}
+                    </span>
+                  </div>
+                </div>
 
-          <div className="space-y-2 text-xs border-y border-slate-800/80 py-3">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Owner</span>
-              <span className="font-semibold text-white">
-                {selectedIncident.owner}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Affected</span>
-              <span className="font-semibold text-white">
-                {selectedIncident.affected}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">First detected</span>
-              <span className="font-semibold text-white">
-                {selectedIncident.firstDetected}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Related alerts</span>
-              <span className="font-semibold text-white">
-                {selectedIncident.relatedAlerts}
-              </span>
-            </div>
-          </div>
+                <div className={`${INNER} space-y-2`}>
+                  <div className="text-xs font-bold text-white">Investigation summary</div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {selectedCase.description || "No description recorded for this incident."}
+                  </p>
+                </div>
 
-          <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2">
-            <div className="text-xs font-bold text-white">
-              Investigation summary
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {selectedIncident.summary}
-            </p>
-            <Link
-              href="/customer/data-security"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-block pt-1"
-            >
-              Inspect 4 evidence items →
-            </Link>
-          </div>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white">Response approval</span>
+                    <span className="text-[11px] text-slate-400">
+                      {caseProposals.loading ? "Loading…" : `${selectedPending.length} pending`}
+                    </span>
+                  </div>
+                  <ErrorNote message={caseProposals.error} />
+                  {!caseProposals.loading && !caseProposals.error && selectedPending.length === 0 && (
+                    <p className="text-[11px] text-slate-400">No response actions are awaiting approval for this incident.</p>
+                  )}
+                  {selectedPending.map((p) => (
+                    <ProposalCard key={p.id} proposal={p} onDecided={afterDecision} />
+                  ))}
+                </div>
 
-          <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white">
-                Response approval
-              </span>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                  approvalStatus === "Pending"
-                    ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                    : "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                }`}
-              >
-                {approvalStatus}
-              </span>
-            </div>
-            <div className="text-xs font-semibold text-white">
-              Revoke active sessions
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Requested by SOC analyst • 09:24 UTC
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Execution remains blocked until authorized approval.
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setApprovalStatus("Approved");
-                backend
-                  .post("/api/v1/actions/proposals/4287/approve", {
-                    caseId: selectedIncident.id,
-                    action: "REVOKE_ACTIVE_SESSIONS",
-                  })
-                  .catch(() => {});
-              }}
-              className="w-full py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] hover:from-[#ef4444] hover:to-[#dc2626] text-xs font-semibold text-white shadow-[0_0_15px_rgba(220,38,38,0.3)]"
-            >
-              {approvalStatus === "Pending"
-                ? "Review request →"
-                : "Approved • Session revocation queued"}
-            </button>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            <div className="font-bold text-white">Latest activity</div>
-            <div className="text-slate-300">09:25 UTC • Evidence attached</div>
-            <div className="text-slate-300">09:24 UTC • Approval requested</div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="font-bold text-white">Latest activity</div>
+                  <ErrorNote message={timeline.error} />
+                  {!timeline.error && (timeline.data ?? []).length === 0 && (
+                    <div className="text-slate-400">{timeline.loading ? "Loading…" : "No activity recorded."}</div>
+                  )}
+                  {[...(timeline.data ?? [])]
+                    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
+                    .slice(0, 4)
+                    .map((t) => (
+                      <div key={t.id} className="text-slate-300">
+                        {formatDateTime(t.occurred_at)} • {t.title}
+                      </div>
+                    ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 /* ============================================================================
- * 3. EXPOSURE MANAGEMENT (Matches Image 3: 2.13.33 PM.jpeg)
+ * 3. EXPOSURE MANAGEMENT
  * ========================================================================== */
-export function CustomerExposureManagementSection() {
-  const [activeTab, setActiveTab] = useState<
-    "Overview" | "Exposure register" | "Attack paths" | "Remediation"
-  >("Overview");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedExpId, setSelectedExpId] = useState(IS_TEST_ENV ? "EXP-104" : "");
-  const [exposures, setExposures] = useState(
-    IS_TEST_ENV
-      ? [
-          {
-            id: "EXP-104",
-            title: "Exposed remote access",
-            severity: "Critical",
-            assets: 5,
-            owner: "Infrastructure",
-            due: "Overdue 1d",
-            status: "In progress",
-            reasons: [
-              "Internet reachable",
-              "5 production servers affected",
-              "Privileged access is exposed",
-            ],
-            recommendation:
-              "Restrict remote access to approved networks and require MFA.",
-          },
-          {
-            id: "EXP-108",
-            title: "Public data access",
-            severity: "Critical",
-            assets: 4,
-            owner: "Cloud team",
-            due: "Today",
-            status: "Open",
-            reasons: [
-              "Public read ACL detected on 4 cloud storage buckets",
-              "Contains confidential classification tags",
-            ],
-            recommendation:
-              "Disable public bucket access policies and enforce organization-level block public access.",
-          },
-          {
-            id: "EXP-112",
-            title: "Exposed admin interface",
-            severity: "Critical",
-            assets: 3,
-            owner: "Platform team",
-            due: "Nov 5",
-            status: "Open",
-            reasons: [
-              "Management plane reachable without zero-trust proxy",
-              "3 production workloads affected",
-            ],
-            recommendation:
-              "Place administrative interfaces behind private network ingress and identity-aware proxy.",
-          },
-        ]
-      : []
-  );
+function AcceptRiskForm({ finding, onAccepted }: { finding: Finding; onAccepted: (message: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [rationale, setRationale] = useState("");
+  const [authority, setAuthority] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!IS_TEST_ENV) {
-      backend
-        .get<any>("/api/v1/customer/exposures")
-        .then((res) => {
-          if (Array.isArray(res?.exposures)) {
-            setExposures(res.exposures);
-            if (res.exposures.length > 0) setSelectedExpId(res.exposures[0].id);
-          }
-        })
-        .catch(() => {});
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={`${BTN_SECONDARY} w-full mt-2`}>
+        Accept risk…
+      </button>
+    );
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!rationale.trim() || !authority.trim() || !expiresOn) {
+      setError("Rationale, accepting authority and an expiry date are all required.");
+      return;
     }
-  }, []);
-
-  const filteredExposures = exposures.filter(
-    (e) =>
-      !searchQuery.trim() ||
-      e.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const selectedExposure =
-    exposures.find((e) => e.id === selectedExpId) ||
-    exposures[0] || {
-      id: "No Exposure Selected",
-      title: "No exposures detected",
-      severity: "Low",
-      assets: 0,
-      owner: "Unassigned",
-      due: "—",
-      status: "Closed",
-      reasons: ["No data available — 0 active exposures for this tenant."],
-      recommendation: "Continue continuous exposure scanning.",
-    };
+    const expires = new Date(`${expiresOn}T23:59:59`);
+    if (Number.isNaN(expires.getTime()) || expires.getTime() <= Date.now()) {
+      setError("The expiry date must be in the future.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await backend.post(
+        `/api/v1/findings/${encodeURIComponent(finding.id)}/accept`,
+        { rationale: rationale.trim(), authority: authority.trim(), expiresAt: expires.toISOString() },
+        { confirmed: true },
+      );
+      setOpen(false);
+      onAccepted(`Risk accepted for "${finding.title}" until ${expires.toLocaleDateString()}.`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Exposure Management
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Prioritize business risk. Verify every fix.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
+    <form onSubmit={submit} aria-label="Accept risk" className="space-y-2 pt-2">
+      <textarea
+        aria-label="Acceptance rationale"
+        value={rationale}
+        onChange={(e) => setRationale(e.target.value)}
+        placeholder="Why this exposure is accepted, and what compensates for it"
+        className={`${INPUT} w-full min-h-[56px]`}
+      />
+      <input
+        aria-label="Accepting authority"
+        value={authority}
+        onChange={(e) => setAuthority(e.target.value)}
+        placeholder="Accepting authority (role or name)"
+        className={`${INPUT} w-full`}
+      />
+      <input
+        aria-label="Acceptance expires on"
+        type="date"
+        value={expiresOn}
+        onChange={(e) => setExpiresOn(e.target.value)}
+        className={`${INPUT} w-full`}
+      />
+      <ErrorNote message={error} />
+      <div className="flex gap-2">
+        <button type="submit" disabled={busy} className={BTN_PRIMARY}>
+          {busy ? "Submitting…" : "Record acceptance"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className={BTN_SECONDARY}>
+          Cancel
+        </button>
       </div>
+    </form>
+  );
+}
 
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(
-            [
-              "Overview",
-              "Exposure register",
-              "Attack paths",
-              "Remediation",
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab
-                  ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white shadow-[0_0_15px_rgba(220,38,38,0.35)]"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+export function CustomerExposureManagementSection() {
+  const [activeTab, setActiveTab] = useState<"Overview" | "Exposure register">("Overview");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("ALL");
+  const [selectedId, setSelectedId] = useState("");
+  const [banner, setBanner] = useState<string | null>(null);
 
+  const exposures = useBackend(() => customerApi.findings({ type: "EXPOSURE,MISCONFIGURATION" }));
+  const rows = exposures.data ?? [];
+  const open = rows.filter(isOpenFinding);
+  const scope = activeTab === "Overview" ? open : rows;
+
+  const filtered = scope.filter((f) => {
+    const q = searchQuery.trim().toLowerCase();
+    return (
+      (severityFilter === "ALL" || f.severity === severityFilter) &&
+      (!q ||
+        f.title.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q) ||
+        (f.asset_external_ref ?? "").toLowerCase().includes(q))
+    );
+  });
+  const selected = rows.find((f) => f.id === selectedId) ?? filtered[0] ?? null;
+  const linked = rows.filter((f) => f.asset_id).length;
+
+  return (
+    <div className={PAGE}>
+      <SectionHeader
+        title="Exposure Management"
+        subtitle="Prioritize business risk. Verify every fix."
+        updatedAt={exposures.loadedAt}
+      />
+
+      <div className={BAR}>
+        <Tabs tabs={["Overview", "Exposure register"] as const} active={activeTab} onChange={setActiveTab} />
         <button
           type="button"
-          onClick={() => exportCsvData("exposures-report.csv", exposures)}
-          className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#12243d] border border-slate-700/80 text-xs font-semibold text-slate-100"
+          disabled={rows.length === 0}
+          onClick={() => exportCsvData("exposures-report.csv", rows as unknown as Record<string, unknown>[])}
+          className={BTN_SECONDARY}
         >
           Export report
         </button>
       </div>
 
-      {/* 4 KPI Cards */}
+      <Banner message={banner} onClose={() => setBanner(null)} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Open exposures
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 24 : exposures.length}
-          </div>
-          <div className="text-xs text-red-400 font-medium">
-            {IS_TEST_ENV ? "3 critical • 8 high • 13 medium" : `${exposures.length} open exposures`}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Critical exposures
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 3 : exposures.filter((e) => e.severity === "Critical").length}
-          </div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "12 unique assets affected" : "Scoped tenant assets"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Overdue remediation
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 2 : exposures.filter((e) => e.due.includes("Overdue")).length}
-          </div>
-          <div className="text-xs text-amber-400 font-medium">
-            {IS_TEST_ENV ? "1 critical • 1 high" : "Remediation SLA tracker"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Awaiting verification
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 4 : exposures.filter((e) => e.status === "In progress").length}
-          </div>
-          <div className="text-xs text-slate-400">
-            Excluded from open exposures
-          </div>
-        </div>
+        <KpiCard
+          label="Open exposures"
+          loading={exposures.loading}
+          error={exposures.error}
+          value={open.length}
+          sub={severityBreakdown(open) || "No open exposures"}
+          subClass="text-red-400"
+        />
+        <KpiCard
+          label="Critical exposures"
+          loading={exposures.loading}
+          error={exposures.error}
+          value={open.filter((f) => f.severity === "CRITICAL").length}
+          sub="Open and rated critical"
+        />
+        <KpiCard
+          label="Stale assertions"
+          loading={exposures.loading}
+          error={exposures.error}
+          value={open.filter((f) => f.assertion?.state === "STALE").length}
+          sub="Not reconfirmed by their source in time"
+          subClass="text-amber-400"
+        />
+        <KpiCard
+          label="Accepted risk"
+          loading={exposures.loading}
+          error={exposures.error}
+          value={rows.filter((f) => f.status === "ACCEPTED").length}
+          sub="Excluded from open exposures"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 space-y-4">
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Prioritized exposures
-              </h2>
+        <div className={`lg:col-span-7 ${CARD} space-y-3`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-white">
+              {activeTab === "Overview" ? "Prioritized exposures" : "Exposure register"}
+            </h2>
+            {activeTab === "Overview" && rows.length > 0 && (
               <button
                 type="button"
                 onClick={() => setActiveTab("Exposure register")}
                 className="text-xs font-semibold text-sky-400 hover:text-sky-300"
               >
-                View all 24 →
+                View all {rows.length} →
               </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[160px]">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search exposures"
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-400"
-                />
-              </div>
-              <span className="px-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-200">
-                Severity: Critical
-              </span>
-              <span className="px-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-200">
-                Owner: All
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="py-2 pr-3 font-medium">Exposure</th>
-                    <th className="py-2 px-3 font-medium">Assets</th>
-                    <th className="py-2 px-3 font-medium">Owner</th>
-                    <th className="py-2 px-3 font-medium">Due</th>
-                    <th className="py-2 pl-3 font-medium text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredExposures.map((exp) => (
-                    <tr
-                      key={exp.id}
-                      onClick={() => setSelectedExpId(exp.id)}
-                      className={`cursor-pointer transition-colors ${
-                        selectedExposure.id === exp.id
-                          ? "bg-red-950/25"
-                          : "hover:bg-slate-800/30"
-                      }`}
-                    >
-                      <td className="py-3 pr-3 font-semibold text-white flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                          {exp.severity}
-                        </span>
-                        <span>
-                          {exp.id} • {exp.title}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-white font-semibold">
-                        {exp.assets}
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">{exp.owner}</td>
-                      <td
-                        className={`py-3 px-3 font-semibold ${
-                          exp.due.includes("Overdue")
-                            ? "text-red-400"
-                            : "text-slate-300"
-                        }`}
-                      >
-                        {exp.due}
-                      </td>
-                      <td className="py-3 pl-3 text-right">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            exp.status === "In progress"
-                              ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                              : "bg-red-950/80 border border-red-500/40 text-red-300"
-                          }`}
-                        >
-                          {exp.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            )}
           </div>
 
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Verification queue
-              </h2>
-              <span className="text-xs font-semibold text-sky-400">
-                View all 4 →
-              </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search exposures"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-400"
+              />
             </div>
+            <FilterSelect
+              label="Exposure severity filter"
+              value={severityFilter}
+              onChange={setSeverityFilter}
+              options={SEVERITY_FILTER_OPTIONS}
+            />
+          </div>
+
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
                   <th className="py-2 pr-3 font-medium">Exposure</th>
-                  <th className="py-2 px-3 font-medium">Change status</th>
-                  <th className="py-2 pl-3 font-medium text-right">
-                    Verification
-                  </th>
+                  <th className={TH}>Type</th>
+                  <th className={TH}>Asset</th>
+                  <th className={TH}>Source</th>
+                  <th className="py-2 pl-3 font-medium text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    EXP-096 • Public storage access
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Fix reported</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      Rescan pending
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    EXP-099 • Excessive permissions
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Fix reported</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      Evidence pending
-                    </span>
-                  </td>
-                </tr>
+                {filtered.length === 0 ? (
+                  <StateRow
+                    colSpan={5}
+                    loading={exposures.loading}
+                    error={exposures.error}
+                    empty={
+                      rows.length === 0
+                        ? "No exposure findings yet. Exposures and misconfigurations appear when a scanner or cloud connector reports them — see Integrations."
+                        : "No exposures match these filters."
+                    }
+                  />
+                ) : (
+                  filtered.map((f) => (
+                    <tr
+                      key={f.id}
+                      onClick={() => setSelectedId(f.id)}
+                      className={`cursor-pointer transition-colors ${
+                        selected?.id === f.id ? "bg-red-950/25" : "hover:bg-slate-800/30"
+                      }`}
+                    >
+                      <td className="py-3 pr-3 font-semibold text-white">
+                        <span className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${severityClass(f.severity)}`}>
+                            {humanize(f.severity)}
+                          </span>
+                          <span>{f.title}</span>
+                        </span>
+                      </td>
+                      <td className={`${TD} text-slate-300`}>{humanize(f.finding_type)}</td>
+                      <td className={`${TD} text-slate-300`}>{f.asset_external_ref ?? "Not linked"}</td>
+                      <td className={`${TD} text-slate-300`}>{f.source_system}</td>
+                      <td className="py-3 pl-3 text-right">
+                        <span className={`${PILL} ${statusClass(f.status)}`}>{humanize(f.status)}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
         <div className="lg:col-span-5 space-y-4">
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-xs text-slate-400 font-mono">
-                  {selectedExposure.id}
-                </div>
-                <h2 className="text-lg font-bold text-white">
-                  {selectedExposure.title}
-                </h2>
-              </div>
-              <span className="px-3 py-1 rounded-xl bg-[#0c1829] border border-slate-700 text-xs text-slate-200">
-                Open details ↗
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-1.5 text-xs">
-              <div className="font-bold text-white">Why this ranks first</div>
-              {selectedExposure.reasons.map((r) => (
-                <div key={r} className="text-slate-300">
-                  • {r}
-                </div>
-              ))}
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
-              <div className="font-bold text-white">
-                Recommended remediation
-              </div>
-              <p className="text-slate-300">
-                {selectedExposure.recommendation}
+          <div className={`${CARD} space-y-4`}>
+            {!selected ? (
+              <p className="text-xs text-slate-400">
+                {exposures.loading ? "Loading…" : "Select an exposure to see why it ranks where it does."}
               </p>
-              <div className="flex justify-between pt-1">
-                <span className="text-slate-400">Owner</span>
-                <span className="font-semibold text-white">
-                  {selectedExposure.owner}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Due</span>
-                <span className="font-semibold text-red-400">
-                  {selectedExposure.due}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab("Remediation")}
-                className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white"
-              >
-                Open remediation task →
-              </button>
-            </div>
+            ) : (
+              <>
+                <div>
+                  <div className="text-xs text-slate-400 font-mono">{selected.id}</div>
+                  <h2 className="text-lg font-bold text-white">{selected.title}</h2>
+                </div>
+                <div className={`${INNER} space-y-1.5 text-xs`}>
+                  <div className="font-bold text-white">Why it ranks here</div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Priority score</span>
+                    <span className="font-semibold text-white">{selected.priority_score ?? "Not scored"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Severity</span>
+                    <span className="font-semibold text-white">{humanize(selected.severity)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">First detected</span>
+                    <span className="font-semibold text-white">{formatDateTime(selected.first_detected_at)}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-400">Assertion</span>
+                    <span className="font-semibold text-white text-right">{selected.assertion?.reason}</span>
+                  </div>
+                </div>
+                <div className={`${INNER} space-y-2 text-xs`}>
+                  <div className="font-bold text-white">Details</div>
+                  <p className="text-slate-300">{selected.description || "The source did not provide a description."}</p>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-400">Status</span>
+                    <span className="font-semibold text-white">{humanize(selected.status)}</span>
+                  </div>
+                  {isOpenFinding(selected) && (
+                    <AcceptRiskForm
+                      key={selected.id}
+                      finding={selected}
+                      onAccepted={(message) => {
+                        setBanner(message);
+                        exposures.reload();
+                      }}
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-2">
-            <h2 className="text-base font-bold text-white">
-              Assessment coverage
-            </h2>
+          <div className={`${CARD} space-y-2`}>
+            <h2 className="text-base font-bold text-white">Asset linkage</h2>
             <div className="text-2xl font-extrabold text-white">
-              1,920 / 2,000
+              {exposures.error ? "—" : `${linked} / ${rows.length}`}
             </div>
-            <div className="text-xs text-slate-400">
-              Assets assessed within policy
-            </div>
-            <div className="text-xs text-amber-300 font-medium">
-              80 assets need reassessment
-            </div>
-            <Link
-              href="/customer/assets-inventory"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-block pt-1"
-            >
-              Review assessment gaps →
+            <div className="text-xs text-slate-400">Exposures linked to an inventory asset</div>
+            {rows.length - linked > 0 && (
+              <div className="text-xs text-amber-300 font-medium">
+                {rows.length - linked} not matched to any known asset
+              </div>
+            )}
+            <Link href="/customer/assets-inventory" className={`${LINK} pt-1`}>
+              Review inventory →
             </Link>
           </div>
         </div>
@@ -1654,302 +1739,243 @@ export function CustomerExposureManagementSection() {
 }
 
 /* ============================================================================
- * 4. ASSETS & INVENTORY (Matches Image 4: 2.19.12 PM.jpeg)
+ * 4. ASSETS & INVENTORY
  * ========================================================================== */
+const ASSET_TYPE_OPTIONS = [
+  "SERVER",
+  "ENDPOINT",
+  "CLOUD_RESOURCE",
+  "VIRTUAL_MACHINE",
+  "CONTAINER",
+  "APPLICATION",
+  "NETWORK_DEVICE",
+] as const;
+const CRITICALITY_OPTIONS = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
+
+function assetSources(a: Asset): string[] {
+  return Array.from(new Set((a.aliases ?? []).map((al) => al.source_system)));
+}
+
 export function CustomerAssetsInventorySection() {
-  const [activeTab, setActiveTab] = useState<
-    "Asset inventory" | "Discovery" | "Software" | "Lifecycle"
-  >("Asset inventory");
-  const [domainPill, setDomainPill] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [criticalityFilter, setCriticalityFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [addAssetModalOpen, setAddAssetModalOpen] = useState(false);
-  const [newAssetName, setNewAssetName] = useState("");
-  const [newAssetType, setNewAssetType] = useState("Server");
+  const [formOpen, setFormOpen] = useState(false);
+  const [hostname, setHostname] = useState("");
+  const [externalId, setExternalId] = useState("");
+  const [assetType, setAssetType] = useState<string>("SERVER");
+  const [criticality, setCriticality] = useState<(typeof CRITICALITY_OPTIONS)[number]>("MEDIUM");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
 
-  const [assets, setAssets] = useState(
-    IS_TEST_ENV
-      ? [
-          {
-            name: "PAY-DB-01",
-            code: "AST-0042",
-            type: "Server",
-            owner: "Infrastructure",
-            criticality: "Critical",
-            protection: "Gap",
-            lastSeen: "2 min ago",
-          },
-          {
-            name: "FIN-LT-204",
-            code: "AST-0204",
-            type: "Endpoint",
-            owner: "Finance IT",
-            criticality: "High",
-            protection: "Protected",
-            lastSeen: "1 min ago",
-          },
-          {
-            name: "API-PROD-07",
-            code: "AST-0707",
-            type: "Cloud workload",
-            owner: "Platform team",
-            criticality: "Critical",
-            protection: "Protected",
-            lastSeen: "3 min ago",
-          },
-          {
-            name: "EDGE-FW-02",
-            code: "AST-0902",
-            type: "Network device",
-            owner: "Network team",
-            criticality: "High",
-            protection: "Protected",
-            lastSeen: "1 min ago",
-          },
-          {
-            name: "ENG-LT-118",
-            code: "AST-0118",
-            type: "Endpoint",
-            owner: "Unassigned",
-            criticality: "Standard",
-            protection: "Gap",
-            lastSeen: "8 min ago",
-          },
-        ]
-      : []
-  );
+  const assets = useBackend(() => customerApi.assets());
+  const rows = assets.data ?? [];
+  const now = Date.now();
+  const isStale = (a: Asset) => now - new Date(a.last_seen_at).getTime() > STALE_ASSET_MS;
 
-  const filteredAssets = assets.filter((a) => {
-    const matchesDomain =
-      domainPill === "All" ||
-      (domainPill === "Endpoints" && a.type === "Endpoint") ||
-      (domainPill === "Servers" && a.type === "Server") ||
-      (domainPill === "Cloud workloads" && a.type === "Cloud workload") ||
-      (domainPill === "Network devices" && a.type === "Network device");
-    const matchesSearch =
-      !searchQuery.trim() ||
-      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.owner.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesDomain && matchesSearch;
+  const typeCounts = countBy(rows, (a) => a.asset_type);
+  const filtered = rows.filter((a) => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchesCriticality =
+      criticalityFilter === "ALL" ||
+      (criticalityFilter === "NONE" ? !a.criticality : a.criticality === criticalityFilter);
+    return (
+      (typeFilter === "ALL" || a.asset_type === typeFilter) &&
+      matchesCriticality &&
+      (!q ||
+        (a.name ?? "").toLowerCase().includes(q) ||
+        a.external_id.toLowerCase().includes(q) ||
+        a.id.toLowerCase().includes(q))
+    );
   });
 
-  const handleAddAsset = (e: React.FormEvent) => {
+  const unclassified = rows.filter((a) => !a.criticality).length;
+  const stale = rows.filter(isStale).length;
+  const sources = Array.from(new Set(rows.flatMap(assetSources))).sort();
+
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAssetName.trim()) return;
-    const assetName = newAssetName.trim().toUpperCase();
-    setAssets((prev) => [
-      {
-        name: assetName,
-        code: `AST-09${prev.length + 10}`,
-        type: newAssetType,
-        owner: "Infrastructure",
-        criticality: "High",
-        protection: "Protected",
-        lastSeen: "Just now",
-      },
-      ...prev,
-    ]);
-    backend
-      .post("/api/v1/customer/assets", {
-        name: assetName,
-        type: newAssetType,
-        owner: "Infrastructure",
-        criticality: "High",
-      })
-      .catch(() => {});
-    setNewAssetName("");
-    setAddAssetModalOpen(false);
+    const host = hostname.trim();
+    const ext = externalId.trim() || host;
+    if (!host) {
+      setSaveError("A hostname or asset name is required.");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const result = await customerApi.addAsset({
+        externalId: ext,
+        assetType,
+        hostname: host,
+        criticality,
+      });
+      setBanner(
+        result?.decision === "MATCHED"
+          ? `"${host}" matched an asset already in your inventory.`
+          : `Asset "${host}" added to your inventory.`,
+      );
+      setHostname("");
+      setExternalId("");
+      setFormOpen(false);
+      assets.reload();
+    } catch (err) {
+      setSaveError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  useEffect(() => {
-    backend
-      .get<any>("/api/v1/customer/assets")
-      .then((res) => {
-        if (Array.isArray(res?.assets) && res.assets.length > 0) {
-          setAssets(res.assets);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Assets &amp; Inventory
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Know every asset. Close every ownership and protection gap.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
-      </div>
+    <div className={PAGE}>
+      <SectionHeader
+        title="Assets & Inventory"
+        subtitle="Know every asset. Close every ownership and protection gap."
+        updatedAt={assets.loadedAt}
+      />
 
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(
-            ["Asset inventory", "Discovery", "Software", "Lifecycle"] as const
-          ).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab
-                  ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white shadow-[0_0_15px_rgba(220,38,38,0.35)]"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
+      <div className={BAR}>
+        <span className="text-xs text-slate-400 px-2">Inventory reported by connectors and manual entries</span>
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => exportCsvData("assets-inventory.csv", assets)}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#12243d] border border-slate-700/80 text-xs font-semibold text-slate-100"
+            disabled={rows.length === 0}
+            onClick={() =>
+              exportCsvData(
+                "assets-inventory.csv",
+                rows.map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  external_id: a.external_id,
+                  asset_type: a.asset_type,
+                  criticality: a.criticality,
+                  status: a.status,
+                  sources: assetSources(a).join(" "),
+                  first_seen_at: a.first_seen_at,
+                  last_seen_at: a.last_seen_at,
+                })),
+              )
+            }
+            className={BTN_SECONDARY}
           >
             Export
           </button>
-          <button
-            type="button"
-            onClick={() => setAddAssetModalOpen((v) => !v)}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white"
-          >
+          <button type="button" onClick={() => setFormOpen((v) => !v)} className={BTN_PRIMARY}>
             + Add asset
           </button>
         </div>
       </div>
 
-      {addAssetModalOpen && (
+      {formOpen && (
         <form
-          onSubmit={handleAddAsset}
-          className="rounded-2xl bg-[#0b1629] border border-red-500/40 p-4 flex flex-wrap items-center gap-3"
+          onSubmit={handleAdd}
+          aria-label="Add asset"
+          className="rounded-2xl bg-[#0b1629] border border-red-500/40 p-4 space-y-2"
         >
-          <input
-            type="text"
-            value={newAssetName}
-            onChange={(e) => setNewAssetName(e.target.value)}
-            placeholder="Asset hostname (e.g., CORE-API-09)..."
-            className="flex-1 min-w-[220px] px-3 py-1.5 rounded-xl bg-[#07101e] border border-slate-700 text-xs text-white"
-          />
-          <select
-            aria-label="Asset type"
-            value={newAssetType}
-            onChange={(e) => setNewAssetType(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-[#07101e] border border-slate-700 text-xs text-slate-200"
-          >
-            <option value="Server">Server</option>
-            <option value="Endpoint">Endpoint</option>
-            <option value="Cloud workload">Cloud workload</option>
-            <option value="Network device">Network device</option>
-          </select>
-          <button
-            type="submit"
-            className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white"
-          >
-            Save asset
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              value={hostname}
+              onChange={(e) => setHostname(e.target.value)}
+              placeholder="Hostname or asset name"
+              aria-label="Asset hostname"
+              className={`${INPUT} flex-1 min-w-[200px]`}
+            />
+            <input
+              type="text"
+              value={externalId}
+              onChange={(e) => setExternalId(e.target.value)}
+              placeholder="External ID (defaults to hostname)"
+              aria-label="Asset external ID"
+              className={`${INPUT} flex-1 min-w-[180px]`}
+            />
+            <select aria-label="Asset type" value={assetType} onChange={(e) => setAssetType(e.target.value)} className={INPUT}>
+              {ASSET_TYPE_OPTIONS.map((t) => (
+                <option key={t} value={t}>
+                  {humanize(t)}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Asset criticality"
+              value={criticality}
+              onChange={(e) => setCriticality(e.target.value as (typeof CRITICALITY_OPTIONS)[number])}
+              className={INPUT}
+            >
+              {CRITICALITY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {humanize(c)}
+                </option>
+              ))}
+            </select>
+            <button type="submit" disabled={saving} className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white disabled:opacity-50">
+              {saving ? "Saving…" : "Save asset"}
+            </button>
+          </div>
+          <ErrorNote message={saveError} />
         </form>
       )}
 
-      {/* 4 KPI Cards */}
+      <Banner message={banner} onClose={() => setBanner(null)} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            In-scope assets
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? "2,000" : assets.length.toLocaleString()}
-          </div>
-          <div className="text-xs text-slate-400">
-            Deduplicated active inventory
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Protected assets
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV
-              ? "1,840"
-              : assets.filter((a) => a.protection === "Protected").length.toLocaleString()}
-          </div>
-          <div className="text-xs text-emerald-400 font-medium">
-            {IS_TEST_ENV
-              ? "92% of in-scope assets"
-              : `${
-                  assets.length > 0
-                    ? Math.round(
-                        (assets.filter((a) => a.protection === "Protected").length /
-                          assets.length) *
-                          100
-                      )
-                    : 0
-                }% of in-scope assets`}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Protection gaps
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV
-              ? 160
-              : assets.filter((a) => a.protection !== "Protected").length}
-          </div>
-          <div className="text-xs text-red-400 font-medium">
-            {IS_TEST_ENV ? "3 business-critical systems" : "Unmonitored or gap assets"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Missing owners
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV
-              ? 28
-              : assets.filter((a) => !a.owner || a.owner === "Unassigned").length}
-          </div>
-          <div className="text-xs text-amber-400 font-medium">
-            Assignment required
-          </div>
-        </div>
+        <KpiCard
+          label="In-scope assets"
+          loading={assets.loading}
+          error={assets.error}
+          value={rows.length.toLocaleString()}
+          sub="Deduplicated active inventory"
+        />
+        <KpiCard
+          label="Critical or high"
+          loading={assets.loading}
+          error={assets.error}
+          value={rows.filter((a) => a.criticality === "CRITICAL" || a.criticality === "HIGH").length}
+          sub="Business-critical assets"
+          subClass="text-red-400"
+        />
+        <KpiCard
+          label="Unclassified"
+          loading={assets.loading}
+          error={assets.error}
+          value={unclassified}
+          sub="No criticality recorded"
+          subClass="text-amber-400"
+        />
+        <KpiCard
+          label="Not seen in 7 days"
+          loading={assets.loading}
+          error={assets.error}
+          value={stale}
+          sub="No source has reported them recently"
+          subClass="text-amber-400"
+        />
       </div>
 
-      {/* Main Asset Inventory Table */}
-      <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-4">
+      <div className={`${CARD} space-y-4`}>
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-white">Asset inventory</h2>
-          <span className="text-xs text-slate-400">2,000 assets</span>
+          <span className="text-xs text-slate-400">{rows.length} assets</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {[
-            { key: "All", label: "All 2,000" },
-            { key: "Endpoints", label: "Endpoints 1,000" },
-            { key: "Servers", label: "Servers 400" },
-            { key: "Cloud workloads", label: "Cloud workloads 500" },
-            { key: "Network devices", label: "Network devices 100" },
-          ].map((pill) => (
-            <button
-              key={pill.key}
-              type="button"
-              onClick={() => setDomainPill(pill.key)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors ${
-                domainPill === pill.key
-                  ? "bg-red-600 text-white"
-                  : "bg-[#0c1829] text-slate-300 border border-slate-800 hover:text-white"
-              }`}
-            >
-              {pill.label}
-            </button>
-          ))}
+          {[{ key: "ALL", label: `All ${rows.length}` }, ...Object.entries(typeCounts).map(([t, n]) => ({ key: t, label: `${humanize(t)} ${n}` }))].map(
+            (pill) => (
+              <button
+                key={pill.key}
+                type="button"
+                onClick={() => setTypeFilter(pill.key)}
+                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors ${
+                  typeFilter === pill.key
+                    ? "bg-red-600 text-white"
+                    : "bg-[#0c1829] text-slate-300 border border-slate-800 hover:text-white"
+                }`}
+              >
+                {pill.label}
+              </button>
+            ),
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -1959,19 +1985,20 @@ export function CustomerAssetsInventorySection() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by asset name, ID, IP, or owner"
+              placeholder="Search by asset name or ID"
               className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-400"
             />
           </div>
-          <span className="px-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-200">
-            Protection: All
-          </span>
-          <span className="px-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-200">
-            Criticality: All
-          </span>
-          <span className="px-3 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs text-slate-200">
-            Owner: All
-          </span>
+          <FilterSelect
+            label="Criticality filter"
+            value={criticalityFilter}
+            onChange={setCriticalityFilter}
+            options={[
+              { value: "ALL", label: "Criticality: All" },
+              ...CRITICALITY_OPTIONS.map((c) => ({ value: c, label: humanize(c) })),
+              { value: "NONE", label: "Not set" },
+            ]}
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -1979,120 +2006,102 @@ export function CustomerAssetsInventorySection() {
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
                 <th className="py-2 pr-3 font-medium">Asset</th>
-                <th className="py-2 px-3 font-medium">Type</th>
-                <th className="py-2 px-3 font-medium">Owner</th>
-                <th className="py-2 px-3 font-medium">Criticality</th>
-                <th className="py-2 px-3 font-medium">Protection</th>
+                <th className={TH}>Type</th>
+                <th className={TH}>Criticality</th>
+                <th className={TH}>Sources</th>
+                <th className={TH}>Status</th>
                 <th className="py-2 pl-3 font-medium text-right">Last seen</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {filteredAssets.map((a) => (
-                <tr key={a.code} className="hover:bg-slate-800/30">
-                  <td className="py-3 pr-3">
-                    <div className="font-bold text-white">{a.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      {a.code}
-                    </div>
-                  </td>
-                  <td className="py-3 px-3 text-slate-200">{a.type}</td>
-                  <td
-                    className={`py-3 px-3 ${
-                      a.owner === "Unassigned"
-                        ? "text-amber-400 font-semibold"
-                        : "text-slate-200"
-                    }`}
-                  >
-                    {a.owner}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        a.criticality === "Critical"
-                          ? "bg-red-950/80 border border-red-500/40 text-red-300"
-                          : a.criticality === "High"
-                          ? "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                          : "bg-slate-800 border border-slate-700 text-slate-300"
-                      }`}
-                    >
-                      {a.criticality}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        a.protection === "Protected"
-                          ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                          : "bg-red-950/80 border border-red-500/40 text-red-300"
-                      }`}
-                    >
-                      {a.protection}
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    {a.lastSeen}
-                  </td>
-                </tr>
-              ))}
+              {filtered.length === 0 ? (
+                <StateRow
+                  colSpan={6}
+                  loading={assets.loading}
+                  error={assets.error}
+                  empty={
+                    rows.length === 0
+                      ? "No assets yet. Assets appear when a connector reports them — see Integrations — or add one manually."
+                      : "No assets match these filters."
+                  }
+                />
+              ) : (
+                filtered.map((a) => (
+                  <tr key={a.id} className="hover:bg-slate-800/30">
+                    <td className="py-3 pr-3">
+                      <div className="font-bold text-white">{a.name ?? a.external_id}</div>
+                      <div className="text-[11px] text-slate-400 font-mono">{a.external_id}</div>
+                    </td>
+                    <td className={`${TD} text-slate-200`}>{humanize(a.asset_type)}</td>
+                    <td className={TD}>
+                      {a.criticality ? (
+                        <span className={`${PILL} ${severityClass(a.criticality)}`}>{humanize(a.criticality)}</span>
+                      ) : (
+                        <span className="text-amber-400 font-semibold">Not set</span>
+                      )}
+                    </td>
+                    <td className={`${TD} text-slate-300`}>{assetSources(a).join(", ") || "—"}</td>
+                    <td className={TD}>
+                      <span className={`${PILL} ${statusClass(a.status)}`}>{humanize(a.status)}</span>
+                    </td>
+                    <td className={`py-3 pl-3 text-right ${isStale(a) ? "text-amber-300" : "text-slate-300"}`}>
+                      {timeAgo(a.last_seen_at)}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        <div className="pt-2 border-t border-slate-800/80 text-xs text-slate-400">
-          Showing 1–{filteredAssets.length} of 2,000 assets
-        </div>
+        {rows.length > 0 && (
+          <div className="pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+            Showing {filtered.length} of {rows.length} assets
+          </div>
+        )}
       </div>
 
-      {/* Bottom Row: Inventory priorities + Discovery & data quality */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-2.5">
-          <h2 className="text-base font-bold text-white">
-            Inventory priorities
-          </h2>
-          <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/70">
-            <span className="text-slate-200">
-              Restore protection on 3 critical systems
-            </span>
-            <Link
-              href="/customer/integrations"
-              className="text-sky-400 font-semibold"
-            >
-              Inspect →
-            </Link>
-          </div>
-          <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/70">
-            <span className="text-slate-200">Assign owners to 28 assets</span>
-            <button type="button" className="text-sky-400 font-semibold">
-              Assign →
-            </button>
-          </div>
-          <div className="flex items-center justify-between text-xs py-1.5">
-            <span className="text-slate-200">
-              Review 12 possible duplicate records
-            </span>
-            <button type="button" className="text-sky-400 font-semibold">
-              Review →
-            </button>
-          </div>
+        <div className={`lg:col-span-7 ${CARD} space-y-2.5`}>
+          <h2 className="text-base font-bold text-white">Inventory priorities</h2>
+          {unclassified === 0 && stale === 0 && (
+            <p className="text-xs text-slate-400">
+              {assets.loading ? "Loading…" : assets.error ? "Unavailable." : "No inventory actions outstanding."}
+            </p>
+          )}
+          {unclassified > 0 && (
+            <div className="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/70">
+              <span className="text-slate-200">Set criticality on {unclassified} assets</span>
+              <button type="button" onClick={() => setCriticalityFilter("NONE")} className="text-sky-400 font-semibold">
+                Show →
+              </button>
+            </div>
+          )}
+          {stale > 0 && (
+            <div className="flex items-center justify-between text-xs py-1.5">
+              <span className="text-slate-200">Confirm {stale} assets not seen in the last 7 days</span>
+              <Link href="/customer/integrations" className="text-sky-400 font-semibold">
+                Check sources →
+              </Link>
+            </div>
+          )}
         </div>
 
-        <div className="lg:col-span-5 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-2 text-xs">
-          <h2 className="text-base font-bold text-white">
-            Discovery &amp; data quality
-          </h2>
-          <div className="flex justify-between py-1 border-b border-slate-800/70">
+        <div className={`lg:col-span-5 ${CARD} space-y-2 text-xs`}>
+          <h2 className="text-base font-bold text-white">Discovery &amp; data quality</h2>
+          <div className="flex justify-between gap-2 py-1 border-b border-slate-800/70">
             <span className="text-slate-400">Inventory sources</span>
-            <span className="font-semibold text-white">12 of 12 reporting</span>
+            <span className="font-semibold text-white text-right">{sources.length ? sources.join(", ") : "None reporting"}</span>
           </div>
           <div className="flex justify-between py-1 border-b border-slate-800/70">
-            <span className="text-slate-400">Last reconciliation</span>
-            <span className="font-semibold text-white">09:25 UTC</span>
+            <span className="text-slate-400">Latest observation</span>
+            <span className="font-semibold text-white">
+              {formatDateTime(latest(...rows.map((a) => a.last_seen_at))) || "—"}
+            </span>
           </div>
           <div className="flex justify-between py-1">
-            <span className="text-slate-400">Source conflicts</span>
-            <span className="font-semibold text-amber-300">
-              6 require review
-            </span>
+            <span className="text-slate-400">Seen by several sources</span>
+            <span className="font-semibold text-white">{rows.filter((a) => assetSources(a).length > 1).length}</span>
           </div>
         </div>
       </div>
@@ -2101,203 +2110,118 @@ export function CustomerAssetsInventorySection() {
 }
 
 /* ============================================================================
- * 5. VULNERABILITIES (Customer Vulnerability Management View)
+ * 5. VULNERABILITIES
  * ========================================================================== */
 export function CustomerVulnerabilitiesSection() {
-  const [activeTab, setActiveTab] = useState<
-    "Overview" | "CVE Findings" | "Patch SLA" | "Exceptions"
-  >("Overview");
+  const [activeTab, setActiveTab] = useState<"Overview" | "CVE Findings" | "Exceptions">("Overview");
+  const vulns = useBackend(() => customerApi.findings({ type: "VULNERABILITY" }));
+  const rows = vulns.data ?? [];
+  const open = rows.filter(isOpenFinding);
+  const shown =
+    activeTab === "Overview" ? open : activeTab === "Exceptions" ? rows.filter((f) => f.status === "ACCEPTED") : rows;
 
-  const [cveFindings, setCveFindings] = useState(
-    IS_TEST_ENV
-      ? [
-          {
-            cve: "CVE-2026-21480",
-            title: "Remote Code Execution in Edge VPN Gateway",
-            severity: "Critical",
-            cvss: "9.8",
-            affectedAssets: 3,
-            patchSla: "Due Today",
-            status: "Patching",
-          },
-          {
-            cve: "CVE-2026-19842",
-            title: "Privilege Escalation in Linux Kernel Netfilter",
-            severity: "High",
-            cvss: "8.4",
-            affectedAssets: 14,
-            patchSla: "Due Nov 7",
-            status: "Open",
-          },
-          {
-            cve: "CVE-2026-17205",
-            title: "TLS Session Ticket Memory Disclosure",
-            severity: "High",
-            cvss: "7.8",
-            affectedAssets: 8,
-            patchSla: "Due Nov 10",
-            status: "Open",
-          },
-        ]
-      : []
-  );
-
-  useEffect(() => {
-    if (!IS_TEST_ENV) {
-      backend
-        .get<any>("/api/v1/customer/vulnerabilities")
-        .then((res) => {
-          if (Array.isArray(res?.vulnerabilities)) {
-            setCveFindings(res.vulnerabilities);
-          }
-        })
-        .catch(() => {});
-    }
-  }, []);
+  const emptyText =
+    rows.length === 0
+      ? "No vulnerability findings yet. Findings appear when a scanner or cloud connector reports them — see Integrations."
+      : activeTab === "Exceptions"
+        ? "No accepted vulnerabilities."
+        : "No open vulnerability findings.";
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Vulnerabilities
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Prioritize exploitable CVEs. Track remediation SLAs across all
-            in-scope assets.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
-      </div>
+    <div className={PAGE}>
+      <SectionHeader
+        title="Vulnerabilities"
+        subtitle="Prioritize exploitable CVEs. Track remediation across all in-scope assets."
+        updatedAt={vulns.loadedAt}
+      />
 
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(
-            ["Overview", "CVE Findings", "Patch SLA", "Exceptions"] as const
-          ).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab
-                  ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+      <div className={BAR}>
+        <Tabs tabs={["Overview", "CVE Findings", "Exceptions"] as const} active={activeTab} onChange={setActiveTab} />
         <button
           type="button"
-          onClick={() => exportCsvData("vulnerabilities-report.csv", cveFindings)}
-          className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs font-semibold text-slate-100"
+          disabled={rows.length === 0}
+          onClick={() => exportCsvData("vulnerabilities-report.csv", rows as unknown as Record<string, unknown>[])}
+          className={BTN_SECONDARY}
         >
           Export report
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Critical CVEs
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 3 : cveFindings.filter((c) => c.severity === "Critical").length}
-          </div>
-          <div className="text-xs text-red-400 font-medium">
-            {IS_TEST_ENV ? "1 known exploited in the wild" : "Active critical findings"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            High severity CVEs
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? 22 : cveFindings.filter((c) => c.severity === "High").length}
-          </div>
-          <div className="text-xs text-amber-400 font-medium">
-            {IS_TEST_ENV ? "Across 34 production assets" : "Scoped production assets"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Patch SLA compliance
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? "94%" : cveFindings.length > 0 ? "94%" : "0%"}
-          </div>
-          <div className="text-xs text-emerald-400 font-medium">
-            Within 14-day critical SLA policy
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Scan coverage
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? "1,920 / 2,000" : `${cveFindings.length} / ${cveFindings.length}`}
-          </div>
-          <div className="text-xs text-slate-400">
-            Authenticated vulnerability assessment
-          </div>
-        </div>
+        <KpiCard
+          label="Critical CVEs"
+          loading={vulns.loading}
+          error={vulns.error}
+          value={open.filter((f) => f.severity === "CRITICAL").length}
+          sub="Open critical findings"
+          subClass="text-red-400"
+        />
+        <KpiCard
+          label="High severity CVEs"
+          loading={vulns.loading}
+          error={vulns.error}
+          value={open.filter((f) => f.severity === "HIGH").length}
+          sub="Open high findings"
+          subClass="text-amber-400"
+        />
+        <KpiCard
+          label="Resolved"
+          loading={vulns.loading}
+          error={vulns.error}
+          value={rows.filter((f) => f.status === "RESOLVED").length}
+          sub="Closed by remediation"
+          subClass="text-emerald-400"
+        />
+        <KpiCard
+          label="Stale assertions"
+          loading={vulns.loading}
+          error={vulns.error}
+          value={open.filter((f) => f.assertion?.state === "STALE").length}
+          sub="Open findings not reconfirmed by their scanner in time"
+        />
       </div>
 
-      <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
+      <div className={`${CARD} space-y-3`}>
         <h2 className="text-base font-bold text-white">
-          Prioritized vulnerability findings
+          {activeTab === "Overview"
+            ? "Prioritized vulnerability findings"
+            : activeTab === "Exceptions"
+              ? "Accepted vulnerabilities"
+              : "All vulnerability findings"}
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
                 <th className="py-2 pr-3 font-medium">CVE ID</th>
-                <th className="py-2 px-3 font-medium">Vulnerability</th>
-                <th className="py-2 px-3 font-medium">Severity</th>
-                <th className="py-2 px-3 font-medium">CVSS</th>
-                <th className="py-2 px-3 font-medium">Affected Assets</th>
-                <th className="py-2 px-3 font-medium">SLA</th>
+                <th className={TH}>Vulnerability</th>
+                <th className={TH}>Severity</th>
+                <th className={TH}>Priority score</th>
+                <th className={TH}>Asset</th>
+                <th className={TH}>First detected</th>
                 <th className="py-2 pl-3 font-medium text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {cveFindings.map((item) => (
-                <tr key={item.cve} className="hover:bg-slate-800/30">
-                  <td className="py-3 pr-3 font-mono font-bold text-sky-400">
-                    {item.cve}
-                  </td>
-                  <td className="py-3 px-3 font-semibold text-white">
-                    {item.title}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        item.severity === "Critical"
-                          ? "bg-red-950/80 border border-red-500/40 text-red-300"
-                          : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                      }`}
-                    >
-                      {item.severity}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-mono text-white">
-                    {item.cvss}
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">
-                    {item.affectedAssets} assets
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">{item.patchSla}</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {shown.length === 0 ? (
+                <StateRow colSpan={7} loading={vulns.loading} error={vulns.error} empty={emptyText} />
+              ) : (
+                shown.map((f) => (
+                  <tr key={f.id} className="hover:bg-slate-800/30">
+                    <td className="py-3 pr-3 font-mono font-bold text-sky-400">{f.vulnerability_ref ?? "—"}</td>
+                    <td className={`${TD} font-semibold text-white`}>{f.title}</td>
+                    <td className={TD}>
+                      <span className={`${PILL} ${severityClass(f.severity)}`}>{humanize(f.severity)}</span>
+                    </td>
+                    <td className={`${TD} font-mono text-white`}>{f.priority_score ?? "—"}</td>
+                    <td className={`${TD} text-slate-300`}>{f.asset_external_ref ?? "Not linked"}</td>
+                    <td className={`${TD} text-slate-300`}>{timeAgo(f.first_detected_at)}</td>
+                    <td className="py-3 pl-3 text-right">
+                      <span className={`${PILL} ${statusClass(f.status)}`}>{humanize(f.status)}</span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -2307,727 +2231,593 @@ export function CustomerVulnerabilitiesSection() {
 }
 
 /* ============================================================================
- * 6. DETECTION & RESPONSE (Matches Image 5: 2.33.26 PM.jpeg)
+ * 6. DETECTION & RESPONSE
  * ========================================================================== */
+interface PlaybookRun {
+  id: string;
+  caseId: string;
+  playbookKey: string;
+  playbookOwner: string;
+  version: number;
+  mode: string;
+  status: string;
+  triggeredBy: string;
+  startedAt: string;
+  completedAt: string | null;
+  terminationReason: string | null;
+}
+
+function publishedVersion(d: DetectionDefinition) {
+  const versions = (d.versions ?? []) as Array<{ status?: string; version?: number | string; severity?: string }>;
+  return versions.find((v) => v.status === "PUBLISHED") ?? null;
+}
+
 export function CustomerDetectionResponseSection() {
-  const [activeTab, setActiveTab] = useState<
-    | "Overview"
-    | "Detection rules"
-    | "Playbooks"
-    | "Approvals"
-    | "Execution history"
-  >("Overview");
-  const [approvedSessionRevoke, setApprovedSessionRevoke] = useState(false);
+  type Tab = "Overview" | "Detection rules" | "Approvals" | "Execution history";
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const [banner, setBanner] = useState<string | null>(null);
+
+  const definitions = useBackend(() => customerApi.detectionDefinitions());
+  const alerts = useBackend(() => customerApi.alerts(100));
+  const runs = useBackend(async () => asList<PlaybookRun>(await backend.get("/api/v1/playbooks/runs")));
+  const pending = useBackend(() => loadPendingProposals());
+
+  const defs = definitions.data ?? [];
+  const openAlerts = (alerts.data ?? []).filter(isOpenAlert);
+  const alertsByRule = countBy(openAlerts, (a) => a.detection_definition_id);
+  const runRows = [...(runs.data ?? [])].sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+  const proposals = pending.data?.proposals ?? [];
+  const caseTitle = (id: string | null) => pending.data?.cases.find((c) => c.id === id)?.title ?? "";
+
+  const show = (panel: Tab) => activeTab === "Overview" || activeTab === panel;
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Detection &amp; Response
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Keep detections healthy. Govern every response.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
-      </div>
+    <div className={PAGE}>
+      <SectionHeader
+        title="Detection & Response"
+        subtitle="Keep detections healthy. Govern every response."
+        updatedAt={latest(definitions.loadedAt, runs.loadedAt)}
+      />
 
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(
-            [
-              "Overview",
-              "Detection rules",
-              "Playbooks",
-              "Approvals",
-              "Execution history",
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab
-                  ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
+      <div className={BAR}>
+        <Tabs
+          tabs={["Overview", "Detection rules", "Approvals", "Execution history"] as const}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
         <button
           type="button"
+          disabled={defs.length === 0}
           onClick={() =>
-            exportCsvData("detection-response-report.csv", [
-              {
-                rule: "Privileged sign-in anomaly",
-                domain: "Identity",
-                health: "Degraded",
-              },
-              {
-                rule: "Lateral movement detection",
-                domain: "Endpoint",
-                health: "Healthy",
-              },
-            ])
+            exportCsvData(
+              "detection-rules.csv",
+              defs.map((d) => ({
+                key: d.key,
+                name: d.name,
+                category: d.category,
+                status: d.status,
+                published_version: publishedVersion(d)?.version ?? "",
+                open_alerts: alertsByRule[d.id] ?? 0,
+              })),
+            )
           }
-          className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs font-semibold text-slate-100"
+          className={BTN_SECONDARY}
         >
           Export report
         </button>
       </div>
 
-      {/* 4 KPI Cards */}
+      <Banner message={banner} onClose={() => setBanner(null)} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Enabled rules
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? 148 : 8}</div>
-          <div className="text-xs text-emerald-400 font-medium">
-            {IS_TEST_ENV ? "142 healthy • 6 degraded" : "8 G07 launch candidate rules active"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Ready playbooks
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "18 / 20" : "0 / 0"}</div>
-          <div className="text-xs text-amber-400 font-medium">
-            {IS_TEST_ENV ? "2 blocked by prerequisites" : "No playbooks blocked"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Pending approvals
-          </div>
-          <div className="text-3xl font-extrabold text-white">
-            {IS_TEST_ENV ? (approvedSessionRevoke ? 0 : 1) : 0}
-          </div>
-          <div className="text-xs text-red-400 font-medium">
-            {IS_TEST_ENV ? "Case #4287 • session revocation" : "0 pending approvals"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Completed executions
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "11 / 12" : "0"}</div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "Last 24 hours • 1 failed" : "Last 24 hours"}
-          </div>
-        </div>
+        <KpiCard
+          label="Enabled rules"
+          loading={definitions.loading}
+          error={definitions.error}
+          value={defs.filter((d) => d.status === "ACTIVE").length}
+          sub={`Of ${defs.length} defined rules`}
+          subClass="text-emerald-400"
+        />
+        <KpiCard
+          label="Open alerts"
+          loading={alerts.loading}
+          error={alerts.error}
+          value={openAlerts.length}
+          sub={openAlerts.length ? `Raised by ${Object.keys(alertsByRule).length} rules` : "No open alerts"}
+        />
+        <KpiCard
+          label="Pending approvals"
+          loading={pending.loading}
+          error={pending.error}
+          value={proposals.length}
+          sub={proposals.length ? "Response actions awaiting a decision" : "No response actions awaiting approval"}
+          subClass="text-amber-400"
+        />
+        <KpiCard
+          label="Playbook runs"
+          loading={runs.loading}
+          error={runs.error}
+          value={runRows.length}
+          sub={
+            runRows.length
+              ? Object.entries(countBy(runRows, (r) => r.status))
+                  .map(([s, n]) => `${n} ${humanize(s).toLowerCase()}`)
+                  .join(" • ")
+              : "No playbooks have run"
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 space-y-4">
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-white">
-                  Detection health
-                </h2>
-                <p className="text-xs text-slate-400">
-                  6 rules affected by identity source delay
-                </p>
+        {(show("Detection rules") || show("Execution history")) && (
+          <div className={`${activeTab === "Overview" ? "lg:col-span-7" : "lg:col-span-12"} space-y-4`}>
+            {show("Detection rules") && (
+              <div className={`${CARD} space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-white">Detection rules</h2>
+                    <p className="text-xs text-slate-400">Rules defined for your tenant and their published versions</p>
+                  </div>
+                  {activeTab === "Overview" && defs.length > 0 && (
+                    <button type="button" onClick={() => setActiveTab("Detection rules")} className="text-xs font-semibold text-sky-400">
+                      View all {defs.length} →
+                    </button>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="py-2 pr-3 font-medium">Rule</th>
+                        <th className={TH}>Domain</th>
+                        <th className={TH}>Status</th>
+                        <th className={TH}>Published version</th>
+                        <th className="py-2 pl-3 font-medium text-right">Open alerts</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {defs.length === 0 ? (
+                        <StateRow
+                          colSpan={5}
+                          loading={definitions.loading}
+                          error={definitions.error}
+                          empty="No detection rules defined for this tenant."
+                        />
+                      ) : (
+                        (activeTab === "Overview" ? defs.slice(0, 6) : defs).map((d) => {
+                          const v = publishedVersion(d);
+                          return (
+                            <tr key={d.id}>
+                              <td className="py-3 pr-3">
+                                <div className="font-semibold text-white">{d.name}</div>
+                                <div className="text-[11px] text-slate-400 font-mono">{d.key}</div>
+                              </td>
+                              <td className={`${TD} text-slate-300`}>{humanize(d.category) || "—"}</td>
+                              <td className={TD}>
+                                <span className={`${PILL} ${statusClass(d.status)}`}>{humanize(d.status)}</span>
+                              </td>
+                              <td className={`${TD} text-slate-300`}>
+                                {v ? `v${v.version}${v.severity ? ` • ${humanize(v.severity)}` : ""}` : "None published"}
+                              </td>
+                              <td className="py-3 pl-3 text-right text-slate-300">{alertsByRule[d.id] ?? 0}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab("Detection rules")}
-                className="text-xs font-semibold text-sky-400"
-              >
-                View all 148 →
-              </button>
-            </div>
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 pr-3 font-medium">Rule</th>
-                  <th className="py-2 px-3 font-medium">Domain</th>
-                  <th className="py-2 px-3 font-medium">Telemetry</th>
-                  <th className="py-2 pl-3 font-medium text-right">
-                    Last validation
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Privileged sign-in anomaly
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Identity</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      Degraded
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Passed • Nov 3
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Lateral movement detection
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Endpoint</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Healthy
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Passed • Nov 4
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Suspicious outbound traffic
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Network</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Healthy
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Passed • Nov 4
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Cloud privilege change
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Cloud audit</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                      Healthy
-                    </span>
-                  </td>
-                  <td className="py-3 pl-3 text-right text-slate-300">
-                    Passed • Nov 4
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+            )}
 
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Recent response executions
-              </h2>
-              <button
-                type="button"
-                onClick={() => setActiveTab("Execution history")}
-                className="text-xs font-semibold text-sky-400"
-              >
-                View history →
-              </button>
-            </div>
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 pr-3 font-medium">Action</th>
-                  <th className="py-2 px-3 font-medium">Case</th>
-                  <th className="py-2 px-3 font-medium">Result</th>
-                  <th className="py-2 pl-3 font-medium text-right">
-                    Verification
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {IS_TEST_ENV ? (
-                  <>
-                    <tr>
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        Isolate endpoint
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">#4286</td>
-                      <td className="py-3 px-3">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                          Completed
-                        </span>
-                      </td>
-                      <td className="py-3 pl-3 text-right text-slate-300">
-                        Isolation confirmed
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        Block destination
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">#4279</td>
-                      <td className="py-3 px-3">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                          Completed
-                        </span>
-                      </td>
-                      <td className="py-3 pl-3 text-right text-slate-300">
-                        Policy confirmed
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        Collect forensic package
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">#4278</td>
-                      <td className="py-3 px-3">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                          Failed
-                        </span>
-                      </td>
-                      <td className="py-3 pl-3 text-right text-slate-300">
-                        Connector timeout
-                      </td>
-                    </tr>
-                  </>
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
-                      No data available — 0 recent response executions.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            {show("Execution history") && (
+              <div className={`${CARD} space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-white">Recent response executions</h2>
+                  {activeTab === "Overview" && runRows.length > 0 && (
+                    <button type="button" onClick={() => setActiveTab("Execution history")} className="text-xs font-semibold text-sky-400">
+                      View history →
+                    </button>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="py-2 pr-3 font-medium">Playbook</th>
+                        <th className={TH}>Case</th>
+                        <th className={TH}>Mode</th>
+                        <th className={TH}>Result</th>
+                        <th className="py-2 pl-3 font-medium text-right">Started</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {runRows.length === 0 ? (
+                        <StateRow
+                          colSpan={5}
+                          loading={runs.loading}
+                          error={runs.error}
+                          empty="No response playbooks have run for this tenant."
+                        />
+                      ) : (
+                        (activeTab === "Overview" ? runRows.slice(0, 5) : runRows).map((r) => (
+                          <tr key={r.id}>
+                            <td className="py-3 pr-3 font-semibold text-white">
+                              {r.playbookKey} <span className="text-slate-400 font-normal">v{r.version}</span>
+                            </td>
+                            <td className={`${TD} text-slate-300 font-mono`}>{shortId(r.caseId)}</td>
+                            <td className={`${TD} text-slate-300`}>{humanize(r.mode)}</td>
+                            <td className={TD}>
+                              <span className={`${PILL} ${statusClass(r.status)}`}>{humanize(r.status)}</span>
+                              {r.terminationReason && <div className="text-[11px] text-slate-400 mt-0.5">{r.terminationReason}</div>}
+                            </td>
+                            <td className="py-3 pl-3 text-right text-slate-300">{timeAgo(r.startedAt)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        <div className="lg:col-span-5 space-y-4">
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Approval required
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                {approvedSessionRevoke ? "0 pending" : "1 pending"}
-              </span>
-            </div>
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
-              <div className="text-sm font-bold text-white">
-                Revoke active sessions
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Case</span>
-                <span className="font-semibold text-white">#4287</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Scope</span>
-                <span className="font-semibold text-white">1 account</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Requested</span>
-                <span className="font-semibold text-white">
-                  SOC analyst • 09:24 UTC
+        {show("Approvals") && (
+          <div className={`${activeTab === "Overview" ? "lg:col-span-5" : "lg:col-span-12"} space-y-4`}>
+            <div className={`${CARD} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-white">Approval required</h2>
+                <span className={`${PILL} bg-amber-950/80 border border-amber-500/40 text-amber-300`}>
+                  {pending.loading ? "…" : `${proposals.length} pending`}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Impact</span>
-                <span className="font-semibold text-white">
-                  User must sign in again
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Approval</span>
-                <span className="font-semibold text-white">
-                  Authorized incident lead required
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setApprovedSessionRevoke(true)}
-                className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white"
-              >
-                {approvedSessionRevoke
-                  ? "Approved & Dispatched"
-                  : "Review evidence & request →"}
-              </button>
+              <ErrorNote message={pending.error} />
+              {!pending.loading && !pending.error && proposals.length === 0 && (
+                <p className="text-xs text-slate-400">No response actions are awaiting approval.</p>
+              )}
+              {proposals.map((p) => (
+                <ProposalCard
+                  key={p.id}
+                  proposal={p}
+                  caseTitle={caseTitle(p.case_id)}
+                  onDecided={(message) => {
+                    setBanner(message);
+                    pending.reload();
+                  }}
+                />
+              ))}
             </div>
           </div>
-
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3 text-xs">
-            <h2 className="text-base font-bold text-white">
-              Playbook readiness
-            </h2>
-            <div className="text-lg font-extrabold text-white">
-              18 ready | 2 blocked
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800/70">
-              <span className="text-slate-300">Cloud credential rotation</span>
-              <span className="text-amber-300 font-semibold">
-                Permission missing
-              </span>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="text-slate-300">Host evidence capture</span>
-              <span className="text-red-400 font-semibold">
-                Connector unavailable
-              </span>
-            </div>
-            <Link
-              href="/customer/integrations"
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-block pt-1"
-            >
-              Review prerequisites →
-            </Link>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
 /* ============================================================================
- * 7. IDENTITY & ACCESS (Matches Image 6: 2.59.08 PM.jpeg)
+ * 7. IDENTITY & ACCESS
  * ========================================================================== */
+interface JitElevation {
+  id: string;
+  superAdminPrincipalId: string;
+  targetTenantId: string;
+  statedPurpose: string;
+  requestedDurationMinutes: number;
+  roleCode: string;
+  status: string;
+  approvedByPrincipalId: string | null;
+  rejectionReason: string | null;
+  approvedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+async function loadJitAudit(): Promise<JitElevation[]> {
+  const s = await customerApi.session();
+  return asList<JitElevation>(await backend.get(`/api/v1/tenants/${encodeURIComponent(s.tenantId)}/jit-audit`));
+}
+
+function isLiveElevation(j: JitElevation, now: number) {
+  return j.status === "APPROVED" && (!j.expiresAt || new Date(j.expiresAt).getTime() > now);
+}
+
 export function CustomerIdentityAccessSection() {
-  const [activeTab, setActiveTab] = useState<
-    "Overview" | "Identities" | "Privileged access" | "Access reviews"
-  >("Overview");
-  const [requestApproved, setRequestApproved] = useState(false);
+  type Tab = "Overview" | "Identities" | "Privileged access";
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+
+  const identities = useBackend(() => customerApi.identities());
+  const definitions = useBackend(() => customerApi.detectionDefinitions());
+  const alerts = useBackend(() => customerApi.alerts(100));
+  const jit = useBackend(() => loadJitAudit());
+
+  const people = identities.data ?? [];
+  const human = people.filter((i) => i.identity_type === "HUMAN");
+  const nonHuman = people.filter((i) => i.identity_type !== "HUMAN");
+  const identityRuleIds = new Set(
+    (definitions.data ?? []).filter((d) => d.category === "IDENTITY").map((d) => d.id),
+  );
+  const identityAlerts = (alerts.data ?? []).filter(
+    (a) => isOpenAlert(a) && (identityRuleIds.has(a.detection_definition_id) || Boolean(a.primary_identity_id)),
+  );
+  const identityAlertsError = alerts.error ?? definitions.error;
+  const now = Date.now();
+  const elevations = jit.data ?? [];
+  const live = elevations.filter((j) => isLiveElevation(j, now));
+  const pendingElevations = elevations.filter((j) => j.status === "PENDING");
+
+  const show = (panel: Tab) => activeTab === "Overview" || activeTab === panel;
+
+  const identityTable = (rows: IdentityEntity[], empty: string) => (
+    <table className="w-full text-left border-collapse text-xs">
+      <thead>
+        <tr className="border-b border-slate-800 text-slate-400">
+          <th className="py-2 pr-3 font-medium">Identity</th>
+          <th className={TH}>Type</th>
+          <th className={TH}>Sources</th>
+          <th className={TH}>Status</th>
+          <th className="py-2 pl-3 font-medium text-right">Last seen</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-800/60">
+        {rows.length === 0 ? (
+          <StateRow colSpan={5} loading={identities.loading} error={identities.error} empty={empty} />
+        ) : (
+          rows.map((i) => (
+            <tr key={i.id}>
+              <td className="py-3 pr-3">
+                <div className="font-semibold text-white">{i.display_name ?? i.email ?? i.external_id}</div>
+                <div className="text-[11px] text-slate-400">{i.email ?? i.external_id}</div>
+              </td>
+              <td className={`${TD} text-slate-300`}>{humanize(i.identity_type)}</td>
+              <td className={`${TD} text-slate-300`}>
+                {Array.from(new Set((i.aliases ?? []).map((a) => a.source_system))).join(", ") || "—"}
+              </td>
+              <td className={TD}>
+                <span className={`${PILL} ${statusClass(i.status)}`}>{humanize(i.status)}</span>
+              </td>
+              <td className="py-3 pl-3 text-right text-slate-300">{timeAgo(i.last_seen_at)}</td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
 
   return (
-    <div className="w-full min-h-full bg-gradient-to-b from-[#071120] via-[#060f1d] to-[#050c18] text-slate-100 px-6 py-5 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-white">
-            Identity &amp; Access
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Reduce identity risk. Keep privileged access accountable.
-          </p>
-        </div>
-        <div className="text-xs text-slate-400">
-          Updated Nov 4, 2026 • 09:30 UTC
-        </div>
-      </div>
+    <div className={PAGE}>
+      <SectionHeader
+        title="Identity & Access"
+        subtitle="Reduce identity risk. Keep privileged access accountable."
+        updatedAt={latest(identities.loadedAt, jit.loadedAt)}
+      />
 
-      <div className="rounded-2xl bg-[#0a1526]/95 border border-slate-800/90 p-2.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-1 bg-[#07101e] p-1 rounded-xl border border-slate-800/80">
-          {(
-            [
-              "Overview",
-              "Identities",
-              "Privileged access",
-              "Access reviews",
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === tab
-                  ? "bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-white"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
+      <div className={BAR}>
+        <Tabs tabs={["Overview", "Identities", "Privileged access"] as const} active={activeTab} onChange={setActiveTab} />
         <button
           type="button"
+          disabled={people.length === 0}
           onClick={() =>
-            exportCsvData("identity-access-report.csv", [
-              {
-                finding: "Privileged accounts without MFA",
-                scope: "8 accounts",
-                severity: "High",
-              },
-              {
-                finding: "Dormant privileged accounts",
-                scope: "3 accounts",
-                severity: "High",
-              },
-            ])
+            exportCsvData(
+              "identities.csv",
+              people.map((i) => ({
+                id: i.id,
+                display_name: i.display_name,
+                email: i.email,
+                identity_type: i.identity_type,
+                status: i.status,
+                last_seen_at: i.last_seen_at,
+              })),
+            )
           }
-          className="px-3.5 py-1.5 rounded-xl bg-[#0c1829] border border-slate-700/80 text-xs font-semibold text-slate-100"
+          className={BTN_SECONDARY}
         >
           Export report
         </button>
       </div>
 
-      {/* 4 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Monitored identities
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "1,280" : 1}</div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "1,200 human • 80 workload" : "Authenticated tenant identities"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Privileged MFA coverage
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? "90%" : "0%"}</div>
-          <div className="text-xs text-slate-400">
-            {IS_TEST_ENV ? "72 of 80 human admin accounts" : "Awaiting IdP connector"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Privileged MFA gaps
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? 8 : 0}</div>
-          <div className="text-xs text-amber-400 font-medium">
-            {IS_TEST_ENV ? "Human admin accounts need review" : "0 MFA gaps detected"}
-          </div>
-        </div>
-        <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-4 space-y-1.5 shadow-xl">
-          <div className="text-xs font-medium text-slate-300">
-            Reviews overdue
-          </div>
-          <div className="text-3xl font-extrabold text-white">{IS_TEST_ENV ? 6 : 0}</div>
-          <div className="text-xs text-amber-400 font-medium">
-            {IS_TEST_ENV ? "Access decisions awaiting owners" : "0 overdue reviews"}
-          </div>
-        </div>
+        <KpiCard
+          label="Monitored identities"
+          loading={identities.loading}
+          error={identities.error}
+          value={people.length.toLocaleString()}
+          sub={`${human.length} human • ${nonHuman.length} non-human`}
+        />
+        <KpiCard
+          label="Workload identities"
+          loading={identities.loading}
+          error={identities.error}
+          value={nonHuman.length}
+          sub="Service accounts, workloads and applications"
+        />
+        <KpiCard
+          label="Identity alerts"
+          loading={alerts.loading || definitions.loading}
+          error={identityAlertsError}
+          value={identityAlerts.length}
+          sub="Open alerts from identity detections"
+          subClass="text-amber-400"
+        />
+        <KpiCard
+          label="Operator elevations"
+          loading={jit.loading}
+          error={jit.error}
+          value={live.length}
+          sub={`Active now • ${pendingElevations.length} pending`}
+          subClass="text-amber-400"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-7 space-y-4">
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Priority identity risks
-              </h2>
-              <button
-                type="button"
-                onClick={() => setActiveTab("Identities")}
-                className="text-xs font-semibold text-sky-400"
-              >
-                View all →
-              </button>
-            </div>
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 pr-3 font-medium">Finding</th>
-                  <th className="py-2 px-3 font-medium">Scope</th>
-                  <th className="py-2 px-3 font-medium">Severity</th>
-                  <th className="py-2 px-3 font-medium">Owner</th>
-                  <th className="py-2 pl-3 font-medium text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Privileged accounts without MFA
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">8 accounts</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Identity team</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Dormant privileged accounts
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">3 accounts</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      High
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">IAM operations</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                      In review
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Workload credentials past rotation
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">5 identities</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300">
-                      Medium
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">Platform team</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Open
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 pr-3 font-semibold text-white">
-                    Access reviews overdue
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">6 decisions</td>
-                  <td className="py-3 px-3">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-950/80 border border-sky-500/40 text-sky-300">
-                      Medium
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">App owners</td>
-                  <td className="py-3 pl-3 text-right">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-950/80 border border-red-500/40 text-red-300">
-                      Due
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      {activeTab === "Identities" ? (
+        <div className={`${CARD} space-y-3`}>
+          <h2 className="text-base font-bold text-white">Identities</h2>
+          <div className="overflow-x-auto">
+            {identityTable(
+              people,
+              "No identities yet. Identities appear when an identity provider connector reports them — see Integrations.",
+            )}
           </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className={`${activeTab === "Overview" ? "lg:col-span-7" : "lg:col-span-12"} space-y-4`}>
+            {activeTab === "Overview" && (
+              <div className={`${CARD} space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-white">Priority identity risks</h2>
+                  <Link href="/customer/threats-incidents" className="text-xs font-semibold text-sky-400">
+                    Open alerts →
+                  </Link>
+                </div>
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400">
+                      <th className="py-2 pr-3 font-medium">Alert</th>
+                      <th className={TH}>Severity</th>
+                      <th className={TH}>Status</th>
+                      <th className="py-2 pl-3 font-medium text-right">Detected</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {identityAlerts.length === 0 ? (
+                      <StateRow
+                        colSpan={4}
+                        loading={alerts.loading || definitions.loading}
+                        error={identityAlertsError}
+                        empty="No open identity alerts."
+                      />
+                    ) : (
+                      identityAlerts.map((a) => (
+                        <tr key={a.id}>
+                          <td className="py-3 pr-3 font-semibold text-white">{a.title}</td>
+                          <td className={TD}>
+                            <span className={`${PILL} ${severityClass(a.severity)}`}>{humanize(a.severity)}</span>
+                          </td>
+                          <td className={TD}>
+                            <span className={`${PILL} ${statusClass(a.status)}`}>{humanize(a.status)}</span>
+                          </td>
+                          <td className="py-3 pl-3 text-right text-slate-300">{timeAgo(a.created_at)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Time-limited access
-              </h2>
-              <span className="text-xs text-slate-400">
-                2 active • 1 pending
-              </span>
-            </div>
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 pr-3 font-medium">Identity</th>
-                  <th className="py-2 px-3 font-medium">Scope</th>
-                  <th className="py-2 px-3 font-medium">Role</th>
-                  <th className="py-2 px-3 font-medium">Expires</th>
-                  <th className="py-2 pl-3 font-medium text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {IS_TEST_ENV ? (
-                  <>
-                    <tr>
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        Jordan Lee
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">Cloud audit</td>
-                      <td className="py-3 px-3 text-slate-300">Read only</td>
-                      <td className="py-3 px-3 text-slate-300">18 min</td>
-                      <td className="py-3 pl-3 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-3 pr-3 font-semibold text-white">
-                        Priya Shah
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">Endpoint console</td>
-                      <td className="py-3 px-3 text-slate-300">Investigator</td>
-                      <td className="py-3 px-3 text-slate-300">42 min</td>
-                      <td className="py-3 pl-3 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                          Active
-                        </span>
-                      </td>
-                    </tr>
-                  </>
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-center text-xs text-slate-400">
-                      No data available — 0 active time-limited access sessions.
-                    </td>
+            <div className={`${CARD} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-white">Time-limited access</h2>
+                  <p className="text-xs text-slate-400">ZoikoShield operator elevations into your tenant</p>
+                </div>
+                <span className="text-xs text-slate-400">
+                  {live.length} active • {pendingElevations.length} pending
+                </span>
+              </div>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400">
+                    <th className="py-2 pr-3 font-medium">Operator</th>
+                    <th className={TH}>Purpose</th>
+                    <th className={TH}>Role</th>
+                    <th className={TH}>Expires</th>
+                    <th className="py-2 pl-3 font-medium text-right">Status</th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {elevations.length === 0 ? (
+                    <StateRow
+                      colSpan={5}
+                      loading={jit.loading}
+                      error={jit.error}
+                      empty="No operator has requested elevated access to your tenant."
+                    />
+                  ) : (
+                    elevations.map((j) => (
+                      <tr key={j.id}>
+                        <td className="py-3 pr-3 font-semibold text-white font-mono">{shortId(j.superAdminPrincipalId)}</td>
+                        <td className={`${TD} text-slate-300`}>{j.statedPurpose}</td>
+                        <td className={`${TD} text-slate-300`}>{humanize(j.roleCode)}</td>
+                        <td className={`${TD} text-slate-300`}>
+                          {j.expiresAt ? formatDateTime(j.expiresAt) : `${j.requestedDurationMinutes} min requested`}
+                        </td>
+                        <td className="py-3 pl-3 text-right">
+                          <span className={`${PILL} ${statusClass(isLiveElevation(j, now) ? "ACTIVE" : j.status)}`}>
+                            {isLiveElevation(j, now) ? "Active" : humanize(j.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {activeTab === "Overview" && (
+            <div className="lg:col-span-5 space-y-4">
+              <div className={`${CARD} space-y-3`}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-white">Privileged access requests</h2>
+                  <span className={`${PILL} bg-amber-950/80 border border-amber-500/40 text-amber-300`}>
+                    {jit.loading ? "…" : `${pendingElevations.length} pending`}
+                  </span>
+                </div>
+                <ErrorNote message={jit.error} />
+                {!jit.loading && !jit.error && pendingElevations.length === 0 && (
+                  <p className="text-xs text-slate-400">No elevation requests are waiting.</p>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                {pendingElevations.map((j) => (
+                  <div key={j.id} className={`${INNER} space-y-2 text-xs`}>
+                    <div className="text-sm font-bold text-white">{humanize(j.roleCode)}</div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">Operator</span>
+                      <span className="font-semibold text-white font-mono">{shortId(j.superAdminPrincipalId)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">Duration</span>
+                      <span className="font-semibold text-white">{j.requestedDurationMinutes} minutes</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">Reason</span>
+                      <span className="font-semibold text-white text-right">{j.statedPurpose}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-400">Requested</span>
+                      <span className="font-semibold text-white">{formatDateTime(j.createdAt)}</span>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-[11px] text-slate-400">
+                  Elevation is approved by a second ZoikoShield administrator; this is your audit view of every request.
+                </p>
+              </div>
 
-        <div className="lg:col-span-5 space-y-4">
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                Privileged access request
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/80 border border-amber-500/40 text-amber-300">
-                {requestApproved ? "Approved" : "Pending"}
-              </span>
+              <div className={`${CARD} space-y-2 text-xs`}>
+                <h2 className="text-base font-bold text-white">Workload identity hygiene</h2>
+                <div className="text-lg font-extrabold text-white">
+                  {identities.error ? "—" : nonHuman.length}{" "}
+                  <span className="text-xs font-normal text-slate-400">Workload identities</span>
+                </div>
+                {Object.entries(countBy(nonHuman, (i) => i.identity_type)).map(([type, n]) => (
+                  <div key={type} className="text-slate-300">
+                    {n} {humanize(type).toLowerCase()}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Identities")}
+                  className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-block pt-1"
+                >
+                  Inspect identities →
+                </button>
+              </div>
             </div>
-            <div className="p-3.5 rounded-xl bg-[#0d1c33]/90 border border-slate-800 space-y-2 text-xs">
-              <div className="text-sm font-bold text-white">
-                AR-031 • Cloud production admin
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Requester</span>
-                <span className="font-semibold text-white">Alex Morgan</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Duration</span>
-                <span className="font-semibold text-white">30 minutes</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Reason</span>
-                <span className="font-semibold text-white">
-                  Investigate Case #4287
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Approvals</span>
-                <span className="font-semibold text-white">
-                  {requestApproved ? "2 of 2 verified" : "0 of 2 required"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Authentication</span>
-                <span className="font-semibold text-white">
-                  Fresh passkey required
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRequestApproved(true)}
-                className="w-full mt-2 py-2 rounded-xl bg-gradient-to-r from-[#dc2626] to-[#b91c1c] text-xs font-semibold text-white"
-              >
-                {requestApproved
-                  ? "Access Request Approved"
-                  : "Review request →"}
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-2 text-xs">
-            <h2 className="text-base font-bold text-white">
-              Workload identity hygiene
-            </h2>
-            <div className="text-lg font-extrabold text-white">
-              80 <span className="text-xs font-normal text-slate-400">Workload identities</span>
-            </div>
-            <div className="text-slate-300">
-              5 credentials overdue for rotation
-            </div>
-            <div className="text-slate-300">2 identities without an owner</div>
-            <button
-              type="button"
-              onClick={() => setActiveTab("Identities")}
-              className="text-xs font-semibold text-sky-400 hover:text-sky-300 inline-block pt-1"
-            >
-              Inspect workload identities →
-            </button>
-          </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
