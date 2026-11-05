@@ -1,4 +1,5 @@
 import {
+  HttpException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -9,6 +10,30 @@ const SHIELD_INGEST_BASE_URL =
   process.env.SHIELD_INGEST_URL ||
   process.env.SHIELD_INGEST_BASE_URL ||
   'http://localhost:3002';
+
+/**
+ * Maps a shield-ingest error to what the caller should see. A 4xx is ingest's
+ * decision about this request (validation, data residency, not found, policy)
+ * and is passed on with its message; a 401 means the service-to-service
+ * credentials were refused and a 5xx means ingest failed, so both are an
+ * unavailable ingest service.
+ */
+export function ingestError(status: number, bodyText: string): HttpException {
+  if (status >= 400 && status < 500 && status !== 401) {
+    let message: unknown = bodyText;
+    try {
+      const parsed = JSON.parse(bodyText);
+      message = parsed?.message ?? bodyText;
+    } catch {
+      // Not JSON: use the text as is.
+    }
+    return new HttpException(
+      { statusCode: status, error: 'INGEST_REJECTED', message: message || `shield-ingest returned ${status}` },
+      status,
+    );
+  }
+  return new ServiceUnavailableException('INGEST_UNAVAILABLE');
+}
 
 /**
  * shield-core's internal client to shield-ingest.
@@ -133,9 +158,7 @@ export class ShieldIngestClient {
       this.logger.warn(
         `shield-ingest GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
-      );
+      throw ingestError(response.status, text);
     }
 
     return response.json();
@@ -163,9 +186,7 @@ export class ShieldIngestClient {
       this.logger.warn(
         `shield-ingest POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
-      );
+      throw ingestError(response.status, text);
     }
 
     return response.json();
@@ -193,9 +214,7 @@ export class ShieldIngestClient {
       this.logger.warn(
         `shield-ingest PATCH returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
-      );
+      throw ingestError(response.status, text);
     }
 
     return response.json();
@@ -221,9 +240,7 @@ export class ShieldIngestClient {
       this.logger.warn(
         `shield-ingest DELETE returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
-      );
+      throw ingestError(response.status, text);
     }
 
     return response.json();

@@ -131,4 +131,29 @@ describe('ConnectorsProxyController', () => {
       'conn-1',
     );
   });
+
+  it('forwards the normalized event list for the caller tenant with a bounded limit', async () => {
+    const listEvents = jest.fn().mockResolvedValue({ data: [] });
+    (controller as any).shieldIngestClient.listEvents = listEvents;
+
+    await controller.listEvents('tenant-demo-456', mockUser, '5000');
+
+    expect(listEvents).toHaveBeenCalledWith('tenant-demo-456', { limit: '500' });
+  });
+
+  it('refuses an events request whose header names another tenant', async () => {
+    (controller as any).shieldIngestClient.listEvents = jest.fn();
+    await expect(controller.listEvents('tenant-other', mockUser)).rejects.toThrow(
+      'Conflicting tenant identifiers were supplied',
+    );
+  });
+
+  it('forwards control evaluations for the caller tenant', async () => {
+    const listControlEvaluations = jest.fn().mockResolvedValue([]);
+    (controller as any).shieldIngestClient.listControlEvaluations = listControlEvaluations;
+
+    await controller.listControlEvaluations('tenant-demo-456', mockUser);
+
+    expect(listControlEvaluations).toHaveBeenCalledWith('tenant-demo-456');
+  });
 });
