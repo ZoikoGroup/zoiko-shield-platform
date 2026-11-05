@@ -90,7 +90,12 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../.env'] }),
     ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 60 }],
+      // Per client IP. One dashboard load alone makes about 15 API calls, so
+      // the old 60/min locked out ordinary use; sensitive routes (login,
+      // password reset, SSO) keep their own much lower @Throttle limits.
+      throttlers: [
+        { ttl: 60_000, limit: Number(process.env.THROTTLE_LIMIT_PER_MINUTE) || 300 },
+      ],
     }),
     TenantModule,
     CustomerModule,
