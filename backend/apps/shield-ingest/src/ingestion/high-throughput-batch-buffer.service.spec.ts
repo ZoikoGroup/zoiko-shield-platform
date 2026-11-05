@@ -104,4 +104,43 @@ describe('HighThroughputBatchBufferService', () => {
     const receipt = service.flushBufferSync();
     expect(receipt).toBeNull();
   });
+
+  it('meters each tenant and environment in a mixed batch separately', async () => {
+    mockMetering.recordUsageObservation.mockResolvedValue({});
+    service.enqueueEvent('tenant-a', 'env-a', 'conn-1', { n: 1 });
+    service.enqueueEvent('tenant-a', 'env-a', 'conn-1', { n: 2 });
+    service.enqueueEvent('tenant-b', 'env-b', 'conn-2', { n: 3 });
+
+    service.flushBufferSync();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const calls = mockMetering.recordUsageObservation.mock.calls.map((c) => c[0]);
+    expect(calls).toHaveLength(2);
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tenantId: 'tenant-a', environmentId: 'env-a', acceptedQuantity: 2 }),
+        expect.objectContaining({ tenantId: 'tenant-b', environmentId: 'env-b', acceptedQuantity: 1 }),
+      ]),
+    );
+  });
+
+  it('survives a metering rejection instead of leaking an unhandled rejection', async () => {
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      mockMetering.recordUsageObservation.mockRejectedValue(
+        new Error('A canonical environment identifier is required'),
+      );
+      service.enqueueEvent('tenant-a', 'default-env', 'conn-1', { n: 1 });
+
+      expect(() => service.flushBufferSync()).not.toThrow();
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(service.getMetrics().totalBatchesFlushed).toBe(1);
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
 });
