@@ -25,6 +25,8 @@ const STOPWORDS = new Set([
   'have', 'has', 'was', 'were', 'will', 'this', 'that', 'there', 'their',
 ]);
 
+const PRODUCT_TERMS = new Set(['zoikoshield', 'zoiko', 'shield']);
+
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
@@ -32,6 +34,12 @@ export function tokenize(text: string): string[] {
     .split(/\s+/)
     .map((token) => token.trim())
     .filter((token) => token.length > 1 && !STOPWORDS.has(token));
+}
+
+/** Search-side normalisation so "encrypted", "encryption" and "encrypts" meet in the middle. */
+function stem(token: string): string {
+  if (token.length <= 5) return token;
+  return token.replace(/(?:ions?|ing|ed|es|s)$/, '');
 }
 
 /** Compare language tags on their primary subtag, so `en` and `en-US` match. */
@@ -87,7 +95,11 @@ export class ContentService {
     const market = options.market ?? 'undecided';
     const locale = options.locale ?? 'en-US';
     const limit = Math.min(options.limit ?? 5, 8);
-    const terms = tokenize(query);
+    // The product name is in almost every title, so it only drags the overview to the top.
+    // Keep it only when it is the whole question ("What is ZoikoShield?").
+    const allTerms = tokenize(query);
+    const distinctive = allTerms.filter((term) => !PRODUCT_TERMS.has(term));
+    const terms = (distinctive.length > 0 ? distinctive : allTerms).map(stem);
     if (terms.length === 0) return [];
 
     const scored: Array<{ source: PublicSource; chunk: SourceChunk; score: number; snippet: string }> = [];
@@ -95,11 +107,11 @@ export class ContentService {
     for (const source of this.sources.values()) {
       if (!this.isEligible(source, market, locale)) continue;
       const sourceChunks = this.chunkIndex.get(source.id) ?? [];
-      const titleTerms = new Set(tokenize(`${source.title} ${source.tags.join(' ')}`));
-      const summaryTerms = new Set(tokenize(source.summary));
+      const titleTerms = new Set(tokenize(`${source.title} ${source.tags.join(' ')}`).map(stem));
+      const summaryTerms = new Set(tokenize(source.summary).map(stem));
 
       for (const chunk of sourceChunks) {
-        const chunkTerms = tokenize(chunk.text);
+        const chunkTerms = tokenize(chunk.text).map(stem);
         const counts = new Map<string, number>();
         for (const term of chunkTerms) counts.set(term, (counts.get(term) ?? 0) + 1);
 

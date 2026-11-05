@@ -307,6 +307,25 @@ export class ConversationService {
       };
     }
 
+    // Head-to-head comparisons with another vendor are not in approved content, and a retrieval
+    // match on the vendor's name would only surface an unrelated article.
+    if (/\b(?:better|worse|superior|inferior|cheaper|faster|stronger)\s+than\b|\bvs\.?\s+\w+|\bversus\b|\bcompared?\s+(?:to|with)\s+\w+/i.test(input.content)) {
+      return {
+        outcome: 'LIMITED',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'I can’t compare ZoikoShield with another vendor’s product: approved public content does not include comparisons. I can describe what ZoikoShield does, and a demo or technical evaluation is the way to judge fit for your environment.',
+          },
+        ],
+        citations: [],
+        follow_up_chips: chips,
+        action: flags.assistant_lead_submit && !flags.assistant_kill
+          ? { type: 'flow', flow: 'demo', label: 'Start demo request' }
+          : { type: 'link', href: this.content.routes().WEB_DEMO.href, label: 'Open demo route' },
+      };
+    }
+
     // Information / discovery: deterministic retrieval over the public corpus.
     const earlier = this.earlierQuestions(input);
     const isFollowUp = earlier.length > 0 && tokenize(input.content).length < 5;
@@ -319,7 +338,7 @@ export class ConversationService {
         .search('ZoikoShield platform overview integrations connectors telemetry', { market, locale, limit: 3 })
         .map((hit) => hit.source);
       const broadAnswer = await this.generate(input, broad, market, locale);
-      if (broadAnswer) {
+      if (broadAnswer && broadAnswer !== 'ABSTAIN') {
         return {
           outcome: 'ANSWERED',
           blocks: broadAnswer.blocks,
@@ -327,29 +346,14 @@ export class ConversationService {
           follow_up_chips: this.chipsFor(input.content, broad[0]),
         };
       }
-      return {
-        outcome: 'ABSTAINED',
-        blocks: [
-          {
-            type: 'paragraph',
-            text: 'I couldn’t find an approved public answer to that. I can still help with platform capabilities, plans, trust and compliance, integrations, onboarding or a demo request.',
-          },
-          {
-            type: 'bullets',
-            items: [
-              'Try a more specific product or capability question.',
-              'Choose one of the topics below.',
-              'Or contact the team through the support route.',
-            ],
-          },
-        ],
-        citations: [],
-        follow_up_chips: chips,
-      };
+      return this.abstainPayload(chips);
     }
 
     const generated = await this.generate(input, hits.map((hit) => hit.source), market, locale);
-    if (generated) {
+    // A weak match (no title or tag hit) plus a model abstain means the sources do not cover
+    // this. Say so rather than substituting an unrelated canned paragraph.
+    if (generated === 'ABSTAIN' && hits[0].score < 6) return this.abstainPayload(chips);
+    if (generated && generated !== 'ABSTAIN') {
       const modelAction = this.actionForQuery(input.content, flags);
       return {
         outcome: 'ANSWERED',
@@ -402,12 +406,34 @@ export class ConversationService {
    * failure (no key, timeout, bad JSON, uncited, guard hit) so the caller falls
    * back to the deterministic answer.
    */
+  private abstainPayload(chips: string[]): AnswerPayload {
+    return {
+      outcome: 'ABSTAINED',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'I couldn’t find an approved public answer to that. I can still help with platform capabilities, plans, trust and compliance, integrations, onboarding or a demo request.',
+        },
+        {
+          type: 'bullets',
+          items: [
+            'Try a more specific product or capability question.',
+            'Choose one of the topics below.',
+            'Or contact the team through the support route.',
+          ],
+        },
+      ],
+      citations: [],
+      follow_up_chips: chips,
+    };
+  }
+
   private async generate(
     input: CreateMessageInput,
     hitSources: PublicSource[],
     market: string,
     locale: string,
-  ): Promise<{ blocks: AnswerBlock[]; citations: Citation[] } | null> {
+  ): Promise<{ blocks: AnswerBlock[]; citations: Citation[] } | 'ABSTAIN' | null> {
     if (!this.config.aiAnswersEnabled() || !this.llm.enabled()) return null;
 
     const context = this.uniqueSources(hitSources).slice(0, 4);
@@ -415,7 +441,8 @@ export class ConversationService {
     if (disclosure && !context.some((source) => source.id === disclosure.id)) context.push(disclosure);
 
     const result: LlmAnswer | null = await this.llm.answer(redact(input.content), context, this.earlierQuestions(input));
-    if (!result || result.kind === 'abstain') return null;
+    if (!result) return null;
+    if (result.kind === 'abstain') return 'ABSTAIN';
 
     const allowed = new Map(context.map((source) => [source.id, source]));
     const cited = [...new Set(result.citations)]

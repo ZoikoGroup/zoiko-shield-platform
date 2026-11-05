@@ -113,6 +113,14 @@ describe('ConversationService', () => {
       expect(text(record.payload.blocks)).toMatch(/static-help mode/);
     });
 
+    it('declines a vendor comparison instead of surfacing an unrelated article', async () => {
+      const record = await ask('Is ZoikoShield better than CrowdStrike?');
+      expect(record.outcome).toBe('LIMITED');
+      expect(record.payload.citations).toEqual([]);
+      expect(text(record.payload.blocks)).toMatch(/can’t compare/);
+      expect(record.payload.action).toBeDefined();
+    });
+
     it('abstains when nothing matches', async () => {
       const record = await ask('zzzz qqqq');
       expect(record.outcome).toBe('ABSTAINED');
