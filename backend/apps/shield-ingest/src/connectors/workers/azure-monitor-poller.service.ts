@@ -4,17 +4,29 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorCheckpointService } from '../services/checkpoint.service';
 import { ConnectorHealthService } from '../services/health.service';
 import { HighThroughputBatchBufferService } from '../../ingestion/high-throughput-batch-buffer.service';
-import { AzureActivityLogEvent } from '../providers/azure-monitor/azure-monitor.types';
 
 export interface AzureMonitorPollResult {
   instanceId: string;
   tenantId: string;
   polledCount: number;
   newCheckpoint: string;
-  status: 'SUCCESS' | 'NO_NEW_DATA' | 'ERROR';
+  status: 'SUCCESS' | 'NO_NEW_DATA' | 'NOT_IMPLEMENTED' | 'ERROR';
   errorMessage?: string;
 }
 
+/** Shown on the connector's health so the customer knows nothing is collected. */
+export const AZURE_MONITOR_NOT_COLLECTING_MESSAGE =
+  'No Azure Monitor collector is implemented yet: this connector is configured but no events are being collected.';
+
+/**
+ * Scheduled poller for Azure Monitor connector instances.
+ *
+ * There is no Azure Monitor API client in this service yet. This poller used to
+ * fabricate records and push them into the tenant's ingestion pipeline as if
+ * they had come from the customer's cloud account; those records then became
+ * normalized events, detections and alerts. It now collects nothing and marks
+ * each connector's health so the gap is visible instead of hidden.
+ */
 @Injectable()
 export class AzureMonitorPollerService {
   private readonly logger = new Logger(AzureMonitorPollerService.name);
@@ -27,30 +39,14 @@ export class AzureMonitorPollerService {
     @Optional() private readonly batchBuffer?: HighThroughputBatchBufferService,
   ) {}
 
-  /**
-   * Periodic cron trigger to poll active Azure Monitor connector instances.
-   */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleScheduledPoll(): Promise<void> {
-    if (this.isPolling) {
-      this.logger.debug(
-        'Previous Azure Monitor poll cycle in progress, skipping...',
-      );
-      return;
-    }
-
+    if (this.isPolling || !this.prisma) return;
     this.isPolling = true;
     try {
-      if (!this.prisma) {
-        return;
-      }
-
       const activeInstances = await this.prisma.connectorInstance.findMany({
-        where: {
-          definition: { provider: 'azure-monitor' },
-        },
+        where: { definition: { provider: 'azure-monitor' }, deletedAt: null },
       });
-
       for (const instance of activeInstances) {
         try {
           await this.pollConnector(instance.id);
@@ -61,164 +57,37 @@ export class AzureMonitorPollerService {
         }
       }
     } catch (err) {
-      this.logger.error(
-        `Error during Azure Monitor poll: ${(err as Error).message}`,
-      );
+      this.logger.error(`Error during Azure Monitor scheduled poll: ${(err as Error).message}`);
     } finally {
       this.isPolling = false;
     }
   }
 
-  /**
-   * Polls incremental Azure Activity Log telemetry for a specific connector instance.
-   */
-  async pollConnector(
-    instanceId: string,
-    limit = 50,
-  ): Promise<AzureMonitorPollResult> {
-    this.logger.log(
-      `Polling Azure Monitor events for connector instance: ${instanceId}`,
-    );
-
-    let tenantId = 'tenant-default';
+  async pollConnector(instanceId: string): Promise<AzureMonitorPollResult> {
+    let tenantId = '';
     if (this.prisma) {
       const instance = await this.prisma.connectorInstance.findUnique({
         where: { id: instanceId },
       });
-      if (instance) {
-        tenantId = instance.tenant_id;
-      }
+      tenantId = instance?.tenant_id ?? '';
+    }
+    const checkpoint =
+      (this.checkpointService && tenantId
+        ? await this.checkpointService.get(instanceId, 'azure-monitor').catch(() => null)
+        : null) || '0';
+
+    if (this.healthService && tenantId) {
+      await this.healthService
+        .updateHealth(instanceId, tenantId, 'DEGRADED', AZURE_MONITOR_NOT_COLLECTING_MESSAGE)
+        .catch(() => undefined);
     }
 
-    let lastCheckpoint = '0';
-    try {
-      if (this.checkpointService) {
-        const cursor = await this.checkpointService.get(
-          instanceId,
-          'azure-monitor',
-        );
-        lastCheckpoint = cursor || '0';
-      }
-
-      const startOffset = parseInt(lastCheckpoint, 10) || 0;
-      const records = this.generateIncrementalAzureEvents(
-        tenantId,
-        startOffset,
-        limit,
-      );
-
-      if (records.length === 0) {
-        return {
-          instanceId,
-          tenantId,
-          polledCount: 0,
-          newCheckpoint: lastCheckpoint,
-          status: 'NO_NEW_DATA',
-        };
-      }
-
-      if (this.batchBuffer) {
-        const bufferEvents = records.map((rec, idx) => ({
-          eventId: `az-${Date.now()}-${startOffset + idx}`,
-          source: 'azure.monitor',
-          eventType: rec.operationName?.value || 'AzureActivityLog',
-          timestamp: rec.eventTimestamp || new Date().toISOString(),
-          payload: rec,
-        }));
-
-        await this.batchBuffer.ingestBatch(tenantId, bufferEvents);
-      }
-
-      const nextOffset = startOffset + records.length;
-      const newCheckpointStr = nextOffset.toString();
-
-      if (this.checkpointService) {
-        await this.checkpointService.set(
-          tenantId,
-          instanceId,
-          'azure-monitor',
-          newCheckpointStr,
-        );
-      }
-
-      if (this.healthService) {
-        await this.healthService.updateHealth(
-          instanceId,
-          tenantId,
-          'HEALTHY',
-          `Polled ${records.length} Azure Monitor events successfully`,
-        );
-      }
-
-      return {
-        instanceId,
-        tenantId,
-        polledCount: records.length,
-        newCheckpoint: newCheckpointStr,
-        status: 'SUCCESS',
-      };
-    } catch (err: any) {
-      this.logger.error(
-        `Failed to poll Azure Monitor events for connector instance ${instanceId}: ${err?.message}`,
-      );
-
-      if (this.healthService) {
-        await this.healthService
-          .updateHealth(
-            instanceId,
-            tenantId,
-            'DEGRADED',
-            `Azure Monitor polling error: ${err?.message}`,
-          )
-          .catch(() => {});
-      }
-
-      return {
-        instanceId,
-        tenantId,
-        polledCount: 0,
-        newCheckpoint: lastCheckpoint,
-        status: 'ERROR',
-        errorMessage: err?.message,
-      };
-    }
-  }
-
-  private generateIncrementalAzureEvents(
-    tenantId: string,
-    startOffset: number,
-    limit: number,
-  ): AzureActivityLogEvent[] {
-    const operationList = [
-      'Microsoft.Authorization/roleAssignments/write',
-      'Microsoft.Compute/virtualMachines/write',
-      'Microsoft.Network/networkSecurityGroups/securityRules/write',
-      'Microsoft.KeyVault/vaults/keys/read',
-      'Microsoft.Storage/storageAccounts/listKeys/action',
-    ];
-
-    const records: AzureActivityLogEvent[] = [];
-    for (let i = 0; i < limit; i++) {
-      const op = operationList[(startOffset + i) % operationList.length];
-      const now = new Date(Date.now() - (limit - i) * 5000).toISOString();
-
-      records.push({
-        eventTimestamp: now,
-        subscriptionId: 'sub-12345',
-        status: { value: 'Succeeded' },
-        caller: `admin-service-${tenantId}@zoiko.cloud`,
-        operationName: { value: op },
-        resourceId: `/subscriptions/sub-12345/resourceGroups/rg-prod/providers/Microsoft.Compute/virtualMachines/vm-node-${startOffset + i}`,
-        resourceGroupName: 'rg-prod',
-        category: { value: 'Administrative' },
-        level: 'Informational',
-        properties: {
-          statusCode: 'OK',
-          serviceRequestId: `req-${startOffset + i}`,
-        },
-      });
-    }
-
-    return records;
+    return {
+      instanceId,
+      tenantId,
+      polledCount: 0,
+      newCheckpoint: checkpoint,
+      status: 'NOT_IMPLEMENTED',
+    };
   }
 }

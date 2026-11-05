@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AzureMonitorPollerService } from './azure-monitor-poller.service';
+import { AzureMonitorPollerService, AZURE_MONITOR_NOT_COLLECTING_MESSAGE } from './azure-monitor-poller.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorCheckpointService } from '../services/checkpoint.service';
 import { ConnectorHealthService } from '../services/health.service';
@@ -64,24 +64,18 @@ describe('AzureMonitorPollerService', () => {
   });
 
   describe('pollConnector', () => {
-    it('should poll incremental Azure events and save checkpoint', async () => {
-      const result = await service.pollConnector('az-inst-1', 5);
+    it('collects nothing, pushes nothing into the pipeline and marks the connector as not collecting', async () => {
+      const result = await service.pollConnector('az-inst-1');
 
-      expect(result.status).toBe('SUCCESS');
-      expect(result.polledCount).toBe(5);
-      expect(result.newCheckpoint).toBe('25');
-      expect(mockBatchBuffer.ingestBatch).toHaveBeenCalled();
-      expect(mockCheckpoint.set).toHaveBeenCalledWith(
-        'tenant-az',
-        'az-inst-1',
-        'azure-monitor',
-        '25',
-      );
+      expect(result.status).toBe('NOT_IMPLEMENTED');
+      expect(result.polledCount).toBe(0);
+      expect(mockBatchBuffer.ingestBatch).not.toHaveBeenCalled();
+      expect(mockCheckpoint.set).not.toHaveBeenCalled();
       expect(mockHealth.updateHealth).toHaveBeenCalledWith(
         'az-inst-1',
-        'tenant-az',
-        'HEALTHY',
         expect.any(String),
+        'DEGRADED',
+        AZURE_MONITOR_NOT_COLLECTING_MESSAGE,
       );
     });
   });
@@ -98,7 +92,9 @@ describe('AzureMonitorPollerService', () => {
 
       await service.handleScheduledPoll();
 
-      expect(mockPrisma.connectorInstance.findMany).toHaveBeenCalled();
+      expect(mockPrisma.connectorInstance.findMany).toHaveBeenCalledWith({
+        where: { definition: { provider: 'azure-monitor' }, deletedAt: null },
+      });
       expect(pollSpy).toHaveBeenCalledWith('az-inst-1');
     });
   });
