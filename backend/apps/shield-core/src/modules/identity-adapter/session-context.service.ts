@@ -170,18 +170,15 @@ export class SessionContextService {
     const safeTenantId: string = tenant.id;
     const environment = input.environmentId
       ? await runWithTenantScope(safeTenantId, () =>
-        this.prisma.environment.findFirst({
-          where: {
-            id: input.environmentId,
-            tenantId: safeTenantId,
-            status: 'ACTIVE',
-          },
-        }),
-      )
-      : await this.resolveOnlyEnvironment(
-        safeTenantId,
-        (tenant as any).homeRegion || 'us-east-1',
-      );
+          this.prisma.environment.findFirst({
+            where: {
+              id: input.environmentId,
+              tenantId: safeTenantId,
+              status: 'ACTIVE',
+            },
+          }),
+        )
+      : await this.resolveOnlyEnvironment(safeTenantId);
     if (!environment) {
       throw new BadRequestException(
         'An active environment belonging to the tenant is required',
@@ -269,7 +266,6 @@ export class SessionContextService {
 
   private async resolveOnlyEnvironment(
     tenantId: string,
-    defaultRegion = 'us-east-1',
   ): Promise<Environment | null> {
     const environments = (await runWithTenantScope(tenantId, () =>
       this.prisma.environment.findMany({
@@ -282,27 +278,6 @@ export class SessionContextService {
       throw new BadRequestException(
         'environmentId is required when a tenant has multiple active environments',
       );
-    }
-    if (
-      environments.length === 0 &&
-      typeof (this.prisma.environment as any)?.create === 'function'
-    ) {
-      try {
-        const created = await runWithTenantScope(tenantId, () =>
-          this.prisma.environment.create({
-            data: {
-              tenantId,
-              name: 'production',
-              environmentType: 'PRODUCTION',
-              region: defaultRegion,
-              status: 'ACTIVE',
-            },
-          }),
-        );
-        return created as Environment;
-      } catch {
-        return null;
-      }
     }
     return environments[0] ?? null;
   }
