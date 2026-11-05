@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type { Environment } from './environment.entity';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
 import { UpdateEnvironmentDto } from './dto/update-environment.dto';
+import { runWithTenantScope } from '../../../../../libs/database/src';
 
 @Injectable()
 export class EnvironmentService {
@@ -31,14 +32,16 @@ export class EnvironmentService {
     dto: CreateEnvironmentDto,
     defaultRegion: string,
   ): Promise<Environment> {
-    return (await this.prisma.environment.create({
-      data: {
-        tenantId,
-        name: dto.name,
-        environmentType: dto.environmentType,
-        region: dto.region ?? defaultRegion,
-      },
-    })) as Environment;
+    return (await runWithTenantScope(tenantId, () =>
+      this.prisma.environment.create({
+        data: {
+          tenantId,
+          name: dto.name,
+          environmentType: dto.environmentType,
+          region: dto.region ?? defaultRegion,
+        },
+      }),
+    )) as Environment;
   }
 
   async update(

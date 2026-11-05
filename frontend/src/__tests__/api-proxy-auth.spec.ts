@@ -73,9 +73,11 @@ describe('API proxy authentication when the backend is unreachable', () => {
     });
 
     const ok = await call(POST, 'auth/login', { email: 'manual.tester@example.test', password: 'Tester#2026pass' });
+    const okMixedCase = await call(POST, 'auth/login', { email: 'Manual.Tester@Example.test', password: 'Tester#2026pass' });
     const bad = await call(POST, 'auth/login', { email: 'manual.tester@example.test', password: 'nope' });
 
     expect(ok.status).toBe(200);
+    expect(okMixedCase.status).toBe(200);
     expect((await ok.json()).role).toBe('TENANT_OWNER');
     expect(bad.status).toBe(401);
   });

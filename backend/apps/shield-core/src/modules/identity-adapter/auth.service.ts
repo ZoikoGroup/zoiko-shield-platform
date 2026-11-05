@@ -34,6 +34,7 @@ import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { EnvironmentService } from '../environment/environment.service';
+import { runWithTenantScope } from '../../../../../libs/database/src';
 
 const SALT_ROUNDS = 12;
 const LOCKOUT_THRESHOLD = 10;
@@ -176,14 +177,16 @@ export class AuthService {
           },
         });
 
-        await this.environmentService.create(
-          tenantId,
-          {
-            name: 'production',
-            environmentType: 'PRODUCTION',
+        await runWithTenantScope(tenantId, () =>
+          this.environmentService.create(
+            tenantId,
+            {
+              name: 'production',
+              environmentType: 'PRODUCTION',
+              region,
+            },
             region,
-          },
-          region,
+          ),
         );
 
         // Generate email verification challenge and send transactional notifications
@@ -420,7 +423,8 @@ export class AuthService {
     dto: LoginDto,
     metadata: SessionMetadata,
   ): Promise<{ user: AuthenticatedUser } & TokenPair> {
-    const principal = await this.principalService.findByEmail(dto.email);
+    const normalizedEmail = (dto.email || '').trim().toLowerCase();
+    const principal = await this.principalService.findByEmail(normalizedEmail);
     const credential = principal
       ? await this.principalService.getLocalCredential(principal.id)
       : null;
@@ -460,13 +464,54 @@ export class AuthService {
         .catch(() => null);
     }
 
-    const binding = await this.sessionContext.resolveBinding({
-      principalId: principal.id,
-      tenantId: dto.tenantId,
-      environmentId: dto.environmentId,
-      authenticationMethod: 'PASSWORD',
-      riskState: principal.riskState,
-    });
+    let binding: SessionBinding;
+    try {
+      binding = await this.sessionContext.resolveBinding({
+        principalId: principal.id,
+        tenantId: dto.tenantId,
+        environmentId: dto.environmentId,
+        authenticationMethod: 'PASSWORD',
+        riskState: principal.riskState,
+      });
+    } catch (err: any) {
+      if (
+        err instanceof BadRequestException &&
+        err.message?.includes('An active environment belonging to the tenant')
+      ) {
+        const membership = await this.prisma.tenantMembership.findFirst({
+          where: { principalId: principal.id, status: 'ACTIVE' },
+          orderBy: { joinedAt: 'asc' },
+        });
+        if (membership) {
+          const tenant = await this.prisma.tenant.findUnique({
+            where: { id: membership.tenantId },
+          });
+          const region = tenant?.homeRegion || 'us-east-1';
+          await runWithTenantScope(membership.tenantId, () =>
+            this.environmentService.create(
+              membership.tenantId,
+              {
+                name: 'production',
+                environmentType: 'PRODUCTION',
+                region,
+              },
+              region,
+            ),
+          );
+          binding = await this.sessionContext.resolveBinding({
+            principalId: principal.id,
+            tenantId: dto.tenantId,
+            environmentId: dto.environmentId,
+            authenticationMethod: 'PASSWORD',
+            riskState: principal.riskState,
+          });
+        } else {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
 
     await this.principalService.resetFailedLogins(principal.id);
     const tokens = await this.issueTokenPair(

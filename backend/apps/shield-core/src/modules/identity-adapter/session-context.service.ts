@@ -17,7 +17,7 @@ export class SessionContextService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   // Session binding runs before any request tenant is bound (login, refresh,
   // switch-tenant and every authenticated request's session check), so the
@@ -59,21 +59,21 @@ export class SessionContextService {
 
     let membership = targetTenantId
       ? await this.prisma.tenantMembership.findFirst({
-          where: {
-            tenantId: targetTenantId,
-            principalId: input.principalId,
-            status: 'ACTIVE',
-          },
-          include: {
-            roles: {
-              include: {
-                role: {
-                  include: { permissions: { include: { permission: true } } },
-                },
+        where: {
+          tenantId: targetTenantId,
+          principalId: input.principalId,
+          status: 'ACTIVE',
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: { permissions: { include: { permission: true } } },
               },
             },
           },
-        })
+        },
+      })
       : null;
 
     if (!membership) {
@@ -247,14 +247,14 @@ export class SessionContextService {
       const sessionTenantId = session.tenantId;
       const environment = sessionTenantId
         ? await runWithTenantScope(sessionTenantId, () =>
-            this.prisma.environment.findFirst({
-              where: {
-                id: session.environmentId!,
-                tenantId: sessionTenantId,
-                status: 'ACTIVE',
-              },
-            }),
-          )
+          this.prisma.environment.findFirst({
+            where: {
+              id: session.environmentId!,
+              tenantId: sessionTenantId,
+              status: 'ACTIVE',
+            },
+          }),
+        )
         : null;
       if (!environment) {
         throw new UnauthorizedException(

@@ -86,6 +86,13 @@ export class AuthController {
       dto,
       sessionMetadataFrom(req),
     );
+    if (result.session?.refreshToken) {
+      setAuthCookies(res, {
+        accessToken: result.token,
+        refreshToken: result.session.refreshToken,
+        expiresIn: '15m',
+      });
+    }
     res.cookie('zoiko_shield_access_token', result.token, {
       path: '/',
       httpOnly: false,
