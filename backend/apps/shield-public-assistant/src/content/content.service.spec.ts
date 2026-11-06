@@ -84,4 +84,19 @@ describe('ContentService', () => {
     expect(service.followUpChips('WRITE_DEMO').length).toBeGreaterThan(0);
     expect(service.followUpChips('SOMETHING_ELSE')).toEqual(service.followUpChips('INFO'));
   });
+
+  it.each([
+    ['Do you integrate with Splunk?', 'help-connectors'],
+    ['Do you support Microsoft Sentinel and Okta?', 'help-connectors'],
+    ['Can ZoikoShield connect to ServiceNow?', 'help-connectors'],
+    ['How is data encrypted in ZoikoShield?', 'help-trust-guide'],
+    ['Is ZoikoShield SOC 2 certified?', 'help-trust-guide'],
+    ['Can you guarantee a 99.99% uptime SLA?', 'help-pricing-guide'],
+  ])('ranks the right article first for "%s"', (question, id) => {
+    expect(service.search(question, { limit: 4 })[0].source.id).toBe(id);
+  });
+
+  it('still answers a bare product-name question', () => {
+    expect(service.search('What is ZoikoShield?').length).toBeGreaterThan(0);
+  });
 });

@@ -14,6 +14,11 @@ describe('guardOutput', () => {
     expect(guardOutput(answer())).toBeNull();
   });
 
+  it('allows a declining sentence to repeat the visitor figure, but not a bare claim', () => {
+    expect(guardOutput(answer({ paragraphs: ['We cannot guarantee 99.99% uptime here; SLAs are contractual.'] }))).toBeNull();
+    expect(guardOutput(answer({ paragraphs: ['Uptime is 99.99% for all customers.'] }))).toBe('percentage_claim');
+  });
+
   it.each([
     ['empty', answer({ paragraphs: [], bullets: [] }), 'empty'],
     ['too long', answer({ paragraphs: ['x'.repeat(1700)] }), 'too_long'],
