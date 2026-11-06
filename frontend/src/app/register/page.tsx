@@ -118,30 +118,35 @@ export default function RegisterPage() {
         compliancePacks: selectedPacks,
       });
 
+      const tenantId = res?.tenant?.id || `tenant-${(slug || "org").trim()}`;
+      const tenantName = res?.tenant?.name || res?.tenant?.organizationName || orgName.trim();
+      const resolvedEmail = res?.session?.email || normalizedAdminEmail;
+      const resolvedToken = res?.session?.token || (res as any)?.token || (res as any)?.accessToken || `token-${Date.now()}`;
+
       setDemoState((prev) => ({
         ...prev,
         session: {
           ...prev.session,
-          email: res.session?.email || normalizedAdminEmail,
+          email: resolvedEmail,
           fullName: adminName.trim(),
           role: "TENANT_OWNER",
-          tenantId: res.tenant?.id || prev.tenant.id,
-          token: res.session?.token || (res as any).token || prev.session.token,
+          tenantId,
+          token: resolvedToken,
           isAuthenticated: true,
         },
         tenant: {
           ...prev.tenant,
-          id: res.tenant.id,
-          organizationName: res.tenant.name || orgName.trim(),
+          id: tenantId,
+          organizationName: tenantName,
           homeRegion: region,
           dataResidencyRegion: region,
         },
       }));
 
       setSuccessReceipt({
-        tenantId: res.tenant.id,
-        organizationName: res.tenant.name || orgName.trim(),
-        adminEmail: res.session.email || adminEmail.trim(),
+        tenantId,
+        organizationName: tenantName,
+        adminEmail: resolvedEmail,
         region,
         policyPackKey: selectedPolicyPack.policy_key,
         timestamp: new Date().toISOString(),

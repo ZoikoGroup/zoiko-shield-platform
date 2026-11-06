@@ -105,8 +105,8 @@ export class TransactionalEmailService {
 
   private initializeTransport(): void {
     const smtpHost = process.env.SMTP_HOST;
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+    const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const emailPass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASSWORD;
 
     if (smtpHost && emailUser && emailPass) {
       this.transporter = createTransport({

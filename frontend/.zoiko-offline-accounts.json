@@ -1,0 +1,65 @@
+[
+  {
+    "email": "aditya@zoiko.com",
+    "passwordSha256": "a10f20cc19e506819240a105421a2c76d68ef2c1644ac02609695535f66ffa4f",
+    "fullName": "Nitta Aditya",
+    "role": "TENANT_OWNER",
+    "tenantId": "tenant-zoiko"
+  },
+  {
+    "email": "admin@zoikoshield.corp",
+    "passwordSha256": "486f0766fead25d6fb93245f78ae94186987f65f3f019a5840d46cb61d7634f1",
+    "fullName": "System Administrator",
+    "role": "SUPER_ADMIN",
+    "tenantId": "tenant-sovereign-01"
+  },
+  {
+    "email": "analyst@zoikoshield.corp",
+    "passwordSha256": "3cb0703c15509a5626ec20b4ecbe89d84c6e6ac75f80b2a74c7df8b461877cf5",
+    "fullName": "Senior SOC Analyst",
+    "role": "SECURITY_ANALYST",
+    "tenantId": "tenant-sovereign-01"
+  },
+  {
+    "email": "ciso@zoikoshield.corp",
+    "passwordSha256": "ee80bc3021f148e02d6b1dff52e00c3b99becc3f1b4c9b3a3be1c02ff2a44783",
+    "fullName": "Chief Information Security Officer",
+    "role": "SUPER_ADMIN",
+    "tenantId": "tenant-sovereign-01"
+  },
+  {
+    "email": "auditor@zoikoshield.corp",
+    "passwordSha256": "81347076de5237bc86e0c609ec845f32a76f23ae910b54e768e7ec8ff1c9b634",
+    "fullName": "Compliance Lead Auditor",
+    "role": "AUDITOR",
+    "tenantId": "tenant-sovereign-01"
+  },
+  {
+    "email": "eval@zoikoshield.corp",
+    "passwordSha256": "5c9eb774a36ea24a2efca055b46e3a09720b5f54aa6bebe6a117b3f46fef74f0",
+    "fullName": "Evaluation Administrator",
+    "role": "TENANT_OWNER",
+    "tenantId": "tenant-eval-01"
+  },
+  {
+    "email": "super.admin@zoikoshield.local",
+    "passwordSha256": "b743a4ada7ce7a070caac221ba9d22d3bac4243c3a39a76ae287196e9390b4c9",
+    "fullName": "H",
+    "role": "TENANT_OWNER",
+    "tenantId": "tenant-hijack-b5ab3d5d"
+  },
+  {
+    "email": "manual.tester@example.test",
+    "passwordSha256": "e86cdf75d5a386ee04c5a3bbbb387514bf494b6c83c996e97aeeb04f6d97248e",
+    "fullName": "Manual Tester",
+    "role": "TENANT_OWNER",
+    "tenantId": "tenant-tester-org-200d7832"
+  },
+  {
+    "email": "registered.once@example.test",
+    "passwordSha256": "a0f79dbe3f16e619eb0a9c3e7fe78c3f8b981607f26751b5c22ce89cd95b9490",
+    "fullName": "R",
+    "role": "TENANT_OWNER",
+    "tenantId": "tenant-reg-org-f7621d3d"
+  }
+]

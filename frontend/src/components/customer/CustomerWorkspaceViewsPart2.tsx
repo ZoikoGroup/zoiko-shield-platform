@@ -83,13 +83,15 @@ function downloadJson(filename: string, data: unknown) {
 }
 
 function saveBlob(filename: string, blob: Blob) {
-  if (typeof window === "undefined" || typeof URL.createObjectURL !== "function") return;
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  if (typeof window === "undefined" || typeof URL === "undefined" || typeof URL.createObjectURL !== "function") return;
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {}
 }
 
 /** "NOT_CONNECTED" -> "Not connected" */
@@ -775,7 +777,11 @@ export function CustomerCloudSecuritySection() {
         <Kpi
           label="Connector health (all sources)"
           source={health}
-          value={health.data ? `${health.data.connectorHealth.healthy} / ${health.data.connectorHealth.total}` : "—"}
+          value={
+            health.data && typeof health.data.connectorHealth === "object" && health.data.connectorHealth
+              ? `${health.data.connectorHealth.healthy ?? 0} / ${health.data.connectorHealth.total ?? 0}`
+              : "—"
+          }
           sub={`Overall: ${humanize(health.data?.overallHealth)}`}
         />
       </div>

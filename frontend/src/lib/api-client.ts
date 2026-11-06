@@ -391,8 +391,13 @@ export class ZoikoShieldApiClient {
           "zoiko_auth",
           "zoiko_shield_access_token",
           "shield_access_token",
+          "access_token",
+          "refresh_token",
           "zoiko_shield_tenant_id",
           "zoiko_shield_user_email",
+          "zoiko_shield_org_name",
+          "zoiko_offline_accounts",
+          "recovery_grant",
         ];
         const host = window.location.hostname;
         const domains = [host, `.${host}`, ""];
