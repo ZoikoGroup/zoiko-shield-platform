@@ -417,9 +417,16 @@ export class ConnectorCatalogService {
         `Provider '${instance.definition.provider}' has no executable connection test`,
       );
     }
-    return this.registry
-      .get(instance.definition.provider)
-      .testConnection(this.context(instance));
+    const connector = this.registry.get(instance.definition.provider);
+    if (!connector.liveConnectivityCheck) {
+      return {
+        status: 'UNVERIFIED',
+        provider: instance.definition.provider,
+        lastCheckedAt: new Date().toISOString(),
+        reason: `No live connectivity check is implemented for '${instance.definition.provider}'; the connection was not tested.`,
+      };
+    }
+    return connector.testConnection(this.context(instance));
   }
 
   async syncConnector(tenantId: string, connectorId: string) {

@@ -15,14 +15,53 @@ import { CurrentUser } from '../identity-adapter/decorators/current-user.decorat
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { requireTenantId } from '../../tenant-context';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsISO8601,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class AcceptFindingDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4000)
   rationale!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   authority!: string;
+
+  // Required: an acceptance with no end date is indistinguishable from
+  // having forgotten (see accept() below).
+  @IsISO8601()
   expiresAt!: string;
+
+  @IsOptional()
+  @IsISO8601()
   reviewAt?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @MaxLength(1000, { each: true })
   compensatingControls?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   riskRef?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   authorizationDecisionId?: string;
 }
 
@@ -49,10 +88,11 @@ export class FindingsController {
     @Query('severity') severity?: string,
     @Query('assetId') assetId?: string,
     @Query('limit') limit?: string,
+    @Query('type') findingType?: string,
   ) {
     const data = await this.findingService.list(
       requireTenantId(tenantId),
-      { status, severity, assetId },
+      { status, severity, assetId, findingType },
       limit ? Number(limit) : 100,
     );
     return { statusCode: HttpStatus.OK, data };

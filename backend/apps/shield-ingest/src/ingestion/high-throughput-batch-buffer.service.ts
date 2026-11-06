@@ -209,20 +209,38 @@ export class HighThroughputBatchBufferService implements OnModuleDestroy {
       }
     }
 
-    // Record high-speed ingestion metering in batch
+    // Record ingestion metering per (tenant, environment). A batch can mix
+    // tenants, so attributing it all to the first event's tenant mis-billed
+    // the others. recordUsageObservation is async: its rejection must be
+    // caught here, or it escapes this timer callback as an unhandled
+    // rejection and takes the whole service down.
     if (this.meteringService) {
-      try {
-        this.meteringService.recordUsageObservation({
-          tenantId: primaryTenantId,
-          sourceType: 'INGESTION_RAW_EVENTS',
-          acceptedQuantity: batchEvents.length,
-          unit: 'events',
-          usageState: 'ACCEPTED',
-        });
-      } catch (err: any) {
-        this.logger.warn(
-          `[HIGH_THROUGHPUT_BUFFER] Metering batch recording warning: ${err.message}`,
-        );
+      const groups = new Map<string, { tenantId: string; environmentId: string; count: number }>();
+      for (const evt of batchEvents) {
+        const key = `${evt.tenantId}\u0000${evt.environmentId}`;
+        const group = groups.get(key);
+        if (group) group.count += 1;
+        else groups.set(key, { tenantId: evt.tenantId, environmentId: evt.environmentId, count: 1 });
+      }
+      for (const group of groups.values()) {
+        const warn = (err: any) =>
+          this.logger.warn(
+            `[HIGH_THROUGHPUT_BUFFER] Metering not recorded for tenant ${group.tenantId} (${group.count} events): ${err?.message ?? err}`,
+          );
+        try {
+          Promise.resolve(
+            this.meteringService.recordUsageObservation({
+              tenantId: group.tenantId,
+              environmentId: group.environmentId,
+              sourceType: 'INGESTION_RAW_EVENTS',
+              acceptedQuantity: group.count,
+              unit: 'events',
+              usageState: 'ACCEPTED',
+            }),
+          ).catch(warn);
+        } catch (err: any) {
+          warn(err);
+        }
       }
     }
 

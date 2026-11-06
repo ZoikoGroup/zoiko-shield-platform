@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { backend } from "@/lib/backend";
+import { customerApi } from "@/lib/customer-api";
 import { useVisibleInterval } from "@/lib/use-visible-interval";
 import { findActiveNav } from "@/components/layout/nav-config";
 import {
@@ -106,33 +108,56 @@ export const TopHeader: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSearchIdx, setSelectedSearchIdx] = useState(0);
 
-  // Sync authenticated user and tenant info from backend /api/v1/auth/me
+  // Sync the signed-in user and their tenant from the backend; nothing is
+  // shown for a field the backend did not supply.
   useEffect(() => {
     if (process.env.NODE_ENV === "test") return;
-    fetch("/api/v1/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data) return;
-        const user = data.user || data;
-        const tenant = data.tenant || {};
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await customerApi.session();
+        const tenant = await customerApi.tenant().catch(() => null);
+        if (cancelled) return;
         setDemoState((prev) => ({
           ...prev,
           session: {
             ...prev.session,
-            userId: user.id || user.userId || prev.session.userId,
-            email: user.email || prev.session.email,
-            fullName: user.name || user.fullName || user.email?.split("@")[0] || prev.session.fullName,
-            role: user.role || prev.session.role,
+            userId: me.id,
+            email: me.email,
+            fullName: me.fullName || me.email,
+            tenantId: me.tenantId,
+            isAuthenticated: true,
           },
           tenant: {
             ...prev.tenant,
-            id: tenant.id || user.tenantId || prev.tenant.id,
-            organizationName: tenant.organizationName || tenant.name || prev.tenant.organizationName,
+            id: me.tenantId,
+            organizationName: tenant?.name ?? prev.tenant.organizationName,
+            homeRegion: tenant?.homeRegion ?? "",
+            dataResidencyRegion: tenant?.dataResidencyRegion ?? "",
+            // The tenant API reports no plan; do not show the stored default.
+            planTier: undefined,
           },
         }));
-      })
-      .catch(() => {});
+      } catch {
+        // Not signed in or backend unreachable.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [setDemoState]);
+
+  // Automated-response (SOAR) freeze state, shown in place of a fixed status pill.
+  const [responseFrozen, setResponseFrozen] = useState<boolean | null>(null);
+  const fetchFreeze = useCallback(async () => {
+    try {
+      const res = await backend.get<{ frozen: boolean }>("/api/v1/response/freeze-status");
+      setResponseFrozen(Boolean(res?.frozen));
+    } catch {
+      setResponseFrozen(null);
+    }
+  }, []);
+  useVisibleInterval(fetchFreeze, 60000);
 
   // Dynamic Live Notifications State
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
@@ -177,7 +202,7 @@ export const TopHeader: React.FC = () => {
 
       const items: HeaderNotification[] = [];
       const isLive = (r: PromiseSettledResult<Response>): r is PromiseFulfilledResult<Response> =>
-        r.status === "fulfilled" && r.value.ok && (process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false" || r.value.headers.get("x-zoiko-fallback") !== "true");
+        r.status === "fulfilled" && r.value.ok && (process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true" || r.value.headers.get("x-zoiko-fallback") !== "true");
       setNotifsUnavailable(!isLive(alertsRes) && !isLive(notifsRes));
 
       if (isLive(alertsRes)) {
@@ -227,7 +252,7 @@ export const TopHeader: React.FC = () => {
       }
 
       const IS_TEST_ENV = process.env.NODE_ENV === "test";
-      if (IS_TEST_ENV && items.length === 0 && process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false") {
+      if (IS_TEST_ENV && items.length === 0 && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true") {
         setNotifsUnavailable(false);
         (state.alerts || []).slice(0, 4).forEach((a: any) => {
           items.push({
@@ -286,7 +311,7 @@ export const TopHeader: React.FC = () => {
     healthyCount: number;
     totalCount: number;
     state: string;
-  }>({ healthyCount: 5, totalCount: 5, state: "OK" });
+  }>({ healthyCount: 0, totalCount: 0, state: "UNKNOWN" });
 
   const navRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -313,17 +338,18 @@ export const TopHeader: React.FC = () => {
   const fetchHealth = useCallback(async () => {
     try {
       const snap = await ZoikoShieldApiClient.getPlatformReadiness();
-      if (snap) {
-        const healthy = snap.healthyServicesCount ?? 5;
-        const total = snap.totalServicesCount ?? 5;
-        const isDegraded = (snap.degradedServicesCount ?? 0) > 0;
+      if (snap && typeof snap.healthyServicesCount === "number" && typeof snap.totalServicesCount === "number") {
         setHealthStatus({
-          healthyCount: healthy,
-          totalCount: total,
-          state: isDegraded ? "DEGRADED" : "OK",
+          healthyCount: snap.healthyServicesCount,
+          totalCount: snap.totalServicesCount,
+          state: (snap.degradedServicesCount ?? 0) > 0 ? "DEGRADED" : "OK",
         });
+      } else {
+        setHealthStatus({ healthyCount: 0, totalCount: 0, state: "UNKNOWN" });
       }
-    } catch {}
+    } catch {
+      setHealthStatus({ healthyCount: 0, totalCount: 0, state: "UNKNOWN" });
+    }
   }, []);
 
   useVisibleInterval(fetchHealth, 30000);
@@ -539,29 +565,26 @@ export const TopHeader: React.FC = () => {
 
         {/* Right: Actions, Badges & Interactive Dropdowns */}
         <div className="flex items-center gap-3 shrink-0 relative">
-          {/* Environment / Status Pill */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-medium shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span>ACTIVE DEFENSE</span>
-          </div>
+          {/* Automated response (SOAR) state from the backend */}
+          {responseFrozen !== null && (
+            <div
+              title="Automated response state"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-mono font-medium ${
+                responseFrozen
+                  ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+              }`}
+            >
+              <ShieldCheck className={`w-3 h-3 ${responseFrozen ? "text-rose-400" : "text-emerald-400"}`} />
+              <span>{responseFrozen ? "RESPONSE FROZEN" : "RESPONSE ACTIVE"}</span>
+            </div>
+          )}
 
           {/* Region Indicator */}
           <div className="hidden xl:flex items-center gap-1.5 text-slate-400 text-xs font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{state.tenant.homeRegion || "US East (1)"}</span>
+            <span>{state.tenant.dataResidencyRegion || state.tenant.homeRegion || "—"}</span>
           </div>
-
-          {/* Real-time Telemetry Stream Ticker */}
-          <Link
-            href="/ingestion"
-            title="Live Normalized Telemetry Ingestion (OCSF)"
-            className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:border-emerald-400/60 transition-all"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span>INGEST: WAL-DURABLE</span>
-            <span className="text-emerald-500">•</span>
-            <span className="text-slate-400 font-normal">G03-RECEIPT</span>
-          </Link>
 
           {/* Microservices Health */}
           <Link
@@ -574,7 +597,9 @@ export const TopHeader: React.FC = () => {
                 healthStatus.state === "OK" ? "text-cyan-400" : "text-amber-400"
               }`}
             />
-            <span className="text-[11px] text-slate-400">{healthStatus.healthyCount}/{healthStatus.totalCount} OK</span>
+            <span className="text-[11px] text-slate-400">
+              {healthStatus.state === "UNKNOWN" ? "Health —" : `${healthStatus.healthyCount}/${healthStatus.totalCount} OK`}
+            </span>
           </Link>
 
           {/* 1. Interactive Notification Bell */}

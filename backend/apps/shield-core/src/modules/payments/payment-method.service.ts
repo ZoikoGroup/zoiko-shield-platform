@@ -1,21 +1,77 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
+// These are also the request bodies of PaymentMethodController: the global
+// ValidationPipe (whitelist: true) strips any undecorated property.
 export class AddPaymentMethodDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   commercialAccountId!: string;
+
+  @IsIn(['CARD', 'ACH_DEBIT', 'SEPA_DEBIT', 'BANK_TRANSFER'])
   type!: 'CARD' | 'ACH_DEBIT' | 'SEPA_DEBIT' | 'BANK_TRANSFER';
+
+  @IsIn(['STRIPE', 'ADYEN', 'MANUAL'])
   provider!: 'STRIPE' | 'ADYEN' | 'MANUAL';
+
+  // A processor token (e.g. Stripe pm_...), never a raw card number.
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   providerPaymentMethodRef!: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}$/)
   lastFour?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
   cardBrand?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
   expiryMonth?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
   expiryYear?: number;
+
+  @IsOptional()
+  @IsBoolean()
   isPrimary?: boolean;
+
+  // Address / name block whose fields vary by provider and country.
+  @IsOptional()
+  @IsObject()
   billingDetails?: Record<string, unknown>;
 }
 
 export class AccountingHandoffExportDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
   periodKey!: string;
+
+  @IsIn(['CSV', 'JSON', 'QUICKBOOKS_IIF', 'NETSUITE_CSV'])
   exportFormat!: 'CSV' | 'JSON' | 'QUICKBOOKS_IIF' | 'NETSUITE_CSV';
 }
 

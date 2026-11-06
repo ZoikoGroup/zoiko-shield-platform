@@ -133,7 +133,13 @@ export class FindingService {
 
   async list(
     tenantId: string,
-    filters: { status?: string; severity?: string; assetId?: string } = {},
+    filters: {
+      status?: string;
+      severity?: string;
+      assetId?: string;
+      /** VULNERABILITY | MISCONFIGURATION | EXPOSURE | WEAKNESS; comma-separated for several. */
+      findingType?: string;
+    } = {},
     limit = 100,
   ) {
     const prismaAny = this.prisma as any;
@@ -144,6 +150,16 @@ export class FindingService {
           ...(filters.status ? { status: filters.status } : {}),
           ...(filters.severity ? { severity: filters.severity } : {}),
           ...(filters.assetId ? { asset_id: filters.assetId } : {}),
+          ...(filters.findingType
+            ? {
+                finding_type: {
+                  in: filters.findingType
+                    .split(',')
+                    .map((t) => t.trim().toUpperCase())
+                    .filter(Boolean),
+                },
+              }
+            : {}),
         },
         take: limit,
         orderBy: [{ priority_score: 'desc' }, { last_confirmed_at: 'desc' }],
@@ -283,8 +299,9 @@ export class FindingService {
         include: { factors: true },
       })) || [];
     const decorated = findings.map((finding: any) => this.decorate(finding));
+    // Accepted risk is a decision, not open work: it is counted separately.
     const open = decorated.filter(
-      (f: any) => !['RESOLVED', 'FALSE_POSITIVE'].includes(f.status),
+      (f: any) => !['RESOLVED', 'FALSE_POSITIVE', 'ACCEPTED'].includes(f.status),
     );
     return {
       generatedAt: new Date().toISOString(),
@@ -302,7 +319,12 @@ export class FindingService {
           (f: any) => f.priorityIntegrity.computedOverUnknowns,
         ).length,
         unresolvedAsset: open.filter((f: any) => !f.asset_id).length,
+        accepted: decorated.filter((f: any) => f.status === 'ACCEPTED').length,
+        resolved: decorated.filter((f: any) => f.status === 'RESOLVED').length,
       },
+      /** Open findings by severity and by finding_type, for posture KPIs. */
+      openBySeverity: countBy(open, (f: any) => f.severity),
+      openByType: countBy(open, (f: any) => f.finding_type),
       definition:
         'Live counts over findings rows; assertion state derived from last_confirmed_at against each source’s declared reassertion interval',
       limitations: [
@@ -310,4 +332,13 @@ export class FindingService {
       ],
     };
   }
+}
+
+function countBy<T>(rows: T[], key: (row: T) => string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const row of rows) {
+    const k = key(row) || 'UNKNOWN';
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
 }

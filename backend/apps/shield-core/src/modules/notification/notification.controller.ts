@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  NotFoundException,
   Body,
   Controller,
   Get,
@@ -44,25 +45,22 @@ export class NotificationController {
     @CurrentUser() user?: AuthenticatedUser,
     @Query('limit') limit?: string,
   ) {
-    const tid = tenantId || 'tnt-default-demo';
+    const tid = requireTenantId(tenantId);
     // Bounded: the header polls this every 30s, and delivery history only grows.
     const take = boundedTake(limit);
-    try {
-      return await this.prisma.notificationDelivery.findMany({
-        where: {
-          tenant_id: tid,
-          OR: [
-            { recipient_principal_id: user?.id || 'soc-lead' },
-            { recipient_principal_id: 'tenant-admin' },
-            { recipient_principal_id: 'soc-lead' },
-          ],
-        },
-        orderBy: { created_at: 'desc' },
-        take,
-      });
-    } catch {
-      return [];
-    }
+    // A database failure is an error, not an empty inbox.
+    return this.prisma.notificationDelivery.findMany({
+      where: {
+        tenant_id: tid,
+        OR: [
+          ...(user?.id ? [{ recipient_principal_id: user.id }] : []),
+          { recipient_principal_id: 'tenant-admin' },
+          { recipient_principal_id: 'soc-lead' },
+        ],
+      },
+      orderBy: { created_at: 'desc' },
+      take,
+    });
   }
 
   @Get('notifications/templates')
@@ -131,9 +129,11 @@ export class NotificationController {
     @Body()
     body: { recipientEmail?: string; variables?: Partial<EmailRenderInput> },
   ) {
-    const validTenantId = tenantId || 'tnt-sovereign-01';
-    const recipientEmail =
-      body?.recipientEmail || user?.email || 'operator@zoikoshield.corp';
+    const validTenantId = requireTenantId(tenantId);
+    const recipientEmail = body?.recipientEmail || user?.email;
+    if (!recipientEmail) {
+      throw new BadRequestException('A recipient email is required');
+    }
     const recipientName =
       body?.variables?.recipientFirstName ||
       (user?.email ? user.email.split('@')[0] : 'Security Operator');
@@ -161,7 +161,7 @@ export class NotificationController {
       body: rendered.htmlBody,
     });
 
-    let deliveryId = `del-${crypto.randomUUID().slice(0, 8)}`;
+    let deliveryId: string | null = null;
     try {
       // Resolve or find default policy for audit tracking
       const activePolicy = await this.prisma.notificationPolicy.findFirst({
@@ -192,16 +192,18 @@ export class NotificationController {
       });
       deliveryId = delivery.id;
     } catch {
-      // Non-fatal if database is disconnected
+      // The send already happened; report that its audit record is missing
+      // rather than inventing a delivery id.
     }
 
     return {
       deliveryId,
+      auditRecorded: deliveryId !== null,
       recipient: recipientEmail,
       renderHash: rendered.renderHash,
       templateId: rendered.templateId,
-      status: 'DELIVERED',
-      transport: sendResult.delivered ? 'SMTP_GMAIL_RELAY' : 'SIMULATED_RELAY',
+      status: sendResult.delivered ? 'DELIVERED' : 'FAILED',
+      transport: sendResult.delivered ? 'SMTP_GMAIL_RELAY' : 'NOT_SENT',
     };
   }
 
@@ -210,14 +212,11 @@ export class NotificationController {
     @Headers('x-tenant-id') tenantId: string,
     @Param('notificationId') id: string,
   ) {
-    const tid = tenantId || 'tnt-sovereign-01';
-    try {
-      return await this.prisma.notificationDelivery.findFirst({
-        where: { id, tenant_id: tid },
-      });
-    } catch {
-      return null;
-    }
+    const delivery = await this.prisma.notificationDelivery.findFirst({
+      where: { id, tenant_id: requireTenantId(tenantId) },
+    });
+    if (!delivery) throw new NotFoundException(`Notification '${id}' not found`);
+    return delivery;
   }
 
   @Post('notifications/:notificationId/acknowledge')
@@ -230,22 +229,17 @@ export class NotificationController {
       acknowledgementType: 'SEEN' | 'ACKNOWLEDGED' | 'ACCEPTED' | 'DECLINED';
     },
   ) {
-    const tid = tenantId || 'tnt-sovereign-01';
-    try {
-      return await this.acknowledgementService.acknowledge({
-        tenantId: tid,
-        notificationDeliveryId: id,
-        principalId: user?.id || 'soc-lead',
-        acknowledgementType: body.acknowledgementType,
-      });
-    } catch {
-      return {
-        success: true,
-        notificationDeliveryId: id,
-        status: 'ACKNOWLEDGED',
-        acknowledgedAt: new Date(),
-      };
+    const ackType = body?.acknowledgementType ?? 'ACKNOWLEDGED';
+    if (!['SEEN', 'ACKNOWLEDGED', 'ACCEPTED', 'DECLINED'].includes(ackType)) {
+      throw new BadRequestException(`Unknown acknowledgementType '${ackType}'`);
     }
+    // Only the acknowledgement service can say this was recorded.
+    return this.acknowledgementService.acknowledge({
+      tenantId: requireTenantId(tenantId),
+      notificationDeliveryId: id,
+      principalId: user.id,
+      acknowledgementType: ackType,
+    });
   }
 
   @Get('notification-preferences')

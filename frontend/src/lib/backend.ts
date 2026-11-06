@@ -52,7 +52,7 @@ function tenantHeaders(): Record<string, string> {
     }
   }
 
-  if (!headers["Authorization"] || !headers["x-tenant-id"]) {
+  if (process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true" && (!headers["Authorization"] || !headers["x-tenant-id"])) {
     const fallback = getInitialDemoState();
     if (!headers["x-tenant-id"] && fallback.tenant?.id) {
       headers["x-tenant-id"] = fallback.tenant.id;
@@ -120,7 +120,8 @@ async function request<T>(
       path,
     );
   }
-  if (options.live && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && isFallback) {
+  // Demo data is only ever shown when the demo switch is deliberately on.
+  if (isFallback && (options.live || process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "true")) {
     throw new BackendError("ZoikoShield backend is unreachable; demo data withheld.", null, path);
   }
 
@@ -151,6 +152,7 @@ export const backend = {
       method: "PATCH",
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
 /** Always an array, whatever shape the controller returned. */

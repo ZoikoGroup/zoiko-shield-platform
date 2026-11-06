@@ -17,12 +17,28 @@ import {
 } from "lucide-react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import {
-  CANONICAL_REGIONS,
-  resolveRegionMetadata,
-} from "@/lib/assurance-primitives";
+import { resolveRegionMetadata } from "@/lib/assurance-primitives";
+import { asList, backend } from "@/lib/backend";
+import { customerApi } from "@/lib/customer-api";
 
-const IS_TEST_ENV = process.env.NODE_ENV === "test";
+interface HeaderIdentity {
+  fullName: string;
+  email: string;
+  orgName: string;
+  region: string;
+  roleCodes: string[];
+  roleNames: string[];
+}
+
+interface NotificationDeliveryRow {
+  id: string;
+  event_id?: string;
+  channel?: string;
+  status?: string;
+  created_at?: string;
+}
+
+const READ_STATUSES = new Set(["ACKNOWLEDGED", "READ", "SEEN"]);
 
 interface HeaderNotificationItem {
   id: string;
@@ -40,116 +56,105 @@ export function CustomerTopHeader({
   onSearchChange?: (q: string) => void;
 }) {
   const router = useRouter();
-  const [state, setDemoState] = useDemoState();
+  const [, setDemoState] = useDemoState();
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
-  const [regionMenuOpen, setRegionMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(IS_TEST_ENV ? 3 : 0);
   const [notifications, setNotifications] = useState<HeaderNotificationItem[]>([]);
+  const [unreadIds, setUnreadIds] = useState<string[]>([]);
+  const [notifError, setNotifError] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<HeaderIdentity | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   useEffect(() => {
-    // Hydrate authenticated user and organization from backend
-    fetch("/api/v1/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        if (!me || (!me.email && !me.user?.email)) return;
-        const userObj = me.user || me;
-        const email = String(userObj.email || "").trim();
-        const fullName =
-          userObj.fullName ||
-          (email.includes("@")
-            ? email
-                .split("@")[0]
-                .replace(/[._-]/g, " ")
-                .replace(/\b\w/g, (c: string) => c.toUpperCase())
-            : "");
-        const orgFromEmail = email.includes("@")
-          ? email
-              .split("@")[1]
-              .split(".")[0]
-              .replace(/[-_]/g, " ")
-              .replace(/\b\w/g, (c: string) => c.toUpperCase())
-          : "";
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await customerApi.session();
+        const [tenantRes, membersRes] = await Promise.allSettled([
+          customerApi.tenant(),
+          backend.get<unknown>(`/api/v1/tenants/${encodeURIComponent(me.tenantId)}/members`),
+        ]);
+        const tenant = tenantRes.status === "fulfilled" ? tenantRes.value : null;
+        const members =
+          membersRes.status === "fulfilled"
+            ? asList<{ principalId: string; roles?: Array<{ code: string; name: string }> }>(membersRes.value)
+            : [];
+        const roles = members.find((m) => m.principalId === me.id)?.roles ?? [];
+        const next: HeaderIdentity = {
+          fullName: me.fullName || "",
+          email: me.email || "",
+          orgName: tenant?.name || "",
+          region: tenant?.dataResidencyRegion || tenant?.homeRegion || me.region || "",
+          roleCodes: roles.map((r) => r.code),
+          roleNames: roles.map((r) => r.name),
+        };
+        if (cancelled) return;
+        setIdentity(next);
+        // Other pages still read tenant/session from this store: give them real values.
         setDemoState((prev) => ({
           ...prev,
           session: {
             ...prev.session,
-            userId: userObj.id || prev.session?.userId || "",
-            email: email || prev.session?.email || "",
-            fullName: fullName || prev.session?.fullName || "",
-            role: userObj.role || prev.session?.role || "CUSTOMER",
-            tenantId: userObj.tenantId || prev.session?.tenantId || "",
+            userId: me.id,
+            email: next.email,
+            fullName: next.fullName,
+            role: (next.roleCodes[0] as typeof prev.session.role) || prev.session?.role,
+            tenantId: me.tenantId,
             isAuthenticated: true,
           },
           tenant: {
             ...prev.tenant,
-            id: userObj.tenantId || prev.tenant?.id || "",
-            organizationName:
-              userObj.organizationName ||
-              (prev.tenant?.organizationName &&
-              prev.tenant.organizationName !== "Enterprise Security Operations" &&
-              prev.tenant.organizationName !== "Acme Global Ltd"
-                ? prev.tenant.organizationName
-                : orgFromEmail || "Organization Workspace"),
+            id: me.tenantId,
+            organizationName: next.orgName || prev.tenant?.organizationName || "",
+            ...(tenant ? { homeRegion: tenant.homeRegion, dataResidencyRegion: tenant.dataResidencyRegion } : {}),
           },
         }));
-      })
-      .catch(() => {});
-
-    fetch("/api/v1/notifications/deliveries")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.deliveries)
-          ? data.deliveries
-          : [];
-        const mapped: HeaderNotificationItem[] = list.slice(0, 6).map((d: any, idx: number) => ({
-          id: d.id || `notif-${idx}`,
-          title: d.event_id || d.subject || "Security Notification",
-          subtitle: `${d.channel || "SYSTEM"} • ${d.status || "DELIVERED"}`,
-          severity:
-            d.status === "DEAD_LETTERED" || String(d.event_id || "").toLowerCase().includes("critical")
-              ? "CRITICAL"
-              : "INFO",
-          href: "/notifications",
-        }));
-        setNotifications(mapped);
-        const unread = list.filter(
-          (d: any) => d.status !== "ACKNOWLEDGED" && d.status !== "READ"
-        ).length;
-        setUnreadCount(unread);
-      })
-      .catch(() => {
-        if (!IS_TEST_ENV) {
-          setNotifications([]);
-          setUnreadCount(0);
-        }
-      });
+      } catch {
+        // Not signed in or backend unreachable: the header shows no identity rather than a made-up one.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [setDemoState]);
 
-  const currentRegionCode =
-    state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || (state.tenant as any)?.region || "us-east-1";
-  const regionMeta = resolveRegionMetadata(currentRegionCode);
+  const loadNotifications = React.useCallback(async () => {
+    try {
+      const rows = asList<NotificationDeliveryRow>(await backend.get("/api/v1/notifications?limit=20"));
+      setNotifications(
+        rows.slice(0, 6).map((d) => ({
+          id: d.id,
+          title: d.event_id || "Notification",
+          subtitle: [d.channel, d.status, d.created_at ? new Date(d.created_at).toLocaleString() : ""].filter(Boolean).join(" • "),
+          severity: d.status === "DEAD_LETTERED" || d.status === "FAILED" ? "WARNING" : "INFO",
+          href: "/notifications",
+        })),
+      );
+      setUnreadIds(rows.filter((d) => !READ_STATUSES.has(String(d.status))).map((d) => d.id));
+      setNotifError(null);
+    } catch (err) {
+      setNotifError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
 
-  const handleRegionSelect = (regionCode: string) => {
-    setDemoState((prev) => ({
-      ...prev,
-      tenant: {
-        ...prev.tenant,
-        homeRegion: regionCode,
-        dataResidencyRegion: regionCode,
-      },
-    }));
-    fetch("/api/v1/customer/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ primaryRegion: regionCode }),
-    }).catch(() => {});
-    setRegionMenuOpen(false);
+  useEffect(() => {
+    void loadNotifications();
+  }, [loadNotifications]);
+
+  const markAllRead = async () => {
+    const results = await Promise.allSettled(
+      unreadIds.map((id) =>
+        backend.post(`/api/v1/notifications/${encodeURIComponent(id)}/acknowledge`, { acknowledgementType: "SEEN" }),
+      ),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    await loadNotifications();
+    if (failed > 0) setNotifError(`${failed} of ${results.length} notifications could not be marked as read.`);
   };
+
+  const unreadCount = unreadIds.length;
+  const regionMeta = identity?.region ? resolveRegionMetadata(identity.region) : null;
 
   const handleSignOut = async () => {
     await ZoikoShieldApiClient.logout();
@@ -183,50 +188,12 @@ export function CustomerTopHeader({
     }
   };
 
-  const rawEmail = state.session?.email || "";
-  const derivedOrgFromEmail = rawEmail.includes("@")
-    ? rawEmail
-        .split("@")[1]
-        .split(".")[0]
-        .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-    : "";
-  const derivedNameFromEmail = rawEmail.includes("@")
-    ? rawEmail
-        .split("@")[0]
-        .replace(/[._-]/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-    : "";
-
-  const displayOrgName =
-    state.tenant?.organizationName &&
-    state.tenant.organizationName !== "Enterprise Security Operations" &&
-    state.tenant.organizationName !== "Acme Global Ltd"
-      ? state.tenant.organizationName
-      : derivedOrgFromEmail || (IS_TEST_ENV ? "Acme Global Ltd" : "Organization Workspace");
-
-  const displayUserName =
-    state.session?.fullName &&
-    state.session.fullName !== "Lead Security Operator" &&
-    state.session.fullName !== "Jane Doe"
-      ? state.session.fullName
-      : derivedNameFromEmail || (IS_TEST_ENV ? "Jane Doe" : "Authenticated User");
-
-  const displayUserEmail =
-    rawEmail && rawEmail !== "soc-lead@zoikoshield.internal"
-      ? rawEmail
-      : IS_TEST_ENV
-      ? "jane.doe@acmeglobal.com"
-      : "No email available";
-
-  const displayRoleLabel =
-    state.session?.role === "SECURITY_ANALYST"
-      ? "SOC Analyst"
-      : state.session?.role === "AUDITOR"
-      ? "Security Auditor"
-      : (state.session?.role as string) === "TENANT_ADMIN" || state.session?.role === "TENANT_OWNER"
-      ? "Tenant Admin"
-      : "CISO";
+  const displayOrgName = identity?.orgName || "";
+  const displayUserName = identity?.fullName || identity?.email || "";
+  const displayUserEmail = identity?.email || "";
+  const displayRoleLabel = identity?.roleNames.join(", ") || "";
+  const isTenantOwner = identity?.roleCodes.includes("TENANT_OWNER") ?? false;
+  const isSuperAdmin = identity?.roleCodes.includes("SUPER_ADMIN") ?? false;
 
   const initials = displayUserName
     .split(" ")
@@ -238,16 +205,13 @@ export function CustomerTopHeader({
 
   return (
     <header className="h-[68px] shrink-0 w-full bg-[#07101e]/95 backdrop-blur-md border-b border-slate-800/80 px-6 flex items-center justify-between gap-4 z-20">
-      {/* Left Controls: Customer Workspace Switcher + Region Selector + Production Pill */}
+      {/* Left Controls: Customer Workspace Switcher + Data Residency Region */}
       <div className="flex items-center gap-3">
         {/* Customer Workspace Selector */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => {
-              setWorkspaceMenuOpen((v) => !v);
-              setRegionMenuOpen(false);
-            }}
+            onClick={() => setWorkspaceMenuOpen((v) => !v)}
             className="flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 transition-colors"
           >
             <div className="w-8 h-8 rounded-lg bg-red-950/80 border border-red-500/40 flex items-center justify-center">
@@ -286,8 +250,7 @@ export function CustomerTopHeader({
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               </button>
 
-              {(state.session?.role === "TENANT_OWNER" ||
-                state.session?.role === "SUPER_ADMIN") && (
+              {(isTenantOwner || isSuperAdmin) && (
                 <button
                   type="button"
                   onClick={() => switchDashboardMode("TENANT_ADMIN")}
@@ -307,7 +270,7 @@ export function CustomerTopHeader({
                 </button>
               )}
 
-              {state.session?.role === "SUPER_ADMIN" && (
+              {isSuperAdmin && (
                 <button
                   type="button"
                   onClick={() => switchDashboardMode("SUPER_ADMIN")}
@@ -330,57 +293,16 @@ export function CustomerTopHeader({
           )}
         </div>
 
-        {/* Canonical Region Selector (EU Ireland default per wireframe) */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => {
-              setRegionMenuOpen((v) => !v);
-              setWorkspaceMenuOpen(false);
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 text-xs font-medium text-slate-200 transition-colors"
+        {/* Data residency region of this workspace (read-only: residency is not changed from the header) */}
+        {regionMeta && (
+          <div
+            title={`Data residency: ${regionMeta.code}`}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0c1829] border border-slate-700/70 text-xs font-medium text-slate-200"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400" />
             <span>{regionMeta.shortLabel}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
-          </button>
-
-          {regionMenuOpen && (
-            <div className="absolute left-0 mt-2 w-72 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-2 z-50 space-y-1">
-              <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                Data Residency Boundary (G02)
-              </div>
-              {Object.values(CANONICAL_REGIONS).map((reg) => (
-                <button
-                  key={reg.code}
-                  type="button"
-                  onClick={() => handleRegionSelect(reg.code)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-xs transition-colors ${
-                    reg.code === regionMeta.code
-                      ? "bg-cyan-950/50 border border-cyan-500/40 text-white"
-                      : "hover:bg-slate-800/70 text-slate-300"
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">{reg.shortLabel}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {reg.code} • {reg.countryCode} ({reg.sovereigntyRegime})
-                    </div>
-                  </div>
-                  {reg.code === regionMeta.code && (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Production Environment Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-xs font-semibold text-emerald-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Production</span>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Right Controls: Search Input + Notifications + Help + User Profile */}
@@ -430,14 +352,17 @@ export function CustomerTopHeader({
                 <span className="text-xs font-semibold text-white">
                   Active Security Notifications ({notifications.length})
                 </span>
-                <span className="text-[10px] font-mono text-emerald-400">
-                  {regionMeta.code}
-                </span>
+                {regionMeta && (
+                  <span className="text-[10px] font-mono text-emerald-400">{regionMeta.code}</span>
+                )}
               </div>
-              {notifications.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">
-                  No data available — 0 active notifications for this tenant.
+              {notifError && (
+                <div role="alert" className="text-[11px] text-red-300">
+                  {notifError}
                 </div>
+              )}
+              {notifications.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">No notifications.</div>
               ) : (
                 <div className="space-y-1.5 text-xs max-h-64 overflow-y-auto">
                   {notifications.map((item) => (
@@ -455,7 +380,7 @@ export function CustomerTopHeader({
                       }`}
                     >
                       <div className="flex items-center gap-1.5 font-semibold text-slate-100">
-                        <ShieldAlert className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <ShieldAlert className={`w-3.5 h-3.5 shrink-0 ${item.severity === "INFO" ? "text-sky-400" : "text-amber-400"}`} />
                         <span className="truncate">{item.title}</span>
                       </div>
                       <p className="text-[11px] text-slate-400 mt-0.5 truncate">
@@ -468,11 +393,9 @@ export function CustomerTopHeader({
               <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
                 <button
                   type="button"
-                  onClick={() => {
-                    setUnreadCount(0);
-                    fetch("/api/v1/notifications/mark-all-read", { method: "POST" }).catch(() => {});
-                  }}
-                  className="text-slate-400 hover:text-emerald-400 font-medium"
+                  onClick={() => void markAllRead()}
+                  disabled={unreadCount === 0}
+                  className="text-slate-400 hover:text-emerald-400 font-medium disabled:opacity-40"
                 >
                   Mark all as read
                 </button>
@@ -529,9 +452,11 @@ export function CustomerTopHeader({
                 <div className="text-[11px] text-slate-400">
                   {displayUserEmail}
                 </div>
-                <div className="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-red-950/60 border border-red-500/30 text-red-300">
-                  Customer Workspace • {displayRoleLabel}
-                </div>
+                {displayRoleLabel && (
+                  <div className="mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-mono bg-red-950/60 border border-red-500/30 text-red-300">
+                    {displayRoleLabel}
+                  </div>
+                )}
               </div>
               <button
                 type="button"

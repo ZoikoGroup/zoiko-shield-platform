@@ -31,6 +31,12 @@ export interface SecurityConnector {
     input: ConnectInput,
   ): Promise<ConnectionResult>;
 
+  /**
+   * True only when testConnection actually reaches the provider. Providers
+   * without a real check must leave this unset: the catalog then reports the
+   * connection as UNVERIFIED instead of relaying a canned HEALTHY.
+   */
+  readonly liveConnectivityCheck?: boolean;
   testConnection(context: ConnectorContext): Promise<HealthResult>;
 
   sync(context: ConnectorContext): Promise<SyncResult>;

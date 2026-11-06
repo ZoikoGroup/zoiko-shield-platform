@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
@@ -111,5 +112,33 @@ export class ConnectorsProxyController {
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
     return this.shieldIngestClient.getConnectorHealth(tenantId, id);
+  }
+
+  /**
+   * Normalized events and control evaluations live in shield-ingest, which
+   * accepts only workload tokens. The browser reaches them through here.
+   */
+  @Get('events')
+  async listEvents(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    const n = Number(limit);
+    const bounded = Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 500) : undefined;
+    return this.shieldIngestClient.listEvents(
+      tenantId,
+      bounded ? { limit: String(bounded) } : undefined,
+    );
+  }
+
+  @Get('control-evaluations')
+  async listControlEvaluations(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listControlEvaluations(tenantId);
   }
 }

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { PERMISSION_CODES } from '../../authorization/constants';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
@@ -51,7 +52,7 @@ export class ExportJobService {
     const authorization = await this.authorizationDecisionService.evaluate({
       actorId: input.requestedBy,
       tenantId: input.tenantId,
-      action: 'export:create',
+      action: PERMISSION_CODES.EXPORT_CREATE,
       resourceType: 'Tenant',
       resourceId: input.tenantId,
     });

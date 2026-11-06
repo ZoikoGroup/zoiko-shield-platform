@@ -6,6 +6,15 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import {
+  IsIn,
+  IsInt,
+  IsIP,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export type JitSessionStatus =
   'PENDING' | 'APPROVED' | 'ACTIVE' | 'EXPIRED' | 'REVOKED';
@@ -33,30 +42,88 @@ export class JitElevationSession {
   auditAttestationHash!: string;
 }
 
+// These are also the request bodies of JitElevationController: the global
+// ValidationPipe (whitelist: true) strips any undecorated property.
 export class CreateJitElevationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   operatorId!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   operatorName?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   targetTenantId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   elevatedRole!: string;
+
+  // The service enforces the 10-character minimum after trimming.
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
   statedPurpose!: string;
+
+  // The service clamps to 15..240 minutes.
+  @IsOptional()
+  @IsInt()
   durationMinutes?: number;
+
+  @IsOptional()
+  @IsIP()
   clientIp?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
   initialHardwareProof?: string;
 }
 
 export class PeerApproveDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   approverId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   approverRole!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
   approvalNotes?: string;
 }
 
 export class HardwareStepUpDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4096)
   hardwareProofDigest!: string;
+
+  @IsOptional()
+  @IsIn(['PLATFORM', 'CROSS_PLATFORM'])
   authenticatorAttachment?: 'PLATFORM' | 'CROSS_PLATFORM';
 }
 
 export class RevokeJitSessionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   revokedBy!: string;
+
+  // Required by type, but the service substitutes a default for a blank
+  // reason, so an empty string stays accepted.
+  @IsString()
+  @MaxLength(2000)
   reason!: string;
 }
 

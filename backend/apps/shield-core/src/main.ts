@@ -11,6 +11,15 @@ import { HttpLoggingInterceptor } from './observability/http-logging.interceptor
 async function bootstrap() {
   const app = await NestFactory.create(ShieldCoreModule, { rawBody: true });
 
+  // Browser traffic reaches shield-core through the frontend's /api/v1 proxy,
+  // so without this every user shares the proxy's IP and one rate-limit
+  // bucket (login included). Trust X-Forwarded-For only from private-network
+  // hops such as that proxy; a client connecting directly from a public
+  // address cannot spoof it. TRUST_PROXY overrides (Express trust proxy syntax).
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .set('trust proxy', process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal');
   app.use(cookieParser());
   app.use(new TraceIdMiddleware().use.bind(new TraceIdMiddleware()));
   app.enableCors({

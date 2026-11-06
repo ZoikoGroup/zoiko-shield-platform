@@ -16,11 +16,40 @@ import {
   ServiceReadinessService,
   PlatformReadinessSnapshot,
   CoreServiceReadiness,
-  ServiceReadinessState,
+  type ServiceReadinessState,
 } from './service-readiness.service';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
+// Keyed by the ServiceReadinessState union so a new state there is a compile
+// error here until it is added.
+const READINESS_STATE_KEYS: Record<ServiceReadinessState, true> = {
+  HEALTHY: true,
+  AT_RISK: true,
+  DEGRADED: true,
+  PARTIAL_INCOMPLETE: true,
+  STALE: true,
+  UNKNOWN: true,
+  UNAVAILABLE: true,
+  UNAUTHORIZED: true,
+  QUARANTINED: true,
+  MAINTENANCE: true,
+  RECOVERING: true,
+  RECONCILIATION_REQUIRED: true,
+  ERROR_BUDGET_EXHAUSTED: true,
+  READINESS_CONDITIONAL: true,
+  NOT_READY: true,
+  WITHDRAWN: true,
+};
+
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class SetOverrideDto {
+  @IsIn(Object.keys(READINESS_STATE_KEYS))
   state!: ServiceReadinessState;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
   reason?: string;
 }
 

@@ -17,14 +17,63 @@ import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
 import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
 import { requireTenantId } from '../../../tenant-context';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+import type { AlertStatus } from '../state-machine/alert-state-machine.service';
 
+// Keyed by the AlertStatus union so adding a status there without adding it
+// here is a compile error.
+const ALERT_STATUS_KEYS: Record<AlertStatus, true> = {
+  NEW: true,
+  ACKNOWLEDGED: true,
+  TRIAGED: true,
+  FALSE_POSITIVE: true,
+  DUPLICATE: true,
+  SUPPRESSED: true,
+  ESCALATED_TO_CASE: true,
+  CLOSED: true,
+};
+const ALERT_STATUSES = Object.keys(ALERT_STATUS_KEYS) as AlertStatus[];
+
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class UpdateAlertStatusDto {
+  @IsIn(ALERT_STATUSES)
   status!: string;
 }
 
+/**
+ * POST :alertId/close takes an optional disposition: AlertService.close()
+ * defaults to CLOSED when none is given, so the field cannot be required here
+ * the way it is for PATCH :alertId/status.
+ */
+export class CloseAlertDto {
+  @IsOptional()
+  @IsIn(ALERT_STATUSES)
+  status?: string;
+}
+
 export class AssignAlertDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   principalId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   queueId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
   reason?: string;
 }
 
@@ -179,7 +228,7 @@ export class AlertController {
   async close(
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('alertId') alertId: string,
-    @Body() dto: UpdateAlertStatusDto,
+    @Body() dto: CloseAlertDto,
   ) {
     const alert = await this.alertService.close(
       this.resolveTenantId(headerTenantId),

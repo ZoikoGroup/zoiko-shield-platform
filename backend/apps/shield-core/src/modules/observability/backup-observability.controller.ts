@@ -13,11 +13,23 @@ import { PlatformPermissionsGuard } from '../authorization/guards/platform-permi
 import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
 import {
   BackupIntegrityService,
-  DataStoreId,
+  type DataStoreId,
 } from './backup-integrity.service';
 import { RestoreDrillService } from './restore-drill.service';
+import { IsIn, IsOptional } from 'class-validator';
 
+const DATA_STORE_KEYS: Record<DataStoreId, true> = {
+  shield_core_db: true,
+  merkle_ledger: true,
+  timeseries_telemetry: true,
+  audit_vault: true,
+};
+
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class TriggerRestoreDrillDto {
+  @IsOptional()
+  @IsIn(Object.keys(DATA_STORE_KEYS))
   storeId?: DataStoreId;
 }
 

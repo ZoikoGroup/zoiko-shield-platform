@@ -167,7 +167,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 h-screen overflow-hidden">
         <TopHeader />
-        <DemoGuideBar />
+        {/* Presentation tool (stage walkthrough, "Inject Test Data"): demo builds only. */}
+        {process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true" && <DemoGuideBar />}
         <main
           id="main-content"
           className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 scroll-smooth"

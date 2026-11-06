@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -125,6 +126,12 @@ export class ResponseProposalService {
     if (proposal.status !== 'PROPOSED') {
       throw new BadRequestException(
         `ActionProposal '${params.proposalId}' is not in a state that can be approved (${proposal.status})`,
+      );
+    }
+    // Four-eyes: the person who asked for an action cannot also authorize it.
+    if (proposal.requested_by && proposal.requested_by === params.approverId) {
+      throw new ForbiddenException(
+        'The person who proposed a response action cannot approve it',
       );
     }
 

@@ -5,9 +5,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  env: {
-    NEXT_PUBLIC_DEMO_FALLBACK: "true",
-  },
+  // NEXT_PUBLIC_DEMO_FALLBACK is deliberately not set here. It defaults to off, so a
+  // backend failure shows as a failure. Set NEXT_PUBLIC_DEMO_FALLBACK=true at build
+  // time only for a disconnected demo; never for a test or customer environment.
   async redirects() {
     return [
       {

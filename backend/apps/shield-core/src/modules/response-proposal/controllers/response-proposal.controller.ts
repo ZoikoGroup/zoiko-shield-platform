@@ -8,7 +8,15 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { IsDefined, ValidateNested } from 'class-validator';
+import {
+  IsBoolean,
+  IsDefined,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ResponseProposalService } from '../services/response-proposal.service';
 import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
@@ -20,21 +28,72 @@ import { HumanAuthorityAttestationDto } from '../../human-authority/human-author
 import { RequireHumanAuthority } from '../../human-authority/human-authority.decorator';
 import { HumanAuthorityGuard } from '../../human-authority/human-authority.guard';
 
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class CreateProposalDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   environmentId?: string;
+
+  // Accepted for compatibility but ignored: the :caseId path parameter is
+  // what the proposal is attached to.
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   caseId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   alertId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   targetType!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
   targetId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   actionType!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4000)
   reason!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   recommendationSource!: string;
+
+  @IsOptional()
+  @IsBoolean()
   reversible?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
   rollbackActionType?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
   residualRisk?: string;
 }
 
 export class ApproveProposalDto {
+  // Was undecorated, so whitelist stripped it even though humanAuthority
+  // below validated.
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
   reason?: string;
 
   @IsDefined()
@@ -44,6 +103,9 @@ export class ApproveProposalDto {
 }
 
 export class RejectProposalDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4000)
   reason!: string;
 }
 

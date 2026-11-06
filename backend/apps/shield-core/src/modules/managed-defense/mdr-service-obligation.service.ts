@@ -6,27 +6,133 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  CoverageTier,
-  EscalationPathNode,
+  type CoverageTier,
+  type EscalationPathNode,
   MdrServiceObligation,
   OperationalReadinessStatus,
-  SocStaffingSchedule,
+  type SocStaffingSchedule,
   STANDARD_SLA_WINDOWS,
 } from './mdr-service-obligation.entity';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsDefined,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+
+const COVERAGE_TIERS: CoverageTier[] = [
+  'BUSINESS_HOURS_8X5',
+  'EXTENDED_16X7',
+  'CONTINUOUS_24X7',
+];
+
+// Runtime shapes of the SocStaffingSchedule / EscalationPathNode interfaces,
+// so the global ValidationPipe (whitelist: true) validates the nested objects
+// instead of passing unchecked data into the obligation register.
+export class SocStaffingScheduleDto implements SocStaffingSchedule {
+  @IsIn(COVERAGE_TIERS)
+  coverageTier!: CoverageTier;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  primaryTimezone!: string;
+
+  @IsInt()
+  @Min(0)
+  minimumActiveAnalystsOnDuty!: number;
+
+  @IsBoolean()
+  escalationLeadAvailable!: boolean;
+
+  @IsBoolean()
+  tier3IncidentCommanderOnCall!: boolean;
+
+  @IsBoolean()
+  shiftHandoffProtocolProven!: boolean;
+}
+
+export class EscalationPathNodeDto implements EscalationPathNode {
+  @IsInt()
+  @Min(1)
+  tierLevel!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
+  roleTitle!: string;
+
+  @IsInt()
+  @Min(0)
+  responseWindowMinutes!: number;
+
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  notificationChannels!: string[];
+
+  @IsBoolean()
+  requiresQuorumApproval!: boolean;
+}
 
 export class RegisterObligationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   contractId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   tenantId!: string;
+
+  @IsIn(COVERAGE_TIERS)
   coverageTier!: CoverageTier;
+
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => SocStaffingScheduleDto)
   staffingSchedule!: SocStaffingSchedule;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => EscalationPathNodeDto)
   escalationPath?: EscalationPathNode[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
   operationalProofRef?: string;
 }
 
 export class VerifyReadinessDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   contractId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   auditorId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1024)
   proofDocumentRef!: string;
+
+  @IsBoolean()
   passed24x7ShiftAudit!: boolean;
 }
 

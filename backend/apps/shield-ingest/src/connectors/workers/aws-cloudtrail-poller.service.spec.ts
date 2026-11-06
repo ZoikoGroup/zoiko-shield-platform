@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AwsCloudTrailPollerService } from './aws-cloudtrail-poller.service';
+import { AwsCloudTrailPollerService, AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE } from './aws-cloudtrail-poller.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorCheckpointService } from '../services/checkpoint.service';
 import { ConnectorHealthService } from '../services/health.service';
@@ -66,24 +66,18 @@ describe('AwsCloudTrailPollerService', () => {
   });
 
   describe('pollConnector', () => {
-    it('should poll incremental CloudTrail records and push to batch buffer', async () => {
-      const result = await service.pollConnector('inst-1', 5);
+    it('collects nothing, pushes nothing into the pipeline and marks the connector as not collecting', async () => {
+      const result = await service.pollConnector('inst-1');
 
-      expect(result.status).toBe('SUCCESS');
-      expect(result.polledCount).toBe(5);
-      expect(result.newCheckpoint).toBe('15');
-      expect(mockBatchBuffer.ingestBatch).toHaveBeenCalled();
-      expect(mockCheckpoint.set).toHaveBeenCalledWith(
-        'tenant-1',
-        'inst-1',
-        'aws-cloudtrail',
-        '15',
-      );
+      expect(result.status).toBe('NOT_IMPLEMENTED');
+      expect(result.polledCount).toBe(0);
+      expect(mockBatchBuffer.ingestBatch).not.toHaveBeenCalled();
+      expect(mockCheckpoint.set).not.toHaveBeenCalled();
       expect(mockHealth.updateHealth).toHaveBeenCalledWith(
         'inst-1',
-        'tenant-1',
-        'HEALTHY',
         expect.any(String),
+        'DEGRADED',
+        AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE,
       );
     });
   });
@@ -93,14 +87,16 @@ describe('AwsCloudTrailPollerService', () => {
       const pollSpy = jest.spyOn(service, 'pollConnector').mockResolvedValue({
         instanceId: 'inst-1',
         tenantId: 'tenant-1',
-        polledCount: 5,
-        newCheckpoint: '15',
-        status: 'SUCCESS',
+        polledCount: 0,
+        newCheckpoint: '0',
+        status: 'NOT_IMPLEMENTED',
       });
 
       await service.handleScheduledPoll();
 
-      expect(mockPrisma.connectorInstance.findMany).toHaveBeenCalled();
+      expect(mockPrisma.connectorInstance.findMany).toHaveBeenCalledWith({
+        where: { definition: { provider: 'aws-cloudtrail' }, deletedAt: null },
+      });
       expect(pollSpy).toHaveBeenCalledWith('inst-1');
     });
   });

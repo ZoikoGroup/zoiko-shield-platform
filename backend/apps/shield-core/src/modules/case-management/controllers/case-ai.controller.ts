@@ -17,15 +17,35 @@ import {
   requireRegion,
   requireTenantId,
 } from '../../../tenant-context';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class InvokeAiDto {
   actorId?: string;
 }
 
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class ReviewOutputDto {
+  // Forwarded verbatim to shield-ai, whose ReviewDecision is this union.
+  @IsIn(['APPROVED', 'MODIFIED', 'REJECTED'])
   decision!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
   rationale?: string;
+
+  // shield-ai requires non-blank content when decision is MODIFIED.
+  @IsOptional()
+  @IsString()
+  @MaxLength(100_000)
   modifiedContent?: string;
+
+  // Accepted for compatibility but ignored: the handler uses the
+  // authenticated user's id, never a body-supplied actor.
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   actorId?: string;
 }
 

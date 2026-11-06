@@ -12,6 +12,7 @@ import {
 import {
   IsArray,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   ValidateNested,
@@ -44,6 +45,8 @@ export class BufferedTelemetryEventDto implements BufferedTelemetryEvent {
   @IsString()
   eventType!: string;
 
+  // Free-form telemetry body; was undecorated, so whitelist stripped it.
+  @IsObject()
   payload!: Record<string, unknown>;
 
   @IsString()

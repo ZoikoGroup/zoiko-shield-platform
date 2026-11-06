@@ -4,17 +4,29 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorCheckpointService } from '../services/checkpoint.service';
 import { ConnectorHealthService } from '../services/health.service';
 import { HighThroughputBatchBufferService } from '../../ingestion/high-throughput-batch-buffer.service';
-import { CloudTrailRawRecord } from '../providers/aws-cloudtrail/aws-cloudtrail.types';
 
 export interface CloudTrailPollResult {
   instanceId: string;
   tenantId: string;
   polledCount: number;
   newCheckpoint: string;
-  status: 'SUCCESS' | 'NO_NEW_DATA' | 'ERROR';
+  status: 'SUCCESS' | 'NO_NEW_DATA' | 'NOT_IMPLEMENTED' | 'ERROR';
   errorMessage?: string;
 }
 
+/** Shown on the connector's health so the customer knows nothing is collected. */
+export const AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE =
+  'No AWS CloudTrail collector is implemented yet: this connector is configured but no events are being collected.';
+
+/**
+ * Scheduled poller for AWS CloudTrail connector instances.
+ *
+ * There is no AWS CloudTrail API client in this service yet. This poller used to
+ * fabricate records and push them into the tenant's ingestion pipeline as if
+ * they had come from the customer's cloud account; those records then became
+ * normalized events, detections and alerts. It now collects nothing and marks
+ * each connector's health so the gap is visible instead of hidden.
+ */
 @Injectable()
 export class AwsCloudTrailPollerService {
   private readonly logger = new Logger(AwsCloudTrailPollerService.name);
@@ -27,221 +39,55 @@ export class AwsCloudTrailPollerService {
     @Optional() private readonly batchBuffer?: HighThroughputBatchBufferService,
   ) {}
 
-  /**
-   * Periodic cron trigger to poll active AWS CloudTrail connector instances.
-   */
   @Cron(CronExpression.EVERY_MINUTE)
   async handleScheduledPoll(): Promise<void> {
-    if (this.isPolling) {
-      this.logger.debug(
-        'Previous CloudTrail poll cycle still in progress, skipping...',
-      );
-      return;
-    }
-
+    if (this.isPolling || !this.prisma) return;
     this.isPolling = true;
     try {
-      if (!this.prisma) {
-        return;
-      }
-
       const activeInstances = await this.prisma.connectorInstance.findMany({
-        where: {
-          definition: { provider: 'aws-cloudtrail' },
-        },
+        where: { definition: { provider: 'aws-cloudtrail' }, deletedAt: null },
       });
-
       for (const instance of activeInstances) {
         try {
           await this.pollConnector(instance.id);
         } catch (err) {
           this.logger.error(
-            `Failed to poll CloudTrail instance ${instance.id}: ${(err as Error).message}`,
+            `Failed to poll AWS CloudTrail instance ${instance.id}: ${(err as Error).message}`,
           );
         }
       }
     } catch (err) {
-      this.logger.error(
-        `Error during CloudTrail scheduled poll: ${(err as Error).message}`,
-      );
+      this.logger.error(`Error during AWS CloudTrail scheduled poll: ${(err as Error).message}`);
     } finally {
       this.isPolling = false;
     }
   }
 
-  /**
-   * Polls incremental CloudTrail telemetry for a specific connector instance.
-   */
-  async pollConnector(
-    instanceId: string,
-    limit = 50,
-  ): Promise<CloudTrailPollResult> {
-    this.logger.log(
-      `Polling CloudTrail records for connector instance: ${instanceId}`,
-    );
-
-    let tenantId = 'tenant-default';
+  async pollConnector(instanceId: string): Promise<CloudTrailPollResult> {
+    let tenantId = '';
     if (this.prisma) {
       const instance = await this.prisma.connectorInstance.findUnique({
         where: { id: instanceId },
       });
-      if (instance) {
-        tenantId = instance.tenant_id;
-      }
+      tenantId = instance?.tenant_id ?? '';
+    }
+    const checkpoint =
+      (this.checkpointService && tenantId
+        ? await this.checkpointService.get(instanceId, 'aws-cloudtrail').catch(() => null)
+        : null) || '0';
+
+    if (this.healthService && tenantId) {
+      await this.healthService
+        .updateHealth(instanceId, tenantId, 'DEGRADED', AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE)
+        .catch(() => undefined);
     }
 
-    let lastCheckpoint = '0';
-    try {
-      if (this.checkpointService) {
-        const cursor = await this.checkpointService.get(
-          instanceId,
-          'aws-cloudtrail',
-        );
-        lastCheckpoint = cursor || '0';
-      }
-
-      const startOffset = parseInt(lastCheckpoint, 10) || 0;
-      const records = this.generateIncrementalCloudTrailRecords(
-        tenantId,
-        startOffset,
-        limit,
-      );
-
-      if (records.length === 0) {
-        return {
-          instanceId,
-          tenantId,
-          polledCount: 0,
-          newCheckpoint: lastCheckpoint,
-          status: 'NO_NEW_DATA',
-        };
-      }
-
-      // Convert to batch buffer events
-      if (this.batchBuffer) {
-        const bufferEvents = records.map((rec) => ({
-          eventId:
-            rec.eventID ||
-            `ct-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          source: 'aws.cloudtrail',
-          eventType: rec.eventName || 'AwsApiCall',
-          timestamp: rec.eventTime || new Date().toISOString(),
-          payload: rec,
-        }));
-
-        await this.batchBuffer.ingestBatch(tenantId, bufferEvents);
-      }
-
-      const nextOffset = startOffset + records.length;
-      const newCheckpointStr = nextOffset.toString();
-
-      // Update checkpoint
-      if (this.checkpointService) {
-        await this.checkpointService.set(
-          tenantId,
-          instanceId,
-          'aws-cloudtrail',
-          newCheckpointStr,
-        );
-      }
-
-      // Update health
-      if (this.healthService) {
-        await this.healthService.updateHealth(
-          instanceId,
-          tenantId,
-          'HEALTHY',
-          `Polled ${records.length} CloudTrail events successfully`,
-        );
-      }
-
-      return {
-        instanceId,
-        tenantId,
-        polledCount: records.length,
-        newCheckpoint: newCheckpointStr,
-        status: 'SUCCESS',
-      };
-    } catch (err: any) {
-      this.logger.error(
-        `Failed to poll AWS CloudTrail events for connector instance ${instanceId}: ${err?.message}`,
-      );
-
-      if (this.healthService) {
-        await this.healthService
-          .updateHealth(
-            instanceId,
-            tenantId,
-            'DEGRADED',
-            `CloudTrail polling error: ${err?.message}`,
-          )
-          .catch(() => {});
-      }
-
-      return {
-        instanceId,
-        tenantId,
-        polledCount: 0,
-        newCheckpoint: lastCheckpoint,
-        status: 'ERROR',
-        errorMessage: err?.message,
-      };
-    }
-  }
-
-  /**
-   * Helper to construct realistic simulated CloudTrail records for active ingest testing and ingestion pipelines.
-   */
-  private generateIncrementalCloudTrailRecords(
-    tenantId: string,
-    startOffset: number,
-    limit: number,
-  ): CloudTrailRawRecord[] {
-    const eventTypes = [
-      { eventName: 'ConsoleLogin', eventSource: 'signin.amazonaws.com' },
-      {
-        eventName: 'AuthorizeSecurityGroupIngress',
-        eventSource: 'ec2.amazonaws.com',
-      },
-      { eventName: 'PutBucketPolicy', eventSource: 's3.amazonaws.com' },
-      { eventName: 'CreateAccessKey', eventSource: 'iam.amazonaws.com' },
-      { eventName: 'AssumeRole', eventSource: 'sts.amazonaws.com' },
-    ];
-
-    const records: CloudTrailRawRecord[] = [];
-    for (let i = 0; i < limit; i++) {
-      const idx = (startOffset + i) % eventTypes.length;
-      const typeInfo = eventTypes[idx];
-      const now = new Date(Date.now() - (limit - i) * 5000).toISOString();
-
-      records.push({
-        eventVersion: '1.08',
-        eventID: `ct-evt-${startOffset + i + 1}`,
-        eventTime: now,
-        eventSource: typeInfo.eventSource,
-        eventName: typeInfo.eventName,
-        eventType: 'AwsApiCall',
-        recipientAccountId: '123456789012',
-        awsRegion: 'us-east-1',
-        sourceIPAddress: `198.51.100.${((startOffset + i) % 250) + 1}`,
-        userAgent: 'aws-sdk-go/v1.44.0',
-        userIdentity: {
-          type: 'IAMUser',
-          principalId: `AIDA${(startOffset + i).toString().padStart(12, '0')}`,
-          arn: `arn:aws:iam::123456789012:user/sec-analyst-${tenantId}`,
-          accountId: '123456789012',
-          userName: `sec-analyst-${tenantId}`,
-        },
-        requestParameters: {
-          bucketName: 'production-data-vault',
-          policyStatement: 'AllowAll',
-        },
-        responseElements: {
-          status: 'SUCCESS',
-        },
-      });
-    }
-
-    return records;
+    return {
+      instanceId,
+      tenantId,
+      polledCount: 0,
+      newCheckpoint: checkpoint,
+      status: 'NOT_IMPLEMENTED',
+    };
   }
 }
