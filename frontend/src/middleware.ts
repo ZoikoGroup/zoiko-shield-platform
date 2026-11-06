@@ -71,9 +71,14 @@ export function middleware(request: NextRequest) {
     cleanLoginRes.cookies.set('zoiko_auth', '', { maxAge: 0, path: '/', expires: new Date(0) });
     cleanLoginRes.cookies.set('zoiko_shield_access_token', '', { maxAge: 0, path: '/', expires: new Date(0) });
     cleanLoginRes.cookies.set('shield_access_token', '', { maxAge: 0, path: '/', httpOnly: true, expires: new Date(0) });
+    cleanLoginRes.cookies.set('access_token', '', { maxAge: 0, path: '/', httpOnly: true, expires: new Date(0) });
+    cleanLoginRes.cookies.set('refresh_token', '', { maxAge: 0, path: '/', httpOnly: true, expires: new Date(0) });
     cleanLoginRes.cookies.set('zoiko_shield_tenant_id', '', { maxAge: 0, path: '/', expires: new Date(0) });
     cleanLoginRes.cookies.set('zoiko_shield_user_email', '', { maxAge: 0, path: '/', expires: new Date(0) });
-    cleanLoginRes.headers.set('Cache-Control', 'no-store, max-age=0');
+    cleanLoginRes.cookies.set('zoiko_shield_org_name', '', { maxAge: 0, path: '/', expires: new Date(0) });
+    cleanLoginRes.cookies.set('zoiko_offline_accounts', '', { maxAge: 0, path: '/', expires: new Date(0) });
+    cleanLoginRes.cookies.set('recovery_grant', '', { maxAge: 0, path: '/', httpOnly: true, expires: new Date(0) });
+    cleanLoginRes.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
     return cleanLoginRes;
   }
 

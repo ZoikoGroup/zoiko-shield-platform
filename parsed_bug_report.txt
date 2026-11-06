@@ -1,0 +1,111 @@
+Bug Report
+
+ZoikoShield Platform
+
+Platform
+
+ZoikoShield
+
+Prepared by
+
+Siddhartha, Automation Test Engineer
+
+Date
+
+November 5, 2026
+
+Total bugs reported
+
+3
+
+Summary
+
+ID
+
+Bug
+
+Module
+
+BUG-01
+
+Past notifications delivered 4–5 hours earlier are not returned by Notification search
+
+Overview &gt; Notifications
+
+BUG-02
+
+No information displayed in the Findings section
+
+Detect &amp; Investigate &gt; Findings
+
+BUG-03
+
+No information displayed in the Executive Risk section
+
+Overview &gt; Executive Risk
+
+BUG-01: Past notifications delivered 4–5 hours earlier are not returned by Notification search
+
+Module
+
+Overview &gt; Notifications
+
+Status
+
+Open
+
+Description
+
+While searching past notifications in the Notification Inbox (All notifications tab), notifications delivered 4–5 hours earlier are not displayed.
+
+The inbox returns “No records match the current filters” even though the header counter shows 3 records and a notification is listed as selected.
+
+Search should return previously delivered notifications; as it stands, users cannot look up or review recent alerts.
+
+Screenshot
+
+Figure 1: Notification Inbox shows “No records match the current filters” for the search term.
+
+BUG-02: No information displayed in the Findings section
+
+Module
+
+Detect &amp; Investigate &gt; Findings
+
+Status
+
+Open
+
+Description
+
+The Findings page loads with all counters (Open, Stale assertions, Ageing, Unscored, Scored over unknowns, Unresolved asset) showing “unknown”.
+
+The page displays “No findings match”, so no findings data is shown even though the provenance line reports 2/2 sources answered.
+
+Users cannot view or triage exposure findings, which blocks vulnerability review from this section.
+
+Screenshot
+
+Figure 2: Findings page shows every metric as “unknown” and “No findings match”.
+
+BUG-03: No information displayed in the Executive Risk section
+
+Module
+
+Overview &gt; Executive Risk
+
+Status
+
+Open
+
+Description
+
+The Executive Risk command center shows “unknown” for all Incident cards (Open alerts, Critical alerts, Open cases, Awaiting customer) and all Controls cards.
+
+In Residual risk, Open risks and Without factor breakdown show 0 while Expired acceptances and Expired exceptions show “unknown”.
+
+No usable risk data is presented, so executives cannot assess the current security posture from this page.
+
+Screenshot
+
+Figure 3: Executive risk command center shows “unknown” across Incidents, Controls and Residual risk.

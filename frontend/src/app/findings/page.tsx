@@ -94,17 +94,24 @@ export default function FindingsListPage() {
     </select>
   );
 
+  const openVal = summary?.metrics?.open ?? (findings.length > 0 ? findings.filter((f) => f.status === "OPEN").length : summary ? 0 : undefined);
+  const staleVal = summary?.metrics?.staleAssertions ?? (findings.length > 0 ? findings.filter((f) => f.assertion?.state === "STALE").length : summary ? 0 : undefined);
+  const ageingVal = summary?.metrics?.ageingAssertions ?? (findings.length > 0 ? findings.filter((f) => f.assertion?.state === "AGEING").length : summary ? 0 : undefined);
+  const unscoredVal = summary?.metrics?.unscored ?? (findings.length > 0 ? findings.filter((f) => !f.priorityIntegrity?.scored).length : summary ? 0 : undefined);
+  const scoredOverUnknownsVal = summary?.metrics?.scoredOverUnknowns ?? (findings.length > 0 ? findings.filter((f) => f.priorityIntegrity?.computedOverUnknowns).length : summary ? 0 : undefined);
+  const unresolvedAssetVal = summary?.metrics?.unresolvedAsset ?? (findings.length > 0 ? findings.filter((f) => !f.asset_id).length : summary ? 0 : undefined);
+
   const tiles = [
-    { label: "Open", value: summary?.metrics?.open, warn: false },
-    { label: "Stale assertions", value: summary?.metrics?.staleAssertions, warn: true },
-    { label: "Ageing", value: summary?.metrics?.ageingAssertions, warn: true },
-    { label: "Unscored", value: summary?.metrics?.unscored, warn: true },
+    { label: "Open", value: openVal, warn: false },
+    { label: "Stale assertions", value: staleVal, warn: true },
+    { label: "Ageing", value: ageingVal, warn: true },
+    { label: "Unscored", value: unscoredVal, warn: true },
     {
       label: "Scored over unknowns",
-      value: summary?.metrics?.scoredOverUnknowns,
+      value: scoredOverUnknownsVal,
       warn: true,
     },
-    { label: "Unresolved asset", value: summary?.metrics?.unresolvedAsset, warn: true },
+    { label: "Unresolved asset", value: unresolvedAssetVal, warn: true },
   ];
 
   return (

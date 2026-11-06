@@ -1,0 +1,1927 @@
+%PDF-1.4
+%ÿÿÿÿ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [21 0 R 40 0 R 58 0 R 77 0 R 89 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 666 560 694] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/) >> >>
+endobj
+7 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 632 560 660] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/pricing) >> >>
+endobj
+8 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 598 560 626] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/services) >> >>
+endobj
+9 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 564 560 592] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/trust) >> >>
+endobj
+10 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 530 560 558] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/verify-certificate) >> >>
+endobj
+11 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 496 560 524] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/help) >> >>
+endobj
+12 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 462 560 490] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/assistant) >> >>
+endobj
+13 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 390 560 418] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/register) >> >>
+endobj
+14 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 356 560 384] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/accept-invite) >> >>
+endobj
+15 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 322 560 350] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/onboarding) >> >>
+endobj
+16 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 250 560 278] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/login) >> >>
+endobj
+17 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 178 560 206] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/dashboard) >> >>
+endobj
+18 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 144 560 172] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/security-overview) >> >>
+endobj
+19 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 72 560 100] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/threats-incidents) >> >>
+endobj
+20 0 obj
+<< /Length 8496 >>
+stream
+q
+0.06 0.09 0.16 rg 0 755 612 37 re f
+0.85 0.15 0.15 rg 0 753 612 2 re f
+BT
+/F2 11 Tf 1 1 1 rg 40 768 Td (ZOIKO SHIELD  |  DEPLOYED APPLICATION STEP-BY-STEP LINK TESTING) Tj
+ET
+BT
+/F1 9 Tf 0.7 0.75 0.85 rg 480 768 Td (Page 1 of 5) Tj
+ET
+BT
+/F2 13 Tf 0.08 0.12 0.2 rg 40 732 Td (OFFICIAL STEP-BY-STEP DEPLOYED LINK TEST SUITE) Tj
+/F1 9 Tf 0.35 0.4 0.5 rg 40 718 Td (Click any link below to open directly in your browser. Complete testing sequence: Step 1 to 74.) Tj
+ET
+0.8 0.85 0.9 RG 0.5 w 40 710 m 572 710 l S
+0.93 0.95 0.98 rg 40 712 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 712 m 40 732 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 718 Td (Phase 1: Public Entry & Pre-Authentication) Tj
+ET
+0.98 0.99 1.0 rg 40 666 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 666 532 28 re S
+0.1 0.15 0.25 rg 44 671 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 676 Td (Step 1) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 681 Td (Main Application Entry Point) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 681 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 670 Td (https://app.zoikoshield.com/) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 669 m 420 669 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 670 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 632 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 632 532 28 re S
+0.1 0.15 0.25 rg 44 637 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 642 Td (Step 2) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 647 Td (Commercial Plans & Pricing Ladder) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 647 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 636 Td (https://app.zoikoshield.com/pricing) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 635 m 420 635 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 636 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 598 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 598 532 28 re S
+0.1 0.15 0.25 rg 44 603 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 608 Td (Step 3) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 613 Td (Commercial Services & Capabilities) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 613 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 602 Td (https://app.zoikoshield.com/services) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 601 m 420 601 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 602 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 564 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 564 532 28 re S
+0.1 0.15 0.25 rg 44 569 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 574 Td (Step 4) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 579 Td (Trust Center & Statutory Compliance) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 579 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 568 Td (https://app.zoikoshield.com/trust) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 567 m 420 567 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 568 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 530 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 530 532 28 re S
+0.1 0.15 0.25 rg 44 535 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 540 Td (Step 5) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 545 Td (Certificate & Signature Verification) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 545 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 534 Td (https://app.zoikoshield.com/verify-certificate) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 533 m 420 533 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 534 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 496 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 496 532 28 re S
+0.1 0.15 0.25 rg 44 501 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 506 Td (Step 6) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 511 Td (Help & Support Center) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 511 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 500 Td (https://app.zoikoshield.com/help) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 499 m 420 499 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 500 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 462 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 462 532 28 re S
+0.1 0.15 0.25 rg 44 467 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 472 Td (Step 7) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 477 Td (Public Security Assistant) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 477 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 466 Td (https://app.zoikoshield.com/assistant) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 465 m 420 465 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 466 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 436 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 436 m 40 456 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 442 Td (Phase 2: Registration, Invitation & Onboarding) Tj
+ET
+0.98 0.99 1.0 rg 40 390 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 390 532 28 re S
+0.1 0.15 0.25 rg 44 395 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 400 Td (Step 8) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 405 Td (User Registration & Workspace Creation) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 405 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 394 Td (https://app.zoikoshield.com/register) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 393 m 420 393 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 394 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 356 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 356 532 28 re S
+0.1 0.15 0.25 rg 44 361 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 366 Td (Step 9) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 371 Td (Tenant Invitation Redemption) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 371 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 360 Td (https://app.zoikoshield.com/accept-invite) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 359 m 420 359 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 360 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 322 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 322 532 28 re S
+0.1 0.15 0.25 rg 44 327 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 332 Td (Step 10) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 337 Td (New Tenant Onboarding Setup Wizard) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 337 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 326 Td (https://app.zoikoshield.com/onboarding) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 325 m 420 325 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 326 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 296 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 296 m 40 316 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 302 Td (Phase 3: Login & Authentication) Tj
+ET
+0.98 0.99 1.0 rg 40 250 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 250 532 28 re S
+0.1 0.15 0.25 rg 44 255 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 260 Td (Step 11) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 265 Td (Secure User Login Page) Tj
+ET
+BT
+/F1 7.5 Tf 0.1 0.6 0.3 rg 515 265 Td ([Public]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 254 Td (https://app.zoikoshield.com/login) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 253 m 420 253 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 254 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 224 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 224 m 40 244 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 230 Td (Phase 4: Primary Customer Dashboards) Tj
+ET
+0.98 0.99 1.0 rg 40 178 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 178 532 28 re S
+0.1 0.15 0.25 rg 44 183 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 188 Td (Step 12) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 193 Td (Customer Dashboard \(Executive Overview\)) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 193 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 182 Td (https://app.zoikoshield.com/customer/dashboard) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 181 m 420 181 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 182 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 144 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 144 532 28 re S
+0.1 0.15 0.25 rg 44 149 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 154 Td (Step 13) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 159 Td (Customer Security Overview Workspace) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 159 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 148 Td (https://app.zoikoshield.com/customer/security-overview) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 147 m 420 147 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 148 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 118 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 118 m 40 138 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 124 Td (Phase 5: Customer Workspace Sub-Sections \(All 12 Submenus\)) Tj
+ET
+0.98 0.99 1.0 rg 40 72 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 72 532 28 re S
+0.1 0.15 0.25 rg 44 77 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 82 Td (Step 14) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 87 Td (Threats & Incidents Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 87 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 76 Td (https://app.zoikoshield.com/customer/threats-incidents) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 75 m 420 75 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 76 Td ([OPEN LINK ->]) Tj
+ET
+BT
+/F1 8 Tf 0.5 0.55 0.65 rg 40 25 Td (ZoikoShield Enterprise Cloud Sovereign Platform — Confidential QA Testing Artifact) Tj
+ET
+Q
+
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 20 0 R /Annots [6 0 R 7 0 R 8 0 R 9 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R 15 0 R 16 0 R 17 0 R 18 0 R 19 0 R] >>
+endobj
+22 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 704 560 732] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/exposure-management) >> >>
+endobj
+23 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 670 560 698] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/assets-inventory) >> >>
+endobj
+24 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 636 560 664] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/vulnerabilities) >> >>
+endobj
+25 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 602 560 630] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/detection-response) >> >>
+endobj
+26 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 568 560 596] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/identity-access) >> >>
+endobj
+27 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 534 560 562] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/data-security) >> >>
+endobj
+28 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 500 560 528] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/cloud-security) >> >>
+endobj
+29 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 466 560 494] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/compliance-risk) >> >>
+endobj
+30 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 432 560 460] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/reports-analytics) >> >>
+endobj
+31 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 398 560 426] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/integrations) >> >>
+endobj
+32 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 364 560 392] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/customer/settings) >> >>
+endobj
+33 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 292 560 320] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/ingestion) >> >>
+endobj
+34 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 258 560 286] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/detections) >> >>
+endobj
+35 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 224 560 252] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/hunting) >> >>
+endobj
+36 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 190 560 218] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/connectors) >> >>
+endobj
+37 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 118 560 146] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/copilot) >> >>
+endobj
+38 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 84 560 112] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/alerts) >> >>
+endobj
+39 0 obj
+<< /Length 9486 >>
+stream
+q
+0.06 0.09 0.16 rg 0 755 612 37 re f
+0.85 0.15 0.15 rg 0 753 612 2 re f
+BT
+/F2 11 Tf 1 1 1 rg 40 768 Td (ZOIKO SHIELD  |  DEPLOYED APPLICATION STEP-BY-STEP LINK TESTING) Tj
+ET
+BT
+/F1 9 Tf 0.7 0.75 0.85 rg 480 768 Td (Page 2 of 5) Tj
+ET
+0.98 0.99 1.0 rg 40 704 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 704 532 28 re S
+0.1 0.15 0.25 rg 44 709 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 714 Td (Step 15) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 719 Td (Exposure Management Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 719 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 708 Td (https://app.zoikoshield.com/customer/exposure-management) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 707 m 420 707 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 708 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 670 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 670 532 28 re S
+0.1 0.15 0.25 rg 44 675 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 680 Td (Step 16) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 685 Td (Discovered Assets Inventory Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 685 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 674 Td (https://app.zoikoshield.com/customer/assets-inventory) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 673 m 420 673 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 674 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 636 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 636 532 28 re S
+0.1 0.15 0.25 rg 44 641 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 646 Td (Step 17) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 651 Td (Vulnerabilities Management Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 651 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 640 Td (https://app.zoikoshield.com/customer/vulnerabilities) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 639 m 420 639 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 640 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 602 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 602 532 28 re S
+0.1 0.15 0.25 rg 44 607 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 612 Td (Step 18) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 617 Td (Detection & Response Controls Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 617 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 606 Td (https://app.zoikoshield.com/customer/detection-response) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 605 m 420 605 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 606 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 568 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 568 532 28 re S
+0.1 0.15 0.25 rg 44 573 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 578 Td (Step 19) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 583 Td (Identity & Access Security Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 583 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 572 Td (https://app.zoikoshield.com/customer/identity-access) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 571 m 420 571 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 572 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 534 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 534 532 28 re S
+0.1 0.15 0.25 rg 44 539 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 544 Td (Step 20) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 549 Td (Data Security & Privacy Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 549 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 538 Td (https://app.zoikoshield.com/customer/data-security) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 537 m 420 537 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 538 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 500 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 500 532 28 re S
+0.1 0.15 0.25 rg 44 505 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 510 Td (Step 21) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 515 Td (Cloud Security Posture \(CSPM\) Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 515 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 504 Td (https://app.zoikoshield.com/customer/cloud-security) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 503 m 420 503 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 504 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 466 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 466 532 28 re S
+0.1 0.15 0.25 rg 44 471 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 476 Td (Step 22) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 481 Td (Compliance & Regulatory Risk Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 481 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 470 Td (https://app.zoikoshield.com/customer/compliance-risk) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 469 m 420 469 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 470 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 432 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 432 532 28 re S
+0.1 0.15 0.25 rg 44 437 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 442 Td (Step 23) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 447 Td (Reports & Analytics Generator Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 447 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 436 Td (https://app.zoikoshield.com/customer/reports-analytics) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 435 m 420 435 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 436 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 398 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 398 532 28 re S
+0.1 0.15 0.25 rg 44 403 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 408 Td (Step 24) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 413 Td (Workspace Integrations & Connectors) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 413 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 402 Td (https://app.zoikoshield.com/customer/integrations) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 401 m 420 401 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 402 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 364 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 364 532 28 re S
+0.1 0.15 0.25 rg 44 369 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 374 Td (Step 25) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 379 Td (Workspace Settings & Policies Section) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 379 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 368 Td (https://app.zoikoshield.com/customer/settings) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 367 m 420 367 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 368 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 338 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 338 m 40 358 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 344 Td (Phase 6: Threat Ingestion, Telemetry & Detection Engineering) Tj
+ET
+0.98 0.99 1.0 rg 40 292 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 292 532 28 re S
+0.1 0.15 0.25 rg 44 297 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 302 Td (Step 26) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 307 Td (Ingestion Console & Live Telemetry Streams) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 307 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 296 Td (https://app.zoikoshield.com/ingestion) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 295 m 420 295 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 296 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 258 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 258 532 28 re S
+0.1 0.15 0.25 rg 44 263 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 268 Td (Step 27) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 273 Td (Detections & SIEM Correlation Rules) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 273 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 262 Td (https://app.zoikoshield.com/detections) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 261 m 420 261 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 262 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 224 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 224 532 28 re S
+0.1 0.15 0.25 rg 44 229 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 234 Td (Step 28) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 239 Td (Threat Hunting Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 239 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 228 Td (https://app.zoikoshield.com/hunting) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 227 m 420 227 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 228 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 190 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 190 532 28 re S
+0.1 0.15 0.25 rg 44 195 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 200 Td (Step 29) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 205 Td (Telemetry Ingestion Connectors) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 205 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 194 Td (https://app.zoikoshield.com/connectors) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 193 m 420 193 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 194 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 164 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 164 m 40 184 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 170 Td (Phase 7: AI Copilot, Alerts & Incident Investigation) Tj
+ET
+0.98 0.99 1.0 rg 40 118 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 118 532 28 re S
+0.1 0.15 0.25 rg 44 123 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 128 Td (Step 30) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 133 Td (AI Security Copilot Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 133 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 122 Td (https://app.zoikoshield.com/copilot) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 121 m 420 121 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 122 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 84 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 84 532 28 re S
+0.1 0.15 0.25 rg 44 89 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 94 Td (Step 31) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 99 Td (Security Alerts Feed) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 99 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 88 Td (https://app.zoikoshield.com/alerts) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 87 m 420 87 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 88 Td ([OPEN LINK ->]) Tj
+ET
+BT
+/F1 8 Tf 0.5 0.55 0.65 rg 40 25 Td (ZoikoShield Enterprise Cloud Sovereign Platform — Confidential QA Testing Artifact) Tj
+ET
+Q
+
+endstream
+endobj
+40 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 39 0 R /Annots [22 0 R 23 0 R 24 0 R 25 0 R 26 0 R 27 0 R 28 0 R 29 0 R 30 0 R 31 0 R 32 0 R 33 0 R 34 0 R 35 0 R 36 0 R 37 0 R 38 0 R] >>
+endobj
+41 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 704 560 732] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/alerts/alert-2026-auth-01) >> >>
+endobj
+42 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 670 560 698] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/cases) >> >>
+endobj
+43 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 636 560 664] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/cases/case-2026-auth-attack-01) >> >>
+endobj
+44 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 602 560 630] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/cases/incidents/command) >> >>
+endobj
+45 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 568 560 596] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/ai-governance) >> >>
+endobj
+46 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 496 560 524] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/ir-retainer) >> >>
+endobj
+47 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 462 560 490] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/actions) >> >>
+endobj
+48 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 428 560 456] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/playbooks) >> >>
+endobj
+49 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 394 560 422] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/response-proposals) >> >>
+endobj
+50 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 360 560 388] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/operations/retainers) >> >>
+endobj
+51 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 326 560 354] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/operations/shift-handover) >> >>
+endobj
+52 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 254 560 282] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/ledger) >> >>
+endobj
+53 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 182 560 210] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/risk) >> >>
+endobj
+54 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 148 560 176] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/risk/executive) >> >>
+endobj
+55 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 114 560 142] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/compliance) >> >>
+endobj
+56 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 80 560 108] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/controls) >> >>
+endobj
+57 0 obj
+<< /Length 9072 >>
+stream
+q
+0.06 0.09 0.16 rg 0 755 612 37 re f
+0.85 0.15 0.15 rg 0 753 612 2 re f
+BT
+/F2 11 Tf 1 1 1 rg 40 768 Td (ZOIKO SHIELD  |  DEPLOYED APPLICATION STEP-BY-STEP LINK TESTING) Tj
+ET
+BT
+/F1 9 Tf 0.7 0.75 0.85 rg 480 768 Td (Page 3 of 5) Tj
+ET
+0.98 0.99 1.0 rg 40 704 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 704 532 28 re S
+0.1 0.15 0.25 rg 44 709 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 714 Td (Step 32) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 719 Td (Specific Alert Deep-Dive View) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 719 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 708 Td (https://app.zoikoshield.com/alerts/alert-2026-auth-01) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 707 m 420 707 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 708 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 670 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 670 532 28 re S
+0.1 0.15 0.25 rg 44 675 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 680 Td (Step 33) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 685 Td (Case Management Dashboard) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 685 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 674 Td (https://app.zoikoshield.com/cases) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 673 m 420 673 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 674 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 636 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 636 532 28 re S
+0.1 0.15 0.25 rg 44 641 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 646 Td (Step 34) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 651 Td (Incident Case Investigation & Attack Path) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 651 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 640 Td (https://app.zoikoshield.com/cases/case-2026-auth-attack-01) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 639 m 420 639 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 640 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 602 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 602 532 28 re S
+0.1 0.15 0.25 rg 44 607 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 612 Td (Step 35) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 617 Td (Major Incident Command Center) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 617 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 606 Td (https://app.zoikoshield.com/cases/incidents/command) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 605 m 420 605 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 606 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 568 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 568 532 28 re S
+0.1 0.15 0.25 rg 44 573 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 578 Td (Step 36) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 583 Td (AI Governance & Model Audit Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 583 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 572 Td (https://app.zoikoshield.com/ai-governance) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 571 m 420 571 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 572 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 542 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 542 m 40 562 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 548 Td (Phase 8: Actions, Playbooks & Incident Response Retainers) Tj
+ET
+0.98 0.99 1.0 rg 40 496 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 496 532 28 re S
+0.1 0.15 0.25 rg 44 501 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 506 Td (Step 37) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 511 Td (Purpose-Bound Legal IR Retainer Page) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 511 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 500 Td (https://app.zoikoshield.com/ir-retainer) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 499 m 420 499 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 500 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 462 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 462 532 28 re S
+0.1 0.15 0.25 rg 44 467 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 472 Td (Step 38) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 477 Td (SOAR Actions Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 477 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 466 Td (https://app.zoikoshield.com/actions) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 465 m 420 465 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 466 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 428 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 428 532 28 re S
+0.1 0.15 0.25 rg 44 433 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 438 Td (Step 39) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 443 Td (SOAR Automation Playbooks) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 443 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 432 Td (https://app.zoikoshield.com/playbooks) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 431 m 420 431 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 432 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 394 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 394 532 28 re S
+0.1 0.15 0.25 rg 44 399 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 404 Td (Step 40) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 409 Td (Response Proposals Approval Queue) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 409 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 398 Td (https://app.zoikoshield.com/response-proposals) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 397 m 420 397 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 398 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 360 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 360 532 28 re S
+0.1 0.15 0.25 rg 44 365 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 370 Td (Step 41) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 375 Td (Retainer Operations & SLA Service Tracking) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 375 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 364 Td (https://app.zoikoshield.com/operations/retainers) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 363 m 420 363 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 364 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 326 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 326 532 28 re S
+0.1 0.15 0.25 rg 44 331 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 336 Td (Step 42) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 341 Td (SOC Shift Handover Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 341 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 330 Td (https://app.zoikoshield.com/operations/shift-handover) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 329 m 420 329 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 330 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 300 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 300 m 40 320 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 306 Td (Phase 9: Cryptographic Ledger & Audit Proofs) Tj
+ET
+0.98 0.99 1.0 rg 40 254 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 254 532 28 re S
+0.1 0.15 0.25 rg 44 259 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 264 Td (Step 43) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 269 Td (Merkle Tree Audit Ledger & Receipt Verification) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 269 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 258 Td (https://app.zoikoshield.com/ledger) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 257 m 420 257 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 258 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 228 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 228 m 40 248 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 234 Td (Phase 10: Risk Management, Controls, Compliance & Policies) Tj
+ET
+0.98 0.99 1.0 rg 40 182 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 182 532 28 re S
+0.1 0.15 0.25 rg 44 187 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 192 Td (Step 44) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 197 Td (Enterprise Risk Management Register) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 197 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 186 Td (https://app.zoikoshield.com/risk) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 185 m 420 185 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 186 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 148 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 148 532 28 re S
+0.1 0.15 0.25 rg 44 153 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 158 Td (Step 45) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 163 Td (Executive Risk Summary Dashboard) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 163 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 152 Td (https://app.zoikoshield.com/risk/executive) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 151 m 420 151 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 152 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 114 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 114 532 28 re S
+0.1 0.15 0.25 rg 44 119 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 124 Td (Step 46) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 129 Td (Continuous Compliance Evaluation) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 129 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 118 Td (https://app.zoikoshield.com/compliance) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 117 m 420 117 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 118 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 80 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 80 532 28 re S
+0.1 0.15 0.25 rg 44 85 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 90 Td (Step 47) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 95 Td (Regulatory Controls Catalog) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 95 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 84 Td (https://app.zoikoshield.com/controls) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 83 m 420 83 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 84 Td ([OPEN LINK ->]) Tj
+ET
+BT
+/F1 8 Tf 0.5 0.55 0.65 rg 40 25 Td (ZoikoShield Enterprise Cloud Sovereign Platform — Confidential QA Testing Artifact) Tj
+ET
+Q
+
+endstream
+endobj
+58 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 57 0 R /Annots [41 0 R 42 0 R 43 0 R 44 0 R 45 0 R 46 0 R 47 0 R 48 0 R 49 0 R 50 0 R 51 0 R 52 0 R 53 0 R 54 0 R 55 0 R 56 0 R] >>
+endobj
+59 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 704 560 732] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/controls/ctrl-ac-2) >> >>
+endobj
+60 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 670 560 698] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/findings) >> >>
+endobj
+61 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 636 560 664] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/findings/find-001) >> >>
+endobj
+62 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 602 560 630] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/evidence-operations) >> >>
+endobj
+63 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 568 560 596] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/exceptions) >> >>
+endobj
+64 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 534 560 562] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/sector-packs) >> >>
+endobj
+65 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 500 560 528] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/policies) >> >>
+endobj
+66 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 428 560 456] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/assets) >> >>
+endobj
+67 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 356 560 384] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin) >> >>
+endobj
+68 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 322 560 350] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/tenant) >> >>
+endobj
+69 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 288 560 316] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/g1-gate) >> >>
+endobj
+70 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 254 560 282] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/jit) >> >>
+endobj
+71 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 220 560 248] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/jit-elevation) >> >>
+endobj
+72 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 186 560 214] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/platform-health) >> >>
+endobj
+73 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 152 560 180] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/gtm-checklist) >> >>
+endobj
+74 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 118 560 146] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/email-templates) >> >>
+endobj
+75 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 84 560 112] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/admin/export) >> >>
+endobj
+76 0 obj
+<< /Length 9381 >>
+stream
+q
+0.06 0.09 0.16 rg 0 755 612 37 re f
+0.85 0.15 0.15 rg 0 753 612 2 re f
+BT
+/F2 11 Tf 1 1 1 rg 40 768 Td (ZOIKO SHIELD  |  DEPLOYED APPLICATION STEP-BY-STEP LINK TESTING) Tj
+ET
+BT
+/F1 9 Tf 0.7 0.75 0.85 rg 480 768 Td (Page 4 of 5) Tj
+ET
+0.98 0.99 1.0 rg 40 704 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 704 532 28 re S
+0.1 0.15 0.25 rg 44 709 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 714 Td (Step 48) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 719 Td (Specific Regulatory Control View \(AC-2\)) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 719 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 708 Td (https://app.zoikoshield.com/controls/ctrl-ac-2) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 707 m 420 707 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 708 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 670 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 670 532 28 re S
+0.1 0.15 0.25 rg 44 675 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 680 Td (Step 49) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 685 Td (Audit Findings Register) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 685 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 674 Td (https://app.zoikoshield.com/findings) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 673 m 420 673 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 674 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 636 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 636 532 28 re S
+0.1 0.15 0.25 rg 44 641 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 646 Td (Step 50) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 651 Td (Specific Finding Remediation View \(find-001\)) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 651 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 640 Td (https://app.zoikoshield.com/findings/find-001) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 639 m 420 639 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 640 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 602 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 602 532 28 re S
+0.1 0.15 0.25 rg 44 607 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 612 Td (Step 51) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 617 Td (Evidence Operations & Audit Packaging) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 617 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 606 Td (https://app.zoikoshield.com/evidence-operations) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 605 m 420 605 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 606 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 568 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 568 532 28 re S
+0.1 0.15 0.25 rg 44 573 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 578 Td (Step 52) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 583 Td (Security Policy Exceptions Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 583 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 572 Td (https://app.zoikoshield.com/exceptions) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 571 m 420 571 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 572 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 534 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 534 532 28 re S
+0.1 0.15 0.25 rg 44 539 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 544 Td (Step 53) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 549 Td (Regulated Sector Packs) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 549 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 538 Td (https://app.zoikoshield.com/sector-packs) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 537 m 420 537 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 538 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 500 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 500 532 28 re S
+0.1 0.15 0.25 rg 44 505 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 510 Td (Step 54) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 515 Td (Organization Security Policies) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 515 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 504 Td (https://app.zoikoshield.com/policies) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 503 m 420 503 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 504 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 474 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 474 m 40 494 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 480 Td (Phase 11: Unified Enterprise Assets) Tj
+ET
+0.98 0.99 1.0 rg 40 428 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 428 532 28 re S
+0.1 0.15 0.25 rg 44 433 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 438 Td (Step 55) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 443 Td (Enterprise Asset Inventory \(CMDB\)) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 443 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 432 Td (https://app.zoikoshield.com/assets) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 431 m 420 431 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 432 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 402 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 402 m 40 422 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 408 Td (Phase 12: Platform Administration & Governance Cockpits) Tj
+ET
+0.98 0.99 1.0 rg 40 356 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 356 532 28 re S
+0.1 0.15 0.25 rg 44 361 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 366 Td (Step 56) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 371 Td (Platform Admin Dashboard) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 371 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 360 Td (https://app.zoikoshield.com/admin) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 359 m 420 359 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 360 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 322 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 322 532 28 re S
+0.1 0.15 0.25 rg 44 327 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 332 Td (Step 57) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 337 Td (Multi-Tenant Provisioning Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 337 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 326 Td (https://app.zoikoshield.com/admin/tenant) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 325 m 420 325 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 326 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 288 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 288 532 28 re S
+0.1 0.15 0.25 rg 44 293 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 298 Td (Step 58) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 303 Td (G1 Launch Gate Multi-Approver Cockpit) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 303 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 292 Td (https://app.zoikoshield.com/admin/g1-gate) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 291 m 420 291 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 292 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 254 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 254 532 28 re S
+0.1 0.15 0.25 rg 44 259 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 264 Td (Step 59) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 269 Td (JIT Break-Glass Elevation Cockpit) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 269 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 258 Td (https://app.zoikoshield.com/admin/jit) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 257 m 420 257 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 258 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 220 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 220 532 28 re S
+0.1 0.15 0.25 rg 44 225 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 230 Td (Step 60) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 235 Td (JIT Privileged Access Request Modal) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 235 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 224 Td (https://app.zoikoshield.com/admin/jit-elevation) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 223 m 420 223 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 224 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 186 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 186 532 28 re S
+0.1 0.15 0.25 rg 44 191 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 196 Td (Step 61) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 201 Td (Platform Health & Disaster Recovery Drills) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 201 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 190 Td (https://app.zoikoshield.com/admin/platform-health) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 189 m 420 189 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 190 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 152 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 152 532 28 re S
+0.1 0.15 0.25 rg 44 157 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 162 Td (Step 62) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 167 Td (Pre-Flight GTM Governance Checklist) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 167 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 156 Td (https://app.zoikoshield.com/admin/gtm-checklist) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 155 m 420 155 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 156 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 118 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 118 532 28 re S
+0.1 0.15 0.25 rg 44 123 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 128 Td (Step 63) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 133 Td (Alert & Notification Email Templates) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 133 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 122 Td (https://app.zoikoshield.com/admin/email-templates) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 121 m 420 121 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 122 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 84 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 84 532 28 re S
+0.1 0.15 0.25 rg 44 89 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 94 Td (Step 64) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 99 Td (Tenant Archival & Data Export Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.8 0.2 0.2 rg 515 99 Td ([Super Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 88 Td (https://app.zoikoshield.com/admin/export) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 87 m 420 87 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 88 Td ([OPEN LINK ->]) Tj
+ET
+BT
+/F1 8 Tf 0.5 0.55 0.65 rg 40 25 Td (ZoikoShield Enterprise Cloud Sovereign Platform — Confidential QA Testing Artifact) Tj
+ET
+Q
+
+endstream
+endobj
+77 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 76 0 R /Annots [59 0 R 60 0 R 61 0 R 62 0 R 63 0 R 64 0 R 65 0 R 66 0 R 67 0 R 68 0 R 69 0 R 70 0 R 71 0 R 72 0 R 73 0 R 74 0 R 75 0 R] >>
+endobj
+78 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 704 560 732] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/tenant-management) >> >>
+endobj
+79 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 670 560 698] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/team) >> >>
+endobj
+80 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 636 560 664] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/notifications) >> >>
+endobj
+81 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 602 560 630] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/developer) >> >>
+endobj
+82 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 530 560 558] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/auditor) >> >>
+endobj
+83 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 496 560 524] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/audit) >> >>
+endobj
+84 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 462 560 490] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/audit/reports/generate) >> >>
+endobj
+85 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 428 560 456] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/partner/fleet) >> >>
+endobj
+86 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 394 560 422] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/red-team) >> >>
+endobj
+87 0 obj
+<< /Type /Annot /Subtype /Link /Rect [92 322 560 350] /Border [0 0 0] /A << /S /URI /URI (https://app.zoikoshield.com/login) >> >>
+endobj
+88 0 obj
+<< /Length 5777 >>
+stream
+q
+0.06 0.09 0.16 rg 0 755 612 37 re f
+0.85 0.15 0.15 rg 0 753 612 2 re f
+BT
+/F2 11 Tf 1 1 1 rg 40 768 Td (ZOIKO SHIELD  |  DEPLOYED APPLICATION STEP-BY-STEP LINK TESTING) Tj
+ET
+BT
+/F1 9 Tf 0.7 0.75 0.85 rg 480 768 Td (Page 5 of 5) Tj
+ET
+0.98 0.99 1.0 rg 40 704 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 704 532 28 re S
+0.1 0.15 0.25 rg 44 709 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 714 Td (Step 65) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 719 Td (Tenant Workspace Switcher) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 719 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 708 Td (https://app.zoikoshield.com/tenant-management) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 707 m 420 707 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 708 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 670 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 670 532 28 re S
+0.1 0.15 0.25 rg 44 675 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 680 Td (Step 66) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 685 Td (Tenant Team & Role Management) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 685 Td ([Tenant Admin]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 674 Td (https://app.zoikoshield.com/team) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 673 m 420 673 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 674 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 636 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 636 532 28 re S
+0.1 0.15 0.25 rg 44 641 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 646 Td (Step 67) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 651 Td (In-App Notifications Center) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 651 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 640 Td (https://app.zoikoshield.com/notifications) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 639 m 420 639 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 640 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 602 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 602 532 28 re S
+0.1 0.15 0.25 rg 44 607 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 612 Td (Step 68) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 617 Td (Developer Portal & API Access) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 617 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 606 Td (https://app.zoikoshield.com/developer) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 605 m 420 605 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 606 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 576 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 576 m 40 596 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 582 Td (Phase 13: Specialized Portals \(Auditor, MSSP Partner & Red Team\)) Tj
+ET
+0.98 0.99 1.0 rg 40 530 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 530 532 28 re S
+0.1 0.15 0.25 rg 44 535 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 540 Td (Step 69) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 545 Td (Independent Third-Party Auditor Portal) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 545 Td ([Auditor]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 534 Td (https://app.zoikoshield.com/auditor) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 533 m 420 533 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 534 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 496 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 496 532 28 re S
+0.1 0.15 0.25 rg 44 501 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 506 Td (Step 70) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 511 Td (Internal Audit Engagement Review) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 511 Td ([Auditor]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 500 Td (https://app.zoikoshield.com/audit) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 499 m 420 499 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 500 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 462 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 462 532 28 re S
+0.1 0.15 0.25 rg 44 467 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 472 Td (Step 71) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 477 Td (Statutory Audit Report Generator) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 477 Td ([Auditor]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 466 Td (https://app.zoikoshield.com/audit/reports/generate) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 465 m 420 465 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 466 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 428 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 428 532 28 re S
+0.1 0.15 0.25 rg 44 433 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 438 Td (Step 72) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 443 Td (MSSP Multi-Tenant Fleet Portal) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 443 Td ([MSSP Partner]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 432 Td (https://app.zoikoshield.com/partner/fleet) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 431 m 420 431 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 432 Td ([OPEN LINK ->]) Tj
+ET
+0.98 0.99 1.0 rg 40 394 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 394 532 28 re S
+0.1 0.15 0.25 rg 44 399 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 404 Td (Step 73) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 409 Td (Red Team Adversary Simulation Console) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 409 Td ([Red Team]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 398 Td (https://app.zoikoshield.com/red-team) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 397 m 420 397 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 398 Td ([OPEN LINK ->]) Tj
+ET
+0.93 0.95 0.98 rg 40 368 532 20 re f
+0.15 0.35 0.75 RG 1.5 w 40 368 m 40 388 l S
+BT
+/F2 10 Tf 0.1 0.25 0.6 rg 48 374 Td (Phase 14: Session Termination & Sign Out) Tj
+ET
+0.98 0.99 1.0 rg 40 322 532 28 re f
+0.88 0.91 0.95 RG 0.5 w 40 322 532 28 re S
+0.1 0.15 0.25 rg 44 327 44 18 re f
+BT
+/F2 8.5 Tf 1 1 1 rg 48 332 Td (Step 74) Tj
+ET
+BT
+/F2 9.5 Tf 0.12 0.16 0.24 rg 96 337 Td (Terminate Session & Logout \(Return to Login\)) Tj
+ET
+BT
+/F1 7.5 Tf 0.2 0.45 0.8 rg 515 337 Td ([Authenticated]) Tj
+ET
+BT
+/F1 8.5 Tf 0.05 0.4 0.85 rg 96 326 Td (https://app.zoikoshield.com/login) Tj
+ET
+0.05 0.4 0.85 RG 0.5 w 96 325 m 420 325 l S
+BT
+/F2 8 Tf 0.05 0.4 0.85 rg 430 326 Td ([OPEN LINK ->]) Tj
+ET
+BT
+/F1 8 Tf 0.5 0.55 0.65 rg 40 25 Td (ZoikoShield Enterprise Cloud Sovereign Platform — Confidential QA Testing Artifact) Tj
+ET
+Q
+
+endstream
+endobj
+89 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 88 0 R /Annots [78 0 R 79 0 R 80 0 R 81 0 R 82 0 R 83 0 R 84 0 R 85 0 R 86 0 R 87 0 R] >>
+endobj
+xref
+0 90
+0000000000 65535 f 
+0000000019 00000 n 
+0000000068 00000 n 
+0000000154 00000 n 
+0000000224 00000 n 
+0000000299 00000 n 
+0000000367 00000 n 
+0000000508 00000 n 
+0000000656 00000 n 
+0000000805 00000 n 
+0000000951 00000 n 
+0000001111 00000 n 
+0000001257 00000 n 
+0000001408 00000 n 
+0000001558 00000 n 
+0000001713 00000 n 
+0000001865 00000 n 
+0000002012 00000 n 
+0000002172 00000 n 
+0000002340 00000 n 
+0000002507 00000 n 
+0000011056 00000 n 
+0000011308 00000 n 
+0000011478 00000 n 
+0000011645 00000 n 
+0000011811 00000 n 
+0000011980 00000 n 
+0000012146 00000 n 
+0000012310 00000 n 
+0000012475 00000 n 
+0000012641 00000 n 
+0000012809 00000 n 
+0000012972 00000 n 
+0000013131 00000 n 
+0000013282 00000 n 
+0000013434 00000 n 
+0000013583 00000 n 
+0000013735 00000 n 
+0000013884 00000 n 
+0000014031 00000 n 
+0000023570 00000 n 
+0000023847 00000 n 
+0000024014 00000 n 
+0000024161 00000 n 
+0000024333 00000 n 
+0000024498 00000 n 
+0000024653 00000 n 
+0000024806 00000 n 
+0000024955 00000 n 
+0000025106 00000 n 
+0000025266 00000 n 
+0000025428 00000 n 
+0000025595 00000 n 
+0000025743 00000 n 
+0000025889 00000 n 
+0000026045 00000 n 
+0000026197 00000 n 
+0000026346 00000 n 
+0000035471 00000 n 
+0000035741 00000 n 
+0000035901 00000 n 
+0000036051 00000 n 
+0000036210 00000 n 
+0000036371 00000 n 
+0000036523 00000 n 
+0000036677 00000 n 
+0000036827 00000 n 
+0000036975 00000 n 
+0000037122 00000 n 
+0000037276 00000 n 
+0000037431 00000 n 
+0000037582 00000 n 
+0000037743 00000 n 
+0000037906 00000 n 
+0000038067 00000 n 
+0000038230 00000 n 
+0000038383 00000 n 
+0000047817 00000 n 
+0000048094 00000 n 
+0000048253 00000 n 
+0000048399 00000 n 
+0000048554 00000 n 
+0000048705 00000 n 
+0000048854 00000 n 
+0000049001 00000 n 
+0000049165 00000 n 
+0000049320 00000 n 
+0000049470 00000 n 
+0000049617 00000 n 
+0000055447 00000 n 
+trailer
+<< /Size 90 /Root 1 0 R >>
+startxref
+55675
+%%EOF

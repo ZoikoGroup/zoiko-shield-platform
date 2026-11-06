@@ -157,19 +157,31 @@ export function CustomerTopHeader({
   const regionMeta = identity?.region ? resolveRegionMetadata(identity.region) : null;
 
   const handleSignOut = async () => {
-    await ZoikoShieldApiClient.logout();
-    setDemoState((prev) => ({
-      ...prev,
-      session: {
-        ...prev.session,
-        userId: "",
-        email: "",
-        fullName: "",
-        token: "",
-        isAuthenticated: false,
-      },
-    }));
-    router.push("/login");
+    if (typeof window !== "undefined") {
+      (window as any).__zoiko_logging_out = true;
+    }
+    try {
+      await ZoikoShieldApiClient.logout();
+    } catch (err) {
+      console.error("Sign out error:", err);
+    } finally {
+      setDemoState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          userId: "",
+          email: "",
+          fullName: "",
+          token: "",
+          isAuthenticated: false,
+        },
+      }));
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?logout=true";
+      } else {
+        router.push("/login");
+      }
+    }
   };
 
   const switchDashboardMode = (

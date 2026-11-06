@@ -42970,6 +42970,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getEvents
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       description: >-
         List normalized events. Applies the documented path, query, and tenant filters and returns the current persisted
@@ -43958,6 +43960,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getControlEvaluations
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'

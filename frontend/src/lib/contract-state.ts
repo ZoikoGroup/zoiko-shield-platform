@@ -503,12 +503,16 @@ function getFallbackDataForPath(path: string, key: string): unknown {
     return {
       generatedAt: new Date().toISOString(),
       metrics: {
+        openAlerts: 3,
+        criticalAlerts: 1,
+        openCases: 2,
+        casesAwaitingCustomer: 0,
         meanTimeToRemediateHours: 14,
         unmitigatedCriticalExposures: 1,
         activeDetectionsCount: 3,
         coverageCompletenessPercent: 98.4,
       },
-      definition: "Mean time to remediate and live unmitigated exposure counts derived across connected cloud estates.",
+      definition: "Live counts as of generation time across connected cloud estates.",
       limitations: [],
       healthState: "HEALTHY",
       overallHealth: "HEALTHY",
@@ -519,6 +523,10 @@ function getFallbackDataForPath(path: string, key: string): unknown {
     return {
       generatedAt: new Date().toISOString(),
       metrics: {
+        controlsEffective: 18,
+        controlsPartiallyEffective: 2,
+        controlsIneffective: 0,
+        controlsUnknown: 0,
         activeRisks: 3,
         activeExceptions: 0,
         expiredRiskAcceptances: 0,

@@ -818,8 +818,8 @@ export function CustomerSecurityOverviewSection() {
                   ? "Unavailable"
                   : health.loading
                     ? "Loading…"
-                    : health.data?.connectorHealth.total
-                      ? `${health.data.connectorHealth.healthy} of ${health.data.connectorHealth.total} connectors healthy`
+                    : typeof health.data?.connectorHealth === "object" && health.data.connectorHealth && Number(health.data.connectorHealth.total) > 0
+                      ? `${health.data.connectorHealth.healthy ?? 0} of ${health.data.connectorHealth.total} connectors healthy`
                       : "No connectors configured"}
               </span>
             </div>
@@ -1394,7 +1394,7 @@ export function CustomerThreatsIncidentsSection() {
                     <div className="text-slate-400">{timeline.loading ? "Loading…" : "No activity recorded."}</div>
                   )}
                   {[...(timeline.data ?? [])]
-                    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
+                    .sort((a, b) => String(b.occurred_at || "").localeCompare(String(a.occurred_at || "")))
                     .slice(0, 4)
                     .map((t) => (
                       <div key={t.id} className="text-slate-300">

@@ -28,21 +28,38 @@ export class MailService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const user = this.configService.get<string>('EMAIL_USER');
-    const appPassword = this.configService.get<string>('EMAIL_APP_PASSWORD');
+    const smtpHost = this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST;
+    const smtpPort = Number(this.configService.get<string>('SMTP_PORT') || process.env.SMTP_PORT || 587);
+    const smtpUser = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER || this.configService.get<string>('EMAIL_USER') || process.env.EMAIL_USER;
+    const smtpPass = this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS || this.configService.get<string>('EMAIL_APP_PASSWORD') || process.env.EMAIL_APP_PASSWORD;
+    const smtpSecure = (this.configService.get<string>('SMTP_SECURE') || process.env.SMTP_SECURE) === 'true';
+    const smtpFrom = this.configService.get<string>('SMTP_FROM') || process.env.SMTP_FROM || smtpUser || 'no-reply@zoikoshield.com';
 
-    if (!user || !appPassword) {
-      this.logger.warn(
-        'EMAIL_USER/EMAIL_APP_PASSWORD not set — OTP codes will be logged or handled via notification engine.',
-      );
+    if (smtpHost && smtpUser && smtpPass) {
+      this.fromAddress = smtpFrom;
+      this.transporter = createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+      this.logger.log(`MailService initialized with SMTP transport (${smtpHost}:${smtpPort}, from: ${smtpFrom}).`);
       return;
     }
 
-    this.fromAddress = user;
-    this.transporter = createTransport({
-      service: 'gmail',
-      auth: { user, pass: appPassword },
-    });
+    if (smtpUser && smtpPass) {
+      this.fromAddress = smtpFrom;
+      this.transporter = createTransport({
+        service: 'gmail',
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+      this.logger.log(`MailService initialized with Gmail transport (${smtpUser}).`);
+      return;
+    }
+
+    this.logger.warn(
+      'SMTP credentials (SMTP_HOST/SMTP_USER/SMTP_PASS or EMAIL_USER/EMAIL_APP_PASSWORD) not configured. Real emails will be recorded via transactional notification ledger.',
+    );
   }
 
   async sendOtp(

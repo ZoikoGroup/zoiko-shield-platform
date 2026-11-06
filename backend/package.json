@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "type": "commonjs",
   "scripts": {
-    "build": "nest build shield-core && nest build shield-ingest && nest build shield-ai && nest build shield-action && nest build shield-anchor && nest build verifier-cli",
+    "build": "nest build shield-core && nest build shield-ingest && nest build shield-ai && nest build shield-action && nest build shield-anchor && nest build shield-public-assistant && nest build verifier-cli",
     "build:core": "nest build shield-core",
     "build:ingest": "nest build shield-ingest",
     "build:ai": "nest build shield-ai",

@@ -96,9 +96,21 @@ export default function NotificationCenterPage() {
 
     for (const d of [...localDispatched, ...deliveryList]) {
       if (!d || !d.id) continue;
-      const timeStr = d.created_at || d.delivered_at
-        ? new Date(d.created_at || d.delivered_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        : "Just now";
+      const createdTime = d.created_at || d.delivered_at;
+      let timeStr = "Just now";
+      let relativeTimeStr = "";
+      if (createdTime) {
+        const dObj = new Date(createdTime);
+        timeStr = dObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const diffMs = Date.now() - dObj.getTime();
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+        if (diffHrs >= 1) {
+          relativeTimeStr = `${diffHrs} hour${diffHrs > 1 ? "s" : ""} ago`;
+        } else {
+          const diffMins = Math.floor(diffMs / (1000 * 60));
+          relativeTimeStr = `${diffMins} min ago`;
+        }
+      }
 
       const isDead = d.status === "DEAD_LETTERED";
       const isFailed = d.status === "FAILED";
@@ -112,14 +124,14 @@ export default function NotificationCenterPage() {
         id: d.id,
         time: timeStr,
         title: d.event_id?.replace("evt-email-", "").replace("evt-sec-", "") || `Notification Notice (${d.id})`,
-        ref: `${channelName} · Recipient: ${recipient}`,
+        ref: `${channelName} · Recipient: ${recipient}${relativeTimeStr ? ` · ${relativeTimeStr}` : ""}`,
         channel: channelName,
         severity: isDead || isFailed ? "CRITICAL" : "HIGH",
         delivery: deliveryStatus,
         ack: isAcked ? "ACKED" : "PENDING",
         unread: !isAcked,
         security: true,
-        message: `Delivery record ${d.id} (${d.status || "UNKNOWN"}) to ${recipient}.`,
+        message: `${d.event_id || ""} delivery record ${d.id} (${d.status || "UNKNOWN"}) to ${recipient} delivered ${relativeTimeStr || "recently"}.`,
         source: "Notification Dispatch Service",
         linked: "/notifications",
         recipient,
@@ -174,16 +186,37 @@ export default function NotificationCenterPage() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (!q) {
+      return items.filter((n) => {
+        if (tab === "unread" && !n.unread) return false;
+        if (tab === "security" && !n.security) return false;
+        if (tab === "failures" && !["EMAIL FAILED", "RETRY", "DEAD-LETTER"].includes(n.delivery)) return false;
+        if (tab === "acked" && n.ack !== "ACKED") return false;
+        return true;
+      });
+    }
+
+    const tokens = q.split(/\s+/).filter(Boolean);
     return items.filter((n) => {
       if (tab === "unread" && !n.unread) return false;
       if (tab === "security" && !n.security) return false;
       if (tab === "failures" && !["EMAIL FAILED", "RETRY", "DEAD-LETTER"].includes(n.delivery)) return false;
       if (tab === "acked" && n.ack !== "ACKED") return false;
-      return !q || `${n.title} ${n.ref} ${n.id}`.toLowerCase().includes(q);
+      const haystack = `${n.title} ${n.ref} ${n.id} ${n.message} ${n.recipient} ${n.channel} ${n.source} ${n.delivery} ${n.severity} ${n.time}`.toLowerCase();
+      if (haystack.includes(q)) return true;
+      return (
+        tokens.length > 0 &&
+        tokens.every((token) => {
+          if (token.length <= 2 && /^\d+$/.test(token)) {
+            return new RegExp(`\\b${token}\\b`).test(haystack);
+          }
+          return haystack.includes(token);
+        })
+      );
     });
   }, [items, query, tab]);
 
-  const sel = items.find((n) => n.id === selectedId) ?? items[0];
+  const sel = (rows.length > 0 ? (rows.find((n) => n.id === selectedId) ?? rows[0]) : items.find((n) => n.id === selectedId) ?? items[0]) ?? null;
   const failures = items.filter((n) => n.delivery === "EMAIL FAILED" || n.delivery === "RETRY").length;
   const dead = items.filter((n) => n.delivery === "DEAD-LETTER").length;
   const awaiting = items.filter((n) => n.ack === "PENDING").length;
@@ -320,10 +353,10 @@ export default function NotificationCenterPage() {
                   <span className="flex items-center gap-2">
                     <span
                       className={`w-2 h-2 rounded-full ${r.severity === "CRITICAL"
-                          ? "bg-rose-400"
-                          : r.unread
-                            ? "bg-amber-400"
-                            : "bg-sky-400"
+                        ? "bg-rose-400"
+                        : r.unread
+                          ? "bg-amber-400"
+                          : "bg-sky-400"
                         }`}
                     />
                     <span className="font-mono text-xs">{r.time}</span>

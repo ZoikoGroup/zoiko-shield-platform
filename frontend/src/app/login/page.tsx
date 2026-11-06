@@ -290,21 +290,30 @@ function LoginForm() {
         localStorage.setItem(SSO_WORKSPACE_KEY, slug);
       } catch { }
 
+      const idps = Array.isArray(discovery?.identityProviders)
+        ? discovery.identityProviders
+        : [];
+      const tenantName = discovery?.tenant?.name || slug;
+      const tenantSlug = discovery?.tenant?.slug || slug;
+
       const candidates = option.match
-        ? discovery.identityProviders.filter((p) => option.match!.test(p.name))
-        : discovery.identityProviders;
+        ? idps.filter((p) => p && typeof p.name === "string" && option.match!.test(p.name))
+        : idps;
 
       if (candidates.length === 0) {
         setSsoError(
           option.match
-            ? `${option.label} sign-in isn't set up for ${discovery.tenant.name}. Try Company SSO or ask your administrator.`
-            : `${discovery.tenant.name} hasn't enabled single sign-on yet. Sign in with your email instead.`
+            ? `${option.label} sign-in isn't configured for "${tenantName}". Try Company SSO or ask your workspace administrator.`
+            : `"${tenantName}" has not enabled single sign-on yet. Please sign in with your email and password.`
         );
       } else if (candidates.length === 1) {
-        await startSsoWith(discovery.tenant.slug, candidates[0].id);
+        await startSsoWith(tenantSlug, candidates[0].id);
         return;
       } else {
-        setSsoChoices({ ...discovery, identityProviders: candidates });
+        setSsoChoices({
+          tenant: { id: discovery?.tenant?.id || tenantSlug, name: tenantName, slug: tenantSlug },
+          identityProviders: candidates,
+        });
       }
     } catch (err: any) {
       setSsoError(
