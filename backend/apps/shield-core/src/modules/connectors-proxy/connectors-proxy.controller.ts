@@ -133,6 +133,61 @@ export class ConnectorsProxyController {
     );
   }
 
+  @Get('events/:eventId')
+  async getEventById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('eventId') eventId: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getEventById(tenantId, eventId);
+  }
+
+  @Get('dlq/metrics')
+  async getDlqMetrics(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getDlqMetrics(tenantId);
+  }
+
+  @Get('quarantine')
+  async listQuarantinedEvents(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listQuarantinedEvents(
+      tenantId,
+      limit ? { limit } : undefined,
+    );
+  }
+
+  @Post('quarantine/:eventId/reprocess')
+  async reprocessQuarantinedEvent(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('eventId') eventId: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.reprocessQuarantinedEvent(tenantId, eventId);
+  }
+
+  @Post('dlq/auto-retry')
+  async triggerDlqAutoRetry(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.triggerDlqAutoRetry(
+      tenantId,
+      limit ? Number(limit) : undefined,
+    );
+  }
+
   @Get('control-evaluations')
   async listControlEvaluations(
     @Headers('x-tenant-id') headerTenantId: string,
@@ -140,5 +195,122 @@ export class ConnectorsProxyController {
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
     return this.shieldIngestClient.listControlEvaluations(tenantId);
+  }
+
+  // Note: GET/POST api/v1/controls is NOT proxied here — it already exists
+  // natively in core's ControlsController (global control catalog), and
+  // ingest's ControlTestingController defines a different, tenant-scoped
+  // "control objective" concept under the same path name. Proxying it would
+  // silently shadow or collide with core's route. control-tests/:id/evaluate
+  // does not collide and exposes the read side already proxied above.
+  @Post('control-tests/:controlId/evaluate')
+  async evaluateControl(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('controlId') controlId: string,
+    @Body() dto: any,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.evaluateControl(tenantId, controlId, dto);
+  }
+
+  @Get('assurance/posture')
+  async getAssurancePosture(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getAssurancePosture(tenantId);
+  }
+
+  @Get('assurance/reviews')
+  async listAssuranceReviews(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listAssuranceReviews(tenantId);
+  }
+
+  @Post('assurance/reviews')
+  @HttpCode(HttpStatus.CREATED)
+  async createAssuranceReview(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: any,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.createAssuranceReview(tenantId, dto);
+  }
+
+  @Get('assurance/reflections')
+  async listAssuranceReflections(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('assuranceReviewId') assuranceReviewId?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listAssuranceReflections(
+      tenantId,
+      assuranceReviewId,
+    );
+  }
+
+  @Post('assurance/reflections')
+  @HttpCode(HttpStatus.CREATED)
+  async createAssuranceReflection(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: any,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.createAssuranceReflection(tenantId, dto);
+  }
+
+  @Post('sla/claims/evaluate')
+  async evaluateSlaClaim(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: any,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.evaluateSlaClaim(tenantId, dto);
+  }
+
+  @Get('sla/claims/evaluations')
+  async listSlaClaimEvaluations(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('claimKey') claimKey?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listSlaClaimEvaluations(tenantId, claimKey);
+  }
+
+  @Get('sla/performance')
+  async getSlaPerformance(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getSlaPerformance(tenantId);
+  }
+
+  @Get('metering/usage')
+  async getMeteringUsage(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getMeteringUsage(tenantId);
+  }
+
+  @Get('metering/resources')
+  async getMeteringResources(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getMeteringResources(tenantId);
   }
 }

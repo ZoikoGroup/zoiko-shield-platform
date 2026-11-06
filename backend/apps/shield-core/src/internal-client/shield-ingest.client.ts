@@ -125,6 +125,74 @@ export class ShieldIngestClient {
     });
   }
 
+  // listControlObjectives/createControlObjective (ingest's tenant-scoped
+  // control-testing objectives) are deliberately not wrapped here: the path
+  // they'd need, api/v1/controls, is already core's own ControlsController
+  // (a different, global control catalog). See connectors-proxy.controller.ts.
+
+  // --- Assurance Reviews & vCISO Reflections ---
+  async getAssurancePosture(tenantId: string): Promise<any> {
+    return this.get('/api/v1/assurance/posture', { 'x-tenant-id': tenantId });
+  }
+
+  async listAssuranceReviews(tenantId: string): Promise<any> {
+    return this.get('/api/v1/assurance/reviews', { 'x-tenant-id': tenantId });
+  }
+
+  async createAssuranceReview(tenantId: string, dto: any): Promise<any> {
+    return this.post('/api/v1/assurance/reviews', dto, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async listAssuranceReflections(
+    tenantId: string,
+    assuranceReviewId?: string,
+  ): Promise<any> {
+    const queryString = assuranceReviewId
+      ? `?assuranceReviewId=${assuranceReviewId}`
+      : '';
+    return this.get(`/api/v1/assurance/reflections${queryString}`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async createAssuranceReflection(tenantId: string, dto: any): Promise<any> {
+    return this.post('/api/v1/assurance/reflections', dto, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  // --- SLA Claims & Performance ---
+  async evaluateSlaClaim(tenantId: string, dto: any): Promise<any> {
+    return this.post('/api/v1/sla/claims/evaluate', dto, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async listSlaClaimEvaluations(
+    tenantId: string,
+    claimKey?: string,
+  ): Promise<any> {
+    const queryString = claimKey ? `?claimKey=${claimKey}` : '';
+    return this.get(`/api/v1/sla/claims/evaluations${queryString}`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async getSlaPerformance(tenantId: string): Promise<any> {
+    return this.get('/api/v1/sla/performance', { 'x-tenant-id': tenantId });
+  }
+
+  // --- Metering ---
+  async getMeteringUsage(tenantId: string): Promise<any> {
+    return this.get('/api/v1/metering/usage', { 'x-tenant-id': tenantId });
+  }
+
+  async getMeteringResources(tenantId: string): Promise<any> {
+    return this.get('/api/v1/metering/resources', { 'x-tenant-id': tenantId });
+  }
+
   // --- Events & Telemetry ---
   async listEvents(
     tenantId: string,
@@ -135,6 +203,48 @@ export class ShieldIngestClient {
     return this.get(`/api/v1/events${queryString}`, {
       'x-tenant-id': tenantId,
     });
+  }
+
+  async getEventById(tenantId: string, eventId: string): Promise<any> {
+    return this.get(`/api/v1/events/${eventId}`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  // --- Dead Letter Queue & Quarantine ---
+  async getDlqMetrics(tenantId: string): Promise<any> {
+    return this.get('/api/v1/dlq/metrics', { 'x-tenant-id': tenantId });
+  }
+
+  async listQuarantinedEvents(
+    tenantId: string,
+    query?: Record<string, string>,
+  ): Promise<any> {
+    const params = new URLSearchParams(query || {});
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.get(`/api/v1/quarantine${queryString}`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async reprocessQuarantinedEvent(
+    tenantId: string,
+    quarantineId: string,
+  ): Promise<any> {
+    return this.post(
+      `/api/v1/quarantine/${quarantineId}/reprocess`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
+  async triggerDlqAutoRetry(tenantId: string, limit?: number): Promise<any> {
+    const queryString = limit ? `?limit=${limit}` : '';
+    return this.post(
+      `/api/v1/dlq/auto-retry${queryString}`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
   }
 
   // --- HTTP Helpers ---
