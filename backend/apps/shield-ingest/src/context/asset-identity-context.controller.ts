@@ -16,6 +16,9 @@ export class ResolveAssetRequestDto {
   assetType!: string;
   name?: string;
   criticality?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  sourceSystem?: string;
+  sourceAccountId?: string;
+  externalType?: string;
 }
 
 export class ResolveIdentityRequestDto {
@@ -23,6 +26,9 @@ export class ResolveIdentityRequestDto {
   email?: string;
   displayName?: string;
   identityType?: 'USER' | 'SERVICE_ACCOUNT' | 'SYSTEM_ROLE';
+  sourceSystem?: string;
+  sourceAccountId?: string;
+  externalType?: string;
 }
 
 @Controller('api/v1/context')
