@@ -87,6 +87,54 @@ describe('WebhookSignatureGuard', () => {
     });
   });
 
+  it('still rejects a genuine replay (duplicate connector_id + nonce) as already processed', async () => {
+    const rawBody = '{"event":"threat.detected","id":"123"}';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = 'nonce-uuid-replay';
+    const secret = 'super-secret-key-123';
+    const hash = crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${nonce}.${rawBody}`)
+      .digest('hex');
+    const context = createMockContext(
+      { 'x-signature': `sha256=${hash}`, 'x-timestamp': timestamp, 'x-webhook-nonce': nonce },
+      { connectorId: 'conn-1' },
+      rawBody,
+    );
+    mockPrisma.webhookReplayNonce.create.mockRejectedValue({ code: 'P2002' });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      'Webhook delivery has already been processed',
+    );
+  });
+
+  it('does not mislabel an unrelated database failure as a replay, e.g. a route with no :connectorId', async () => {
+    // POST /api/v1/ingest/stream/batch has no :connectorId in its path, so
+    // request.params.connectorId is undefined here, same as in production.
+    // The required connector_id column then fails Prisma's own validation -
+    // not a unique-constraint violation - and that must surface as-is.
+    const rawBody = '{"events":[]}';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = 'nonce-uuid-no-connector';
+    const secret = 'super-secret-key-123';
+    const hash = crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${nonce}.${rawBody}`)
+      .digest('hex');
+    const context = createMockContext(
+      { 'x-signature': `sha256=${hash}`, 'x-timestamp': timestamp, 'x-webhook-nonce': nonce },
+      {},
+      rawBody,
+    );
+    const validationError = new Error('Argument connector_id is missing');
+    mockPrisma.webhookReplayNonce.create.mockRejectedValue(validationError);
+
+    await expect(guard.canActivate(context)).rejects.toThrow('Argument connector_id is missing');
+    await expect(guard.canActivate(context)).rejects.not.toThrow(
+      'Webhook delivery has already been processed',
+    );
+  });
+
   it('rejects request with missing signature header', async () => {
     const context = createMockContext({
       'x-timestamp': Math.floor(Date.now() / 1000).toString(),
@@ -196,9 +244,11 @@ describe('WebhookSignatureGuard', () => {
         .update(rawBody)
         .digest('hex');
 
-      mockPrisma.webhookReplayNonce.create.mockRejectedValueOnce(
-        new Error('unique constraint violation'),
-      );
+      // Real @prisma/client unique-constraint violations carry code: 'P2002',
+      // the same shape the guard now requires before treating this as a replay.
+      mockPrisma.webhookReplayNonce.create.mockRejectedValueOnce({
+        code: 'P2002',
+      });
 
       const context = createMockContext(
         {
