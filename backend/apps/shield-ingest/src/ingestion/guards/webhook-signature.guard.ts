@@ -212,10 +212,18 @@ export class WebhookSignatureGuard implements CanActivate {
           expires_at: expiresAt,
         },
       });
-    } catch {
-      throw new UnauthorizedException(
-        'Webhook delivery has already been processed',
-      );
+    } catch (err: any) {
+      // Only a genuine duplicate (connector_id, nonce_hash) pair is a replay.
+      // Any other failure here - most notably a route with no :connectorId in
+      // its path, which makes connectorId undefined and the required
+      // connector_id column fail validation - is a real error, not a replay,
+      // and reporting it as "already processed" hid that misconfiguration.
+      if (err?.code === 'P2002') {
+        throw new UnauthorizedException(
+          'Webhook delivery has already been processed',
+        );
+      }
+      throw err;
     }
   }
 }
