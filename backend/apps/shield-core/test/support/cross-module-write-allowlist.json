@@ -64,5 +64,7 @@
   "shield-ingest -> metering.UsageRecord",
   "shield-ingest -> resources.ResourceObservation",
   "shield-ingest -> security_context.Asset",
+  "shield-ingest -> security_context.AssetAlias",
+  "shield-ingest -> security_context.IdentityAlias",
   "shield-ingest -> security_context.IdentityEntity"
 ]

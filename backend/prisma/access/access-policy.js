@@ -41,6 +41,12 @@ const SERVICE_ROLES = {
       'evidence.EvidenceRecord': 'readwrite',
       'security_context.Asset': 'readwrite',
       'security_context.IdentityEntity': 'readwrite',
+      // Alias-first resolution (spec §6/§11): the asset/identity resolve
+      // path now writes an alias alongside the Asset/IdentityEntity row it
+      // already had this same readwrite grant for, so a second source
+      // reporting the same entity converges instead of forking a duplicate.
+      'security_context.AssetAlias': 'readwrite',
+      'security_context.IdentityAlias': 'readwrite',
       // Read-only: the resolver writes decisions through its own path; the
       // asset context API only reads them back for the W29 review queue.
       'security_context.ResolutionDecision': 'read',
