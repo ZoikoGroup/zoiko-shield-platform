@@ -219,13 +219,17 @@ Before connecting a source, confirm the account or subscription, the region, the
 
 Normalisation maps source fields to a common schema so detections and investigations can work across vendors. Field coverage differs by source and version.
 
-The public connector catalogue shows documented integrations, not a guarantee that every product version or module is supported. Confirm the exact version and deployment model with Solutions Engineering before committing to a rollout.`,
-    tags: ['connectors', 'integrations', 'telemetry', 'ingestion', 'sources', 'normalisation', 'ocsf'],
+The public connector catalogue shows documented integrations, not a guarantee that every product version or module is supported. Confirm the exact version and deployment model with Solutions Engineering before committing to a rollout.
+
+Documented integrations in the public catalogue: Microsoft Sentinel (cloud SIEM), Splunk (SIEM), CrowdStrike Falcon (endpoint), AWS GuardDuty (cloud), Okta (identity) and Slack (notifications). Confirm region, version, module and permissions for each with Solutions Engineering.
+
+Not verified in public content: ServiceNow (ITSM) and Jira (ticketing). Public content does not confirm that these work for your version, module or deployment model, so the assistant cannot confirm them. Ask Solutions Engineering.`,
+    tags: ['connectors', 'integrations', 'integration', 'telemetry', 'ingestion', 'sources', 'normalisation', 'ocsf', 'splunk', 'crowdstrike', 'falcon', 'sentinel', 'okta', 'guardduty', 'slack', 'servicenow', 'jira', 'siem'],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
     answer:
-      'A connector brings telemetry in through an agent, cloud export, webhook or API poller. Prepare a dedicated least-privilege credential, confirm the region and the fields the source can export, then validate normalisation after connection. The catalogue shows documented integrations, not a guarantee for every product version. Confirm the exact version with Solutions Engineering.',
+      'A connector brings telemetry in through an agent, cloud export, webhook or API poller. Prepare a dedicated least-privilege credential, confirm the region and the fields the source can export, then validate normalisation after connection. The catalogue documents Microsoft Sentinel, Splunk, CrowdStrike Falcon, AWS GuardDuty, Okta and Slack. ServiceNow and Jira are not verified in public content. It is not a guarantee for every product version, so confirm the exact version with Solutions Engineering.',
   },
   {
     id: 'help-response',
@@ -277,8 +281,12 @@ Sizing usually depends on the number of assets or identities in scope, telemetry
 
 Public pages may show a plan family and the features that are typically associated with it. A final price, discount, service level and contract term are confirmed by the commercial team in a written quote or order form.
 
+The public plan families are Essential (a single security operations team), Advanced (several environments, governed response automation), Enterprise (complex, regulated or multi-region estates) and MSSP (managed providers serving multiple customer tenants). All are quote-based.
+
+Service levels, uptime commitments and SLAs are contractual. They are confirmed in writing in the order form and are not promised in public chat.
+
 The public assistant will not invent a price, a discount, a booking or a service-level commitment. If you need a number, request a quote and the team will confirm scope first.`,
-    tags: ['pricing', 'plans', 'cost', 'quote', 'commercial', 'sizing', 'contract'],
+    tags: ['pricing', 'plans', 'cost', 'quote', 'commercial', 'sizing', 'contract', 'sla', 'uptime', 'guarantee', 'discount', 'trial', 'essential', 'advanced', 'enterprise', 'mssp'],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -306,8 +314,12 @@ ZoikoShield can describe its control approach, data protection practices, encryp
 
 The assistant does not claim a certification, audit opinion or regulatory approval unless the current approved trust content says so for the relevant scope. Where the position is not published, the assistant will say that it cannot confirm it and offer the trust access route.
 
+Encryption: ZoikoShield describes encryption in transit and at rest, with key management controls. Specific algorithms and key custody are confirmed in the security documentation for your scope.
+
+Certifications such as SOC 2, ISO 27001 or HIPAA: public content does not state a current certification, so the assistant cannot confirm one. The trust team can confirm the current status for a given scope and date.
+
 Requests for reports, questionnaires or evidence go through the trust access process so the right owner can review the scope and any confidentiality terms.`,
-    tags: ['trust', 'compliance', 'certification', 'soc 2', 'iso 27001', 'gdpr', 'security', 'questionnaire'],
+    tags: ['trust', 'compliance', 'certification', 'certified', 'soc 2', 'iso 27001', 'hipaa', 'gdpr', 'security', 'questionnaire', 'encryption', 'encrypted', 'encrypt', 'key management', 'at rest', 'in transit'],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 3,
@@ -420,8 +432,10 @@ You can clear the conversation at any time. Do not share passwords, tokens or li
 
 Regional availability, data residency commitments and any dedicated deployment option depend on the contract and the current service catalogue. Public content does not promise a region that has not been confirmed for your organisation.
 
-A technical evaluation can cover the deployment model, identity integration, network path, telemetry sources and data handling. Use the technical evaluation request if you need those topics confirmed in writing.`,
-    tags: ['deployment', 'region', 'residency', 'sovereign', 'cloud', 'hosting', 'architecture'],
+A technical evaluation can cover the deployment model, identity integration, network path, telemetry sources and data handling. Use the technical evaluation request if you need those topics confirmed in writing.
+
+Public content describes a hosted, cloud-delivered service (SaaS). It does not describe an on-premises product; any dedicated or sovereign deployment requirement is agreed during commercial and technical review.`,
+    tags: ['deployment', 'region', 'residency', 'sovereign', 'cloud', 'hosting', 'architecture', 'saas', 'hosted', 'on-premises', 'on-prem', 'premises'],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
