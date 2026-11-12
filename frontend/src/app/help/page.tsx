@@ -56,9 +56,9 @@ export default function HelpDocumentationPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <HelpCircle className="w-8 h-8 text-sky-400 mt-0.5" />
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="flex items-start gap-3 min-w-0">
+          <HelpCircle className="w-8 h-8 shrink-0 text-sky-400 mt-0.5" />
           <div>
             <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Help &amp; Documentation</h1>
             <p className="text-xs text-slate-400 mt-1">Find product guidance, resolve issues, and contact support through verified channels.</p>
@@ -120,6 +120,7 @@ export default function HelpDocumentationPage() {
             <h2 className="text-base font-bold text-slate-100">{query ? `Results for "${query}"` : "Recommended guides"}</h2>
             <Pill tone="blue">Curated workflows</Pill>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead><tr className="text-left text-[10px] font-mono uppercase tracking-wider text-slate-500"><th className="py-2">Guide / workflow</th><th className="py-2">Area</th><th /></tr></thead>
             <tbody>
@@ -134,6 +135,7 @@ export default function HelpDocumentationPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </section>
         <section className="rounded-xl border border-line bg-raised p-5">
           <h2 className="text-base font-bold text-slate-100 pb-3 border-b border-line">Support &amp; escalation</h2>

@@ -366,6 +366,7 @@ export default function FindingDetailPage() {
                 what the scanner actually observed.
               </p>
             ) : (
+              <div className="overflow-x-auto">
               <table className="mt-3 w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
@@ -395,6 +396,7 @@ export default function FindingDetailPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Section>
 
@@ -445,6 +447,7 @@ export default function FindingDetailPage() {
                 No factor breakdown is recorded, so this rating cannot be taken apart.
               </p>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-xs font-mono">
                 <thead>
                   <tr className="border-b border-slate-800 text-left text-slate-500">
@@ -478,6 +481,7 @@ export default function FindingDetailPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Section>
 

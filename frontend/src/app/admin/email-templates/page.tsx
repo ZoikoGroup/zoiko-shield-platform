@@ -421,13 +421,16 @@ export default function EmailTemplateStudioPage() {
   <title>${tpl.subject}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#020617;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
+  <div className="overflow-x-auto">
   <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#020617;padding:32px 12px;">
     <tr>
       <td align="center">
+        <div className="overflow-x-auto">
         <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#0f172a;border-radius:16px;border:1px solid #1e293b;overflow:hidden;">
           <!-- Header Banner -->
           <tr>
             <td style="padding:28px 32px 20px 32px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);border-bottom:1px solid #334155;">
+              <div className="overflow-x-auto">
               <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
@@ -439,6 +442,7 @@ export default function EmailTemplateStudioPage() {
                   </td>
                 </tr>
               </table>
+              </div>
             </td>
           </tr>
           <!-- Body Content -->
@@ -447,6 +451,7 @@ export default function EmailTemplateStudioPage() {
               <p style="margin:0 0 16px 0;font-size:15px;color:#f1f5f9;">Hello <strong>${customVars.recipientFirstName || "Security Operator"}</strong>,</p>
               <p style="margin:0 0 20px 0;">A governed security state event has been recorded for organization <strong style="color:#ffffff;">${customVars.organizationName || "Sovereign Financial Holdings"}</strong>.</p>
               
+              <div className="overflow-x-auto">
               <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#020617;border-radius:10px;border:1px solid #1e293b;margin-bottom:24px;">
                 <tr>
                   <td style="padding:16px 20px;font-family:monospace;font-size:12px;">
@@ -457,8 +462,10 @@ export default function EmailTemplateStudioPage() {
                   </td>
                 </tr>
               </table>
+              </div>
 
               <!-- CTA Button -->
+              <div className="overflow-x-auto">
               <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:24px 0;">
                 <tr>
                   <td align="center" style="border-radius:8px;background:#0284c7;">
@@ -468,6 +475,7 @@ export default function EmailTemplateStudioPage() {
                   </td>
                 </tr>
               </table>
+              </div>
 
               <p style="margin:0;font-size:12px;color:#94a3b8;">If you did not initiate or authorize this request, notify your security operations center immediately.</p>
             </td>
@@ -480,9 +488,11 @@ export default function EmailTemplateStudioPage() {
             </td>
           </tr>
         </table>
+        </div>
       </td>
     </tr>
   </table>
+  </div>
 </body>
 </html>`;
 
@@ -715,7 +725,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
               <Mail className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 <h1 className="text-xl font-bold tracking-tight text-white">
                   Production Email Template Studio
                 </h1>
@@ -870,7 +880,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
               </div>
 
               {/* Viewport, Theme & Format Tabs */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center rounded-lg bg-raised p-1 border border-line">
                   <button
                     onClick={() => setFormatTab("html")}
@@ -1070,9 +1080,9 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
           {/* Bottom Bar: Test Dispatcher & Audit Hash Fingerprint */}
           <Card className="p-4 bg-surface border-line">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Hash className="w-4 h-4 text-cyan-500/60" />
-                <div className="text-xs font-mono text-slate-400">
+              <div className="flex items-center gap-3 min-w-0">
+                <Hash className="w-4 h-4 shrink-0 text-cyan-500/60" />
+                <div className="text-xs font-mono text-slate-400 min-w-0 break-all">
                   <span className="text-slate-500">Audit Hash:</span>{" "}
                   <span className="text-cyan-300">
                     {previewOutput?.renderHash || "SHA-256 (computing...)"}
@@ -1081,7 +1091,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
               </div>
 
               {/* Send Test Dispatch Controls */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="email"
                   value={testRecipient}

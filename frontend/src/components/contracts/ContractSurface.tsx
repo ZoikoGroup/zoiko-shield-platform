@@ -125,7 +125,7 @@ export function ContractSurface({
       <div className="surface-card rounded-2xl p-6 border border-line bg-gradient-to-b from-raised to-surface shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h1 className="text-xl font-bold tracking-tight text-slate-100">{title}</h1>
               <Badge variant="neutral" className="font-mono text-[11px] bg-surface border-line text-slate-200">{contractId}</Badge>
               <Badge variant={STATUS_BADGE[status]} className="font-mono text-[11px] uppercase tracking-wider">{status}</Badge>

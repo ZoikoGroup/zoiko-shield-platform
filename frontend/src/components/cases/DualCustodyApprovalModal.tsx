@@ -171,7 +171,7 @@ export const DualCustodyApprovalModal: React.FC<DualCustodyModalProps> = ({
         </div>
 
         {/* Step Progression */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Step 1: Initiator Attestation */}
           <div
             className={`p-3.5 rounded-xl border transition-all ${

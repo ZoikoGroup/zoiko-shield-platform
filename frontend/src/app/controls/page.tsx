@@ -79,8 +79,8 @@ export default function ControlsPage() {
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
       <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-canvas shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-2">
+        <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-5">
+          <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-2">
               <Badge variant="pass" className="text-[10px] font-mono">ERB-01 STEP 10</Badge>
               <span className="text-xs font-mono text-cyan-400 font-bold tracking-wider">
@@ -95,7 +95,7 @@ export default function ControlsPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 2xl:shrink-0">
             <Button
               variant="cyan"
               onClick={() => handleEvaluateAll()}

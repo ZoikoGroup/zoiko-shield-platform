@@ -504,7 +504,7 @@ export default function ResponseProposalsPage() {
             ))}
           </div>
           {detailTab === "Overview" && (
-            <div className="grid grid-cols-2 gap-3 text-[11px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
               <div className="space-y-2">
                 <div>
                   <div className="text-slate-500">Trigger</div>
@@ -750,7 +750,7 @@ export default function ResponseProposalsPage() {
           />
         </Panel>
         <Panel title="Risk & Impact Assessment">
-          <div className="grid grid-cols-3 gap-3 text-[11px]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
             <div>
               <div className="text-slate-500">Risk Level</div>
               <Pill tone={RISK_TONE[sel.risk]}>{sel.risk}</Pill>

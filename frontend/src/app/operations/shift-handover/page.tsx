@@ -211,6 +211,7 @@ export default function ShiftHandoverPage() {
               No open cases. Nothing carries over from this shift.
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
@@ -243,6 +244,7 @@ export default function ShiftHandoverPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Section>
 

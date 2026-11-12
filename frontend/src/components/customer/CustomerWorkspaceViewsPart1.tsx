@@ -2549,6 +2549,7 @@ export function CustomerIdentityAccessSection() {
   const show = (panel: Tab) => activeTab === "Overview" || activeTab === panel;
 
   const identityTable = (rows: IdentityEntity[], empty: string) => (
+    <div className="overflow-x-auto">
     <table className="w-full text-left border-collapse text-xs">
       <thead>
         <tr className="border-b border-slate-800 text-slate-400">
@@ -2582,6 +2583,7 @@ export function CustomerIdentityAccessSection() {
         )}
       </tbody>
     </table>
+    </div>
   );
 
   return (
@@ -2670,6 +2672,7 @@ export function CustomerIdentityAccessSection() {
                     Open alerts →
                   </Link>
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
@@ -2703,6 +2706,7 @@ export function CustomerIdentityAccessSection() {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
 
@@ -2716,6 +2720,7 @@ export function CustomerIdentityAccessSection() {
                   {live.length} active • {pendingElevations.length} pending
                 </span>
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400">
@@ -2753,6 +2758,7 @@ export function CustomerIdentityAccessSection() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
 

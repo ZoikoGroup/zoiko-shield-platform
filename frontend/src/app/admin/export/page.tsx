@@ -303,6 +303,7 @@ export default function ExportOffboardingPage() {
                     </div>
 
                     {job.artifacts && job.artifacts.length > 0 && (
+                      <div className="overflow-x-auto">
                       <table className="mt-2 w-full text-[11px] font-mono">
                         <thead>
                           <tr className="border-b border-slate-800 text-left text-slate-500">
@@ -334,6 +335,7 @@ export default function ExportOffboardingPage() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )}
 
                     <ManifestPanel exportId={job.id} tenantId={tenantId} />
@@ -399,6 +401,7 @@ export default function ExportOffboardingPage() {
               not fully purged.
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
@@ -445,6 +448,7 @@ export default function ExportOffboardingPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Section>
 
@@ -523,6 +527,7 @@ export default function ExportOffboardingPage() {
             requirement="The authority that decides when data may actually be destroyed."
             count={retention.length}
           >
+            <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
@@ -550,6 +555,7 @@ export default function ExportOffboardingPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </Section>
         )}
       </div>

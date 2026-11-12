@@ -812,6 +812,7 @@ function WebhookPanel({ subscription }: { subscription: WebhookSubscription }) {
                   dead-lettered.
                 </p>
               )}
+              <div className="overflow-x-auto">
               <table className="w-full text-[11px] font-mono">
                 <thead>
                   <tr className="border-b border-slate-800 text-left text-slate-500">
@@ -853,6 +854,7 @@ function WebhookPanel({ subscription }: { subscription: WebhookSubscription }) {
                   ))}
                 </tbody>
               </table>
+              </div>
               <p className="font-mono text-[11px] text-slate-600">
                 Each delivery is signed with the subscription&apos;s current secret
                 version and carries a payload hash, so a receiver can verify what it was

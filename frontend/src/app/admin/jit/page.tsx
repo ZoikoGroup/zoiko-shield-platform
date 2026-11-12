@@ -168,7 +168,7 @@ export default function JitElevationPage() {
       )}
       <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="ai">PLATFORM ADMIN ONLY</Badge>
             <span className="text-xs font-mono text-cyan-400 font-bold">
               CROSS-TENANT SUPPORT ACCESS (PLATFORM_ROLE_MANAGE)

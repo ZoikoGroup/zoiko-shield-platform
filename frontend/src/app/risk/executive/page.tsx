@@ -401,6 +401,7 @@ export default function ExecutiveRiskPage() {
                 : "Only one frozen snapshot exists. A single reading is a point, not a trend."}
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
@@ -442,6 +443,7 @@ export default function ExecutiveRiskPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Section>
 

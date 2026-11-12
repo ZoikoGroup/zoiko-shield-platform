@@ -578,7 +578,7 @@ export default function CasesListPage() {
               </div>
 
               {/* Metadata Grid */}
-              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-surface border border-line text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl bg-surface border border-line text-xs">
                 <div>
                   <div className="text-[10px] font-mono text-slate-500 uppercase">Assigned analyst</div>
                   <div className="font-semibold text-slate-200 mt-0.5">{activeCase.assignee || "Sarah Chen"}</div>
@@ -670,7 +670,7 @@ export default function CasesListPage() {
               {/* Investigation Timeline */}
               <div className="space-y-2 pt-1">
                 <h4 className="font-bold text-slate-200 text-xs">Investigation timeline</h4>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
                   <div className="p-2 rounded bg-surface border border-line">
                     <div className="text-cyan-400 font-bold">13:28</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Failed sign-ins</div>

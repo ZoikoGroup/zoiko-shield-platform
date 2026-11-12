@@ -380,6 +380,7 @@ export default function AssetInventoryPage() {
               {REVIEW_CONFIDENCE_THRESHOLD} confidence.
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
@@ -408,6 +409,7 @@ export default function AssetInventoryPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Section>
 

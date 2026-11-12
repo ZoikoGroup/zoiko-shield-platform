@@ -797,7 +797,7 @@ export function CustomerDashboardView() {
           <div
             role="tablist"
             aria-label="Customer Dashboard View Modes"
-            className="inline-flex items-center rounded-xl bg-[#0a1628] border border-slate-800 p-1 gap-1 shadow-lg"
+            className="inline-flex items-center max-w-full overflow-x-auto rounded-xl bg-[#0a1628] border border-slate-800 p-1 gap-1 shadow-lg"
           >
             <button
               type="button"

@@ -308,6 +308,7 @@ export default function AlertDetailPage() {
                 <p className="text-slate-200">{formatTimestamp(whyItFired.evaluatedAt)}</p>
               </div>
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-xs font-mono">
               <thead>
                 <tr className="text-slate-500 text-left border-b border-slate-800">
@@ -334,6 +335,7 @@ export default function AlertDetailPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {whyItFired.reasonCode && (
               <p className="mt-3 text-xs font-mono text-slate-400">
                 Reason: {whyItFired.reasonCode}

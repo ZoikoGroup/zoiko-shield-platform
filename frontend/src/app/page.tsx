@@ -193,7 +193,7 @@ function AuthenticatedDashboardView({
             <LayoutGrid className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h1 className="text-xl md:text-2xl font-bold text-slate-100 tracking-tight">
                 Command Center
               </h1>

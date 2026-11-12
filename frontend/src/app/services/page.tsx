@@ -153,7 +153,7 @@ export default function CommercialServicesPage() {
         </div>
 
         {/* Live Evaluator Probe Tool */}
-        <div className="shrink-0 flex items-center gap-3 p-2.5 rounded-xl bg-canvas border border-line shadow-inner">
+        <div className="shrink-0 flex flex-wrap items-center gap-3 p-2.5 rounded-xl bg-canvas border border-line shadow-inner max-w-full">
           <span className="text-[11px] font-mono text-slate-400">Status Probe:</span>
           <select
             value={selectedFramework}

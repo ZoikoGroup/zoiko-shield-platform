@@ -416,6 +416,7 @@ export function CustomerDataSecuritySection() {
       {activeTab === "Data inventory" && (
         <div className={CARD_CLASS}>
           <h2 className="text-base font-bold text-white">Data stores</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -444,6 +445,7 @@ export function CustomerDataSecuritySection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -464,6 +466,7 @@ export function CustomerDataSecuritySection() {
                     </button>
                   )}
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
@@ -500,6 +503,7 @@ export function CustomerDataSecuritySection() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
 
@@ -517,6 +521,7 @@ export function CustomerDataSecuritySection() {
                     </button>
                   )}
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400">
@@ -544,6 +549,7 @@ export function CustomerDataSecuritySection() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -802,6 +808,7 @@ export function CustomerCloudSecuritySection() {
                   </button>
                 )}
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400">
@@ -834,12 +841,14 @@ export function CustomerCloudSecuritySection() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
           {activeTab !== "Posture findings" && (
             <div className={CARD_CLASS}>
               <h2 className="text-base font-bold text-white">Cloud connectors</h2>
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400">
@@ -872,6 +881,7 @@ export function CustomerCloudSecuritySection() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>
@@ -1053,6 +1063,7 @@ export function CustomerComplianceRiskSection() {
               <span className="text-xs text-slate-400">Assessed {timeAgo(sector.data.assessedAt)}</span>
             )}
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1089,6 +1100,7 @@ export function CustomerComplianceRiskSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -1102,6 +1114,7 @@ export function CustomerComplianceRiskSection() {
               </span>
             )}
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1132,12 +1145,14 @@ export function CustomerComplianceRiskSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {show("Exceptions") && (
         <div className={CARD_CLASS}>
           <h2 className="text-base font-bold text-white">Exceptions</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1166,6 +1181,7 @@ export function CustomerComplianceRiskSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
@@ -1432,6 +1448,7 @@ export function CustomerReportsAnalyticsSection() {
               </button>
             </form>
           ) : null}
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1475,12 +1492,14 @@ export function CustomerReportsAnalyticsSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {show("Exports") && (
         <div className={CARD_CLASS}>
           <h2 className="text-base font-bold text-white">Exports</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1538,6 +1557,7 @@ export function CustomerReportsAnalyticsSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -1549,6 +1569,7 @@ export function CustomerReportsAnalyticsSection() {
               Creating a package requires an MFA-verified session and a continuous-assurance profile.
             </span>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1594,6 +1615,7 @@ export function CustomerReportsAnalyticsSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
@@ -1862,6 +1884,7 @@ export function CustomerIntegrationsSection() {
       {activeTab === "Catalog" ? (
         <div className={CARD_CLASS}>
           <h2 className="text-base font-bold text-white">Connector catalog</h2>
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
@@ -1900,6 +1923,7 @@ export function CustomerIntegrationsSection() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         <>
@@ -2386,6 +2410,7 @@ export function CustomerSettingsSection() {
         {show("Members") && (
           <div className="lg:col-span-7 rounded-2xl bg-[#0a1628]/95 border border-slate-800/90 p-5 shadow-xl space-y-3 text-xs">
             <h2 className="text-base font-bold text-white">Members &amp; invitations</h2>
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
@@ -2409,6 +2434,7 @@ export function CustomerSettingsSection() {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {pendingInvites.length > 0 && (
               <div className="space-y-1">

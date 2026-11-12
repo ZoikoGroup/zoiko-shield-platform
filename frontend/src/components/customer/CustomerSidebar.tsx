@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { setMobileNavOpen, useMobileNavOpen } from "@/lib/mobile-nav";
 import {
   LayoutGrid,
   ShieldAlert,
@@ -126,6 +127,18 @@ export const CUSTOMER_FOOTER_NAV: CustomerNavItem[] = [
 
 export function CustomerSidebar() {
   const pathname = usePathname();
+  const mobileOpen = useMobileNavOpen();
+
+  // Close the drawer after navigating, and on Escape.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMobileNavOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   const isItemActive = (item: CustomerNavItem) => {
     if (pathname === item.href) return true;
@@ -134,9 +147,19 @@ export function CustomerSidebar() {
   };
 
   return (
+    <>
+    {mobileOpen && (
+      <div
+        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+        onClick={() => setMobileNavOpen(false)}
+        aria-hidden="true"
+      />
+    )}
     <aside
       aria-label="Customer Workspace Navigation"
-      className="w-[248px] shrink-0 h-screen bg-[#060d18] border-r border-slate-800/80 flex flex-col justify-between select-none z-30"
+      className={`w-[248px] max-w-[85vw] shrink-0 h-screen bg-[#060d18] border-r border-slate-800/80 flex flex-col justify-between select-none transition-transform duration-300 fixed inset-y-0 left-0 z-50 lg:static lg:z-30 lg:translate-x-0 ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
     >
       {/* Top Brand Logo */}
       <div>
@@ -226,6 +249,6 @@ export function CustomerSidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }
-
