@@ -165,7 +165,11 @@ export function NoticeBanner({
           {body && <div className="text-[11px] text-slate-300 mt-0.5">{body}</div>}
         </div>
       </div>
-      {tag && <Pill tone={tone}>{tag}</Pill>}
+      {tag && (
+        <Pill tone={tone} className="self-start md:self-auto max-w-full whitespace-normal md:whitespace-nowrap">
+          {tag}
+        </Pill>
+      )}
     </div>
   );
 }

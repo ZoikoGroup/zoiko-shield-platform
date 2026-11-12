@@ -703,6 +703,7 @@ export default function ConnectorsWizardPage() {
             <span className="text-cyan-300">Proposed OCSF mapping</span>
             <span className="text-sky-300 normal-case">Preview only</span>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
               <tr className="text-left text-slate-500">
@@ -725,6 +726,7 @@ export default function ConnectorsWizardPage() {
               ))}
             </tbody>
           </table>
+          </div>
           <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mt-4 mb-2">
             Activation control
           </div>

@@ -14,7 +14,9 @@ import {
   Sliders,
   ShieldAlert,
   CheckCircle2,
+  Menu,
 } from "lucide-react";
+import { toggleMobileNav } from "@/lib/mobile-nav";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { resolveRegionMetadata } from "@/lib/assurance-primitives";
@@ -216,30 +218,38 @@ export function CustomerTopHeader({
     .toUpperCase() || "ZS";
 
   return (
-    <header className="h-[68px] shrink-0 w-full bg-[#07101e]/95 backdrop-blur-md border-b border-slate-800/80 px-6 flex items-center justify-between gap-4 z-20">
+    <header className="relative h-[68px] shrink-0 w-full bg-[#07101e]/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 z-20">
       {/* Left Controls: Customer Workspace Switcher + Data Residency Region */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={toggleMobileNav}
+          aria-label="Open navigation menu"
+          className="lg:hidden shrink-0 p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         {/* Customer Workspace Selector */}
-        <div className="relative">
+        <div className="sm:relative min-w-0">
           <button
             type="button"
             onClick={() => setWorkspaceMenuOpen((v) => !v)}
-            className="flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 transition-colors"
+            className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3.5 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 transition-colors max-w-full"
           >
-            <div className="w-8 h-8 rounded-lg bg-red-950/80 border border-red-500/40 flex items-center justify-center">
+            <div className="w-8 h-8 shrink-0 rounded-lg bg-red-950/80 border border-red-500/40 flex items-center justify-center">
               <Shield className="w-4 h-4 text-red-400" />
             </div>
-            <div className="text-left leading-tight pr-2">
+            <div className="hidden sm:block text-left leading-tight pr-2 min-w-0">
               <div className="text-xs font-semibold text-white flex items-center gap-1.5">
                 <span>Customer Workspace</span>
               </div>
-              <div className="text-[11px] text-slate-400">{displayOrgName}</div>
+              <div className="text-[11px] text-slate-400 truncate max-w-[10rem] md:max-w-[14rem]">{displayOrgName}</div>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-slate-400" />
           </button>
 
           {workspaceMenuOpen && (
-            <div className="absolute left-0 mt-2 w-72 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-2 z-50 space-y-1">
+            <div className="absolute inset-x-2 top-full mt-2 sm:inset-x-auto sm:top-auto sm:left-0 sm:w-72 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-2 z-50 space-y-1">
               <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-slate-400">
                 Separated Workspace Portals
               </div>
@@ -309,7 +319,7 @@ export function CustomerTopHeader({
         {regionMeta && (
           <div
             title={`Data residency: ${regionMeta.code}`}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0c1829] border border-slate-700/70 text-xs font-medium text-slate-200"
+            className="hidden md:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0c1829] border border-slate-700/70 text-xs font-medium text-slate-200"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400" />
             <span>{regionMeta.shortLabel}</span>
@@ -318,9 +328,9 @@ export function CustomerTopHeader({
       </div>
 
       {/* Right Controls: Search Input + Notifications + Help + User Profile */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Global Search Input */}
-        <div className="relative w-64 lg:w-72">
+        <div className="relative hidden sm:block sm:w-44 md:w-56 lg:w-72">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -343,7 +353,7 @@ export function CustomerTopHeader({
         </div>
 
         {/* Notifications Bell with Red Badge "3" */}
-        <div className="relative">
+        <div className="sm:relative">
           <button
             type="button"
             aria-label="Notifications"
@@ -359,7 +369,7 @@ export function CustomerTopHeader({
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-3 z-50 space-y-2">
+            <div className="absolute inset-x-2 top-full mt-2 sm:inset-x-auto sm:top-auto sm:right-0 sm:w-80 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-3 z-50 space-y-2">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-xs font-semibold text-white">
                   Active Security Notifications ({notifications.length})
@@ -437,16 +447,16 @@ export function CustomerTopHeader({
         </button>
 
         {/* User Profile Pill */}
-        <div className="relative">
+        <div className="sm:relative">
           <button
             type="button"
             onClick={() => setProfileOpen((v) => !v)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 transition-colors"
+            className="flex items-center gap-2.5 pl-2 pr-2 sm:pr-3 py-1.5 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 transition-colors"
           >
             <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-900 font-bold text-xs flex items-center justify-center">
               {initials}
             </div>
-            <div className="text-left leading-tight">
+            <div className="hidden md:block text-left leading-tight">
               <div className="text-xs font-semibold text-white">
                 {displayUserName}
               </div>
@@ -456,7 +466,7 @@ export function CustomerTopHeader({
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-60 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-2 z-50 space-y-1">
+            <div className="absolute inset-x-2 top-full mt-2 sm:inset-x-auto sm:top-auto sm:right-0 sm:w-60 rounded-xl bg-[#0b1526] border border-slate-700/80 shadow-2xl p-2 z-50 space-y-1">
               <div className="px-3 py-2 border-b border-slate-800">
                 <div className="text-xs font-semibold text-white">
                   {displayUserName}

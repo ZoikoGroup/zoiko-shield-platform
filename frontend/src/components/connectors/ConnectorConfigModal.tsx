@@ -182,7 +182,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-medium text-slate-400 mb-1">Provider Type</label>
               <div className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-cyan-400 font-mono flex items-center justify-between">
@@ -239,7 +239,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
 
           {provider.startsWith("azure") && (
             <div className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">Azure Tenant ID</label>
                   <input
@@ -319,7 +319,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
 
           {provider.includes("entra") && (
             <div className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">Entra ID Directory ID</label>
                   <input
@@ -344,7 +344,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
 
           {provider.includes("edr") && (
             <div className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">OAuth Client ID</label>
                   <input
@@ -401,7 +401,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
 
           {provider.includes("jira") && (
             <div className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">Atlassian Cloud Domain</label>
                   <input
@@ -458,7 +458,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
 
           {provider.includes("syslog") && (
             <div className="space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">TLS Listening Port</label>
                   <input
@@ -487,7 +487,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
               <Layers className="w-3.5 h-3.5 text-cyan-400" />
               Active Telemetry Streams (OCSF Mapped)
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className="flex items-center gap-2 p-2 rounded bg-slate-950 border border-slate-800 text-[11px] text-slate-300 cursor-pointer hover:border-slate-700">
                 <input
                   type="checkbox"

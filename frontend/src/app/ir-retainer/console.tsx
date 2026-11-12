@@ -674,6 +674,7 @@ export default function IrRetainerPage() {
               </button>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 font-mono text-[11px]">
@@ -721,6 +722,7 @@ export default function IrRetainerPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Card>
 

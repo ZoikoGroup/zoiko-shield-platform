@@ -508,7 +508,7 @@ export default function IncidentCommandPage() {
           title="Evidence reconciliation"
           requirement="Everything the timeline cites must be linked to the case and retrievable."
         >
-          <div className="mb-3 grid grid-cols-3 gap-3">
+          <div className="mb-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Field label="Timeline entries" value={String(timeline.length)} />
             <Field label="Evidence cited" value={String(citedRefs.length)} />
             <Field label="Evidence linked" value={String(evidenceLinks.length)} />
@@ -542,6 +542,7 @@ export default function IncidentCommandPage() {
             </p>
           )}
           {evidenceLinks.length > 0 && (
+            <div className="overflow-x-auto">
             <table className="mt-3 w-full text-xs font-mono">
               <thead>
                 <tr className="border-b border-slate-800 text-left text-slate-500">
@@ -562,6 +563,7 @@ export default function IncidentCommandPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </Section>
 

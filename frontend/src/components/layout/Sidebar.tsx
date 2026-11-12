@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { NAV_GROUPS, findActiveNav, type NavBadgeVariant } from "@/components/layout/nav-config";
 import { resolveRegionMetadata } from "@/lib/assurance-primitives";
+import { setMobileNavOpen, useIsDesktop, useMobileNavOpen } from "@/lib/mobile-nav";
 import {
   Building,
   Search,
@@ -47,7 +48,22 @@ const signOut = async () => {
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const [state] = useDemoState();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [collapsedPref, setIsCollapsed] = useState(false);
+  const isDesktop = useIsDesktop();
+  const mobileOpen = useMobileNavOpen();
+  // The icon-only rail only makes sense on desktop; the mobile drawer is always full width.
+  const isCollapsed = collapsedPref && isDesktop;
+
+  // Close the drawer after navigating, and on Escape.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMobileNavOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
   const [searchQuery, setSearchQuery] = useState("");
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
@@ -95,11 +111,26 @@ export const Sidebar: React.FC = () => {
     .toUpperCase();
 
   return (
-    <div className="flex shrink-0 relative z-30 select-none h-screen sticky top-0 overflow-hidden">
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className={cn(
+          "flex shrink-0 select-none h-screen overflow-hidden transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 xl:sticky xl:top-0 xl:z-30 xl:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
       <aside
+        aria-label="Primary navigation"
         className={cn(
           "bg-surface border-r border-line h-screen flex flex-col justify-between transition-all duration-300 text-slate-300 overflow-hidden",
-          isCollapsed ? "w-[72px] px-2 py-3" : "w-72 lg:w-80 px-3.5 py-4"
+          isCollapsed ? "w-[72px] px-2 py-3" : "w-72 max-w-[85vw] xl:w-80 px-3.5 py-4"
         )}
       >
         <div className="space-y-3 min-h-0 flex flex-col">
@@ -128,9 +159,9 @@ export const Sidebar: React.FC = () => {
             )}
 
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={() => setIsCollapsed(!collapsedPref)}
               className={cn(
-                "p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-overlay transition-colors",
+                "hidden xl:block p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-overlay transition-colors",
                 isCollapsed && "mx-auto mt-2"
               )}
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -378,6 +409,7 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
       </aside>
-    </div>
+      </div>
+    </>
   );
 };

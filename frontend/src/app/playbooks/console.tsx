@@ -244,7 +244,7 @@ export default function PlaybooksRunPage() {
               <Activity className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 <h1 className="text-xl font-bold tracking-tight text-white">Playbook runs</h1>
                 <Badge variant="healthy" className="text-[10px] font-mono">AUTOMATION SOAR</Badge>
               </div>

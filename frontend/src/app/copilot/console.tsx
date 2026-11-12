@@ -1540,7 +1540,7 @@ export default function CopilotPage() {
               </div>
 
               {/* Action Buttons: ACCEPT, MODIFY, REJECT, ESCALATE */}
-              <div className="grid grid-cols-4 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                 <button
                   id="decision-action-accept"
                   onClick={() => openDecisionModal("ACCEPT")}
