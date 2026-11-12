@@ -5,7 +5,7 @@ ALTER TABLE "MeterDefinition"
   ADD COLUMN "validation_rules" TEXT NOT NULL DEFAULT '{}',
   ADD COLUMN "correction_policy" TEXT NOT NULL DEFAULT 'REVERSAL_REPLACEMENT_ADJUSTMENT',
   ADD COLUMN "requested_by" TEXT,
-  ADD COLUMN "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN "updated_at" TIMESTAMP(3) NOT NULL;
 
 -- Legacy APPROVED meters have no mandatory source/validation contract and
 -- therefore cannot remain billing-authoritative after this migration.
