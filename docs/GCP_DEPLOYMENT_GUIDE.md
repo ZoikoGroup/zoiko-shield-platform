@@ -284,7 +284,7 @@ integration below is optional and off unless its credentials are set.
 | **Google Gemini** | shield-ai | No | Works, and is the natural fit here — `generativelanguage.googleapis.com`. |
 | **Microsoft Graph / Entra** | shield-ingest | No | Works. The **only** connector that polls outward; needs egress. |
 | **Azure Event Hubs** | shield-ingest | No | Optional Entra streaming path. |
-| **Gmail SMTP** | shield-core | No | Works. Without `EMAIL_USER`/`EMAIL_APP_PASSWORD`, invitations and OTP are logged, not sent — which blocks real onboarding. |
+| **SMTP (GoDaddy/Secureserver, Gmail fallback)** | shield-core | No | Works. Set `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (e.g. `smtpout.secureserver.net`, `465`, `true`); the legacy `EMAIL_USER`/`EMAIL_APP_PASSWORD` Gmail pair is used only when `SMTP_HOST` is unset. Without either, invitations and OTP are logged, not sent — which blocks real onboarding. Needs egress to the SMTP host on 465. |
 | **RFC3161 / HTTP witness** | shield-anchor | No | Off unless configured. |
 | **ZoikoID (OIDC)** | shield-core | **Yes, for real tenants** | Works. Tenant owners activate by signing in to it. |
 

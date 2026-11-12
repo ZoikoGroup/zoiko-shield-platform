@@ -13,21 +13,33 @@ export class EmailChannelService implements NotificationChannel, OnModuleInit {
   private fromAddress = '';
 
   onModuleInit(): void {
-    const user = process.env.EMAIL_USER;
-    const appPassword = process.env.EMAIL_APP_PASSWORD;
+    const smtpHost = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_APP_PASSWORD;
 
-    if (user && appPassword) {
-      this.fromAddress = user;
+    if (smtpHost && user && pass) {
+      this.fromAddress = process.env.SMTP_FROM || user;
       this.transporter = createTransport({
-        service: 'gmail',
-        auth: { user, pass: appPassword },
+        host: smtpHost,
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: { user, pass },
       });
       this.logger.log(
-        `EmailChannelService initialized with active SMTP transport (${user}).`,
+        `EmailChannelService initialized with SMTP transport (${smtpHost}, from: ${this.fromAddress}).`,
+      );
+    } else if (user && pass) {
+      this.fromAddress = process.env.SMTP_FROM || user;
+      this.transporter = createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+      this.logger.log(
+        `EmailChannelService initialized with Gmail transport (${user}).`,
       );
     } else {
       this.logger.warn(
-        'EmailChannelService: EMAIL_USER/EMAIL_APP_PASSWORD not set — operating in dev logging mode.',
+        'EmailChannelService: SMTP_*/EMAIL_USER credentials not set — operating in dev logging mode.',
       );
     }
   }
