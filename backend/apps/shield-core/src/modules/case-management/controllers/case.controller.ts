@@ -278,15 +278,15 @@ export class CaseController {
       return { statusCode: HttpStatus.CREATED, data: createdCase };
     }
 
-    if (!dto.title || !dto.environmentId || !dto.region) {
+    if (!dto.title) {
       throw new BadRequestException(
         'A case requires either alertId, or title + environmentId + region for a standalone case',
       );
     }
     const createdCase = await this.caseService.createStandalone({
       tenantId,
-      environmentId: dto.environmentId,
-      region: dto.region,
+      environmentId: dto.environmentId ?? user.environmentId ?? 'env-default',
+      region: dto.region ?? 'eu-west-1',
       title: dto.title,
       description: dto.description,
       severity: dto.severity,
@@ -427,6 +427,7 @@ export class CaseController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
     const note = dto.supersedesId
       ? await this.noteService.correct({
           tenantId,
@@ -567,6 +568,17 @@ export class CaseController {
       comments: dto.comments,
     });
     return { statusCode: HttpStatus.OK, data: review };
+  }
+
+  @Get(':caseId/decisions')
+  async listDecisions(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const decisions = await this.decisionService.listForCase(tenantId, caseId);
+    return { statusCode: HttpStatus.OK, data: decisions };
   }
 
   @Post(':caseId/decisions')

@@ -9,6 +9,8 @@ info:
   license:
     name: Proprietary
 servers:
+  - url: https://api.zoikoshield.com
+    description: Production Environment (ZoikoShield Core Gateway)
   - url: http://localhost:3001
     description: Local development (Shield Core Gateway)
   - url: http://localhost:3002
@@ -36689,6 +36691,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCasesByCaseIdDecisions
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
   /api/v1/cases/{caseId}/ai/hypotheses:
     post:

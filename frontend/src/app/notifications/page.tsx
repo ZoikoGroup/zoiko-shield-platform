@@ -222,9 +222,17 @@ export default function NotificationCenterPage() {
   const awaiting = items.filter((n) => n.ack === "PENDING").length;
 
   const acknowledge = async (id: string) => {
+    const target = items.find((n) => n.id === id);
     try {
-      await backend.post(`/api/v1/notifications/${id}/acknowledge`).catch(() => { });
-      await backend.patch(`/api/v1/alerts/${id}/triage`, { status: "ACKNOWLEDGED" }).catch(() => { });
+      if (target?.channel === "In-App") {
+        await backend.post(`/api/v1/alerts/${encodeURIComponent(id)}/acknowledge`, {}).catch(() => { });
+      } else {
+        await backend
+          .post(`/api/v1/notifications/${encodeURIComponent(id)}/acknowledge`, {
+            acknowledgementType: "ACKNOWLEDGED",
+          })
+          .catch(() => { });
+      }
     } catch { }
 
     setItems((prev) =>

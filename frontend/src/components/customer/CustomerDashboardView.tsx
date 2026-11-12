@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -451,10 +451,11 @@ export function CustomerDashboardView() {
   const fetchLiveDashboardData = async () => {
     setIsRefreshing(true);
     try {
-      const [alertsRes, casesRes, overviewRes, controlsRes] = await Promise.allSettled([
+      const [alertsRes, casesRes, findingsSummaryRes, assetsRes, controlsRes] = await Promise.allSettled([
         backend.get<any[]>("/api/v1/alerts?limit=10"),
         backend.get<any[]>("/api/v1/cases?limit=10"),
-        backend.get<any>("/api/v1/customer/security-overview"),
+        backend.get<any>("/api/v1/findings/summary"),
+        backend.get<any>("/api/v1/context/assets?limit=200"),
         backend.get<any[]>("/api/v1/control-evaluations"),
       ]);
 
@@ -477,9 +478,9 @@ export function CustomerDashboardView() {
                   : "Medium";
               const rawStatus = (a.status || "Open").toLowerCase();
               const stat =
-                rawStatus === "resolved"
+                rawStatus === "resolved" || rawStatus === "closed"
                   ? "Resolved"
-                  : rawStatus === "investigating"
+                  : rawStatus === "investigating" || rawStatus === "triaged" || rawStatus === "acknowledged"
                   ? "Investigating"
                   : "Open";
               const dateObj = a.created_at || a.createdAt
@@ -523,6 +524,7 @@ export function CustomerDashboardView() {
           const openCases = rawCases.filter(
             (c: any) =>
               c.status === "OPEN" ||
+              c.status === "NEW" ||
               c.status === "INVESTIGATING" ||
               c.status === "TRIAGED"
           );
@@ -542,24 +544,18 @@ export function CustomerDashboardView() {
         }
       }
 
-      if (overviewRes.status === "fulfilled" && overviewRes.value && !IS_TEST_ENV) {
-        const ov = overviewRes.value;
-        if (typeof ov.postureScore === "number") setBasePostureScore(ov.postureScore);
-        if (typeof ov.protectedAssetsCount === "number") setCoveredAssetsCount(ov.protectedAssetsCount);
-        if (typeof ov.coverageGapsCount === "number") setNotCoveredAssetsCount(ov.coverageGapsCount);
-        if (typeof ov.criticalExposuresCount === "number") setLiveCriticalExposuresCount(ov.criticalExposuresCount);
-        if (Array.isArray(ov.remediations)) {
-          setPriorityActions(
-            ov.remediations.map((r: any, idx: number) => ({
-              id: r.id || `pa-${idx}`,
-              title: r.action || r.title || "Remediation task",
-              severity: "High",
-              href: "/customer/security-overview",
-              icon: "alert-orange",
-              status: r.status === "Completed" ? "Completed" : "Pending",
-              detail: `Assigned to ${r.owner || "Security Team"} • Due ${r.due || "TBD"}`,
-            }))
-          );
+      if (findingsSummaryRes.status === "fulfilled" && findingsSummaryRes.value && !IS_TEST_ENV) {
+        const summary = (findingsSummaryRes.value as any)?.data ?? findingsSummaryRes.value;
+        const critExposures = summary?.openBySeverity?.CRITICAL;
+        if (typeof critExposures === "number") {
+          setLiveCriticalExposuresCount(critExposures);
+        }
+      }
+
+      if (assetsRes.status === "fulfilled" && assetsRes.value && !IS_TEST_ENV) {
+        const rawAssets = asList<any>(assetsRes.value);
+        if (rawAssets.length > 0) {
+          setCoveredAssetsCount(rawAssets.length);
         }
       }
 
@@ -745,9 +741,18 @@ export function CustomerDashboardView() {
     );
 
     try {
-      await backend.patch(`/api/v1/alerts/${id}/status`, {
-        status: nextStatus.toUpperCase(),
-      });
+      if (nextStatus === "Investigating") {
+        await backend.patch(`/api/v1/alerts/${encodeURIComponent(id)}/status`, {
+          status: "ACKNOWLEDGED",
+        });
+        await backend.patch(`/api/v1/alerts/${encodeURIComponent(id)}/status`, {
+          status: "TRIAGED",
+        });
+      } else if (nextStatus === "Resolved") {
+        await backend.patch(`/api/v1/alerts/${encodeURIComponent(id)}/status`, {
+          status: "CLOSED",
+        });
+      }
     } catch {
       // In demo / offline mode, local state update succeeds gracefully
     }

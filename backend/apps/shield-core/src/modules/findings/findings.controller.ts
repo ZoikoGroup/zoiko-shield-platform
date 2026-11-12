@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -90,6 +91,21 @@ export class FindingsController {
     @Query('limit') limit?: string,
     @Query('type') findingType?: string,
   ) {
+    const validStatuses = [
+      'OPEN',
+      'ACCEPTED',
+      'RESOLVED',
+      'FALSE_POSITIVE',
+      'REMEDIATING',
+      'IN_PROGRESS',
+    ];
+    if (status && !validStatuses.includes(status.toUpperCase())) {
+      throw new BadRequestException(`Invalid finding status '${status}'`);
+    }
+    const validSeverities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
+    if (severity && !validSeverities.includes(severity.toUpperCase())) {
+      throw new BadRequestException(`Invalid finding severity '${severity}'`);
+    }
     const data = await this.findingService.list(
       requireTenantId(tenantId),
       { status, severity, assetId, findingType },

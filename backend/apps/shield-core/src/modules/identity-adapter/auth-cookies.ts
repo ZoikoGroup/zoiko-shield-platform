@@ -12,7 +12,10 @@ const RECOVERY_GRANT_MAX_AGE_MS = 10 * 60 * 1000; // matches RecoveryGrant TTL
 function baseOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure:
+      process.env.COOKIE_SECURE !== undefined
+        ? process.env.COOKIE_SECURE === 'true'
+        : process.env.NODE_ENV === 'production',
     sameSite: 'lax',
   };
 }

@@ -70,6 +70,16 @@ const nextConfig: NextConfig = {
         destination: "/admin/email-templates",
         permanent: false,
       },
+      {
+        source: "/docs",
+        destination: "https://api.zoikoshield.com/docs/",
+        permanent: false,
+      },
+      {
+        source: "/docs/:path*",
+        destination: "https://api.zoikoshield.com/docs/:path*",
+        permanent: false,
+      },
     ];
   },
   webpack: (config, { dev }) => {

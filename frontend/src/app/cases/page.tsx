@@ -136,17 +136,21 @@ export default function CasesListPage() {
         body: JSON.stringify({
           title,
           severity: newCaseSeverity,
-          assignee: newCaseAssignee,
           description: newCaseDesc.trim() || "Incident workspace opened by security analyst.",
         }),
       });
-      const created = await res.json();
-      setCases((prev) => [created, ...(prev.length > 0 ? prev : displayCases)]);
+      const body = await res.json();
+      const created = body?.data ?? body;
+      if (!res.ok || !created?.id) {
+        throw new Error(body?.message || "Failed to create case");
+      }
+      const createdWithAssignee = { ...created, assignee: newCaseAssignee };
+      setCases((prev) => [createdWithAssignee, ...(prev.length > 0 ? prev : displayCases)]);
       setSelectedCaseId(created.id);
       setNewCaseTitle("");
       setNewCaseDesc("");
       setShowCreateModal(false);
-      setCaseBanner(`Case ${created.id.toUpperCase()} created and anchored to Evidence Ledger.`);
+      setCaseBanner(`Case ${String(created.id).toUpperCase()} created and anchored to Evidence Ledger.`);
     } catch {
       setCaseBanner("Failed to create case via backend.");
     }
@@ -155,15 +159,34 @@ export default function CasesListPage() {
   const handleUpdateCaseField = async (patch: { status?: string; assignee?: string; resolutionSummary?: string }) => {
     if (!activeCase) return;
     try {
-      const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      const updated = await res.json();
+      let updated: any = {};
+      if (patch.status) {
+        const toState = patch.status === "OPEN" ? "TRIAGED" : patch.status;
+        const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}/transition`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            toState,
+            reason: patch.resolutionSummary || `Status updated to ${patch.status} by analyst`,
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        updated = body?.data ?? body;
+      } else {
+        const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: activeCase.title,
+            description: patch.resolutionSummary || (activeCase as any).description || activeCase.aiSummary,
+          }),
+        });
+        const body = await res.json().catch(() => ({}));
+        updated = body?.data ?? body;
+      }
       setCases((prev) => {
         const base = prev.length > 0 ? prev : displayCases;
-        return base.map((c) => (c.id === activeCase.id ? { ...c, ...updated } : c));
+        return base.map((c) => (c.id === activeCase.id ? { ...c, ...updated, ...patch } : c));
       });
       if (patch.status) {
         setCaseBanner(`Case ${activeCase.id.slice(0, 8).toUpperCase()} status persisted: ${patch.status}`);
@@ -180,15 +203,31 @@ export default function CasesListPage() {
     if (!activeCase || !noteInput.trim()) return;
     const comment = noteInput.trim();
     try {
-      const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}/comments`, {
+      const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment, author: activeCase.assignee || "Sarah Chen" }),
+        body: JSON.stringify({ content: comment, classification: "INTERNAL" }),
       });
-      const updated = await res.json();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.message || "Failed to add note");
+      }
+      const createdNote = body?.data ?? body;
       setCases((prev) => {
         const base = prev.length > 0 ? prev : displayCases;
-        return base.map((c) => (c.id === activeCase.id ? { ...c, ...updated } : c));
+        return base.map((c) =>
+          c.id === activeCase.id
+            ? {
+                ...c,
+                notes: [
+                  ...(Array.isArray((c as any).notes) ? (c as any).notes : []),
+                  createdNote?.content
+                    ? createdNote
+                    : { content: comment, author: activeCase.assignee || "Sarah Chen", createdAt: new Date().toISOString() },
+                ],
+              }
+            : c
+        );
       });
       setNoteInput("");
       setCaseBanner("Investigation note recorded and appended to case timeline.");

@@ -79,7 +79,7 @@ export class ShieldAnchorController {
     };
   }
 
-  @Get('health/ready')
+  @Get(['health/ready', 'health/readiness'])
   getHealthReady() {
     return {
       status: 'ready',
@@ -88,7 +88,7 @@ export class ShieldAnchorController {
     };
   }
 
-  @Get('health/live')
+  @Get(['health/live', 'health/liveness'])
   getHealthLive() {
     return {
       status: 'live',

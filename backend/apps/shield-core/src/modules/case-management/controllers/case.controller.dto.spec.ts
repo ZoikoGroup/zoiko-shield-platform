@@ -1,5 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import {
+  CaseController,
   CreateCaseDto,
   UpdateCaseDto,
   AssignCaseDto,
@@ -130,5 +131,57 @@ describe('CaseController DTOs survive the global whitelist ValidationPipe', () =
         metadataFor(TransitionCaseDto),
       ),
     ).rejects.toThrow();
+  });
+
+  it('CaseController.listDecisions delegates to decisionService.listForCase', async () => {
+    const mockDecisions = [{ id: 'dec-1', decisionType: 'CONTAIN', decision: 'Isolate host' }];
+    const caseService = { assertTenantOwnership: jest.fn().mockResolvedValue(undefined) };
+    const decisionService = { listForCase: jest.fn().mockResolvedValue(mockDecisions) };
+    const controller = new CaseController(
+      caseService as any,
+      {} as any,
+      {} as any,
+      decisionService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const res = await controller.listDecisions('tenant-a', 'case-1');
+    expect(caseService.assertTenantOwnership).toHaveBeenCalledWith('tenant-a', 'case-1');
+    expect(decisionService.listForCase).toHaveBeenCalledWith('tenant-a', 'case-1');
+    expect(res).toEqual({ statusCode: 200, data: mockDecisions });
+  });
+
+  it('CaseController.create defaults environmentId and region when standalone title is provided', async () => {
+    const createdCase = { id: 'case-standalone-1', title: 'Manual incident' };
+    const caseService = { createStandalone: jest.fn().mockResolvedValue(createdCase) };
+    const controller = new CaseController(
+      caseService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const res = await controller.create(
+      'tenant-a',
+      { title: 'Manual incident', severity: 'HIGH' },
+      { id: 'user-1', role: 'TENANT_SECURITY_ANALYST' } as any,
+    );
+
+    expect(caseService.createStandalone).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        environmentId: 'env-default',
+        region: 'eu-west-1',
+        title: 'Manual incident',
+        severity: 'HIGH',
+        actorId: 'user-1',
+      }),
+    );
+    expect(res).toEqual({ statusCode: 201, data: createdCase });
   });
 });

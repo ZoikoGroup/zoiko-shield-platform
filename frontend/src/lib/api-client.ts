@@ -1890,8 +1890,9 @@ export class ZoikoShieldApiClient {
 
   // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---
   static async getAiIncidents(tenantId?: string): Promise<AiIncident[]> {
+    const q = tenantId && tenantId !== "default" ? `?tenantId=${encodeURIComponent(tenantId)}` : "";
     return this.safeFetch<AiIncident[]>(
-      `/api/v1/ai/incidents?tenantId=${tenantId || "default"}`,
+      `/api/v1/ai/incidents${q}`,
       { method: "GET" },
       () => {
         const state = getState();
@@ -3194,11 +3195,17 @@ export class ZoikoShieldApiClient {
     requiresFormalProofEngine?: boolean;
     requiresDedicatedTenantIsolation?: boolean;
   }): Promise<PlanRecommendation> {
+    const payload = {
+      protectedAssetCount: Number(req.protectedAssetCount) || 0,
+      estimatedDailyTelemetryGb: Number(req.estimatedDailyGb ?? (req as any).estimatedDailyTelemetryGb) || 0,
+      requiresAiSecurity: Boolean(req.requiresFormalProofEngine),
+      requiresManagedDefense: Boolean(req.requiresContinuous24x7Mdr || req.requiresContinuousMdr),
+    };
     return this.safeFetch<PlanRecommendation>(
       "/api/v1/commercial/plans/recommend",
       {
         method: "POST",
-        body: JSON.stringify(req),
+        body: JSON.stringify(payload),
       },
       () => {
         let recommendedKey: any = "SHIELD_ESSENTIAL";

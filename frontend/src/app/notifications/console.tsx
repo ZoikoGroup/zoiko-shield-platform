@@ -212,7 +212,23 @@ export default function NotificationsPage() {
   const acknowledgeAll = async () => {
     setError(null);
     try {
-      await backend.post("/api/v1/notifications/mark-all-read", {});
+      let localIds = new Set<string>();
+      try {
+        const localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");
+        if (Array.isArray(localDispatched)) {
+          localIds = new Set(localDispatched.map((d: any) => String(d.id)));
+        }
+      } catch {}
+      const pendingServerItems = items.filter(
+        (item) => item.status !== "ACKNOWLEDGED" && !localIds.has(item.id)
+      );
+      await Promise.allSettled(
+        pendingServerItems.map((item) =>
+          backend.post(`/api/v1/notifications/${encodeURIComponent(item.id)}/acknowledge`, {
+            acknowledgementType: "ACKNOWLEDGED",
+          })
+        )
+      );
       setItems((prev) => prev.map((item) => ({ ...item, status: "ACKNOWLEDGED" })));
       try {
         const localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");

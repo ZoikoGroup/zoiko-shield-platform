@@ -31,15 +31,23 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 3000
+            - containerPort: 3001
               name: http
             - containerPort: 9090
               name: metrics
           env:
             - name: PORT
-              value: "3000"
+              value: "3001"
             - name: NODE_ENV
               value: "production"
+            - name: SERVICE_NAME
+              value: "shield-core"
+            - name: TRUST_PROXY
+              value: "loopback, linklocal, uniquelocal"
+          envFrom:
+            - secretRef:
+                name: zoikoshield-production-secrets
+                optional: true
           resources:
             requests:
               cpu: "500m"
@@ -49,14 +57,14 @@ spec:
               memory: "4Gi"
           readinessProbe:
             httpGet:
-              path: /health/readiness
-              port: 3000
+              path: /health/ready
+              port: 3001
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /health/liveness
-              port: 3000
+              path: /health/live
+              port: 3001
             initialDelaySeconds: 15
             periodSeconds: 20
 ---
@@ -91,10 +99,21 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 3001
+            - containerPort: 3002
               name: http
             - containerPort: 9090
               name: metrics
+          env:
+            - name: SHIELD_INGEST_PORT
+              value: "3002"
+            - name: NODE_ENV
+              value: "production"
+            - name: SERVICE_NAME
+              value: "shield-ingest"
+          envFrom:
+            - secretRef:
+                name: zoikoshield-production-secrets
+                optional: true
           resources:
             requests:
               cpu: "1000m"
@@ -104,10 +123,16 @@ spec:
               memory: "8Gi"
           readinessProbe:
             httpGet:
-              path: /health/readiness
-              port: 3001
+              path: /health/ready
+              port: 3002
             initialDelaySeconds: 5
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3002
+            initialDelaySeconds: 15
+            periodSeconds: 20
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -139,8 +164,19 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 3002
+            - containerPort: 3003
               name: http
+          env:
+            - name: SHIELD_AI_PORT
+              value: "3003"
+            - name: NODE_ENV
+              value: "production"
+            - name: SERVICE_NAME
+              value: "shield-ai"
+          envFrom:
+            - secretRef:
+                name: zoikoshield-production-secrets
+                optional: true
           resources:
             requests:
               cpu: "500m"
@@ -148,6 +184,18 @@ spec:
             limits:
               cpu: "2000m"
               memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3003
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3003
+            initialDelaySeconds: 15
+            periodSeconds: 20
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -179,8 +227,19 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 3003
+            - containerPort: 3004
               name: http
+          env:
+            - name: SHIELD_ACTION_PORT
+              value: "3004"
+            - name: NODE_ENV
+              value: "production"
+            - name: SERVICE_NAME
+              value: "shield-action"
+          envFrom:
+            - secretRef:
+                name: zoikoshield-production-secrets
+                optional: true
           resources:
             requests:
               cpu: "500m"
@@ -188,6 +247,18 @@ spec:
             limits:
               cpu: "2000m"
               memory: "2Gi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3004
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3004
+            initialDelaySeconds: 15
+            periodSeconds: 20
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -219,8 +290,19 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 3004
+            - containerPort: 3005
               name: http
+          env:
+            - name: SHIELD_ANCHOR_PORT
+              value: "3005"
+            - name: NODE_ENV
+              value: "production"
+            - name: SERVICE_NAME
+              value: "shield-anchor"
+          envFrom:
+            - secretRef:
+                name: zoikoshield-production-secrets
+                optional: true
           resources:
             requests:
               cpu: "500m"
@@ -228,3 +310,15 @@ spec:
             limits:
               cpu: "2000m"
               memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3005
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 3005
+            initialDelaySeconds: 15
+            periodSeconds: 20

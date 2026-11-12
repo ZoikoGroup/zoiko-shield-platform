@@ -15,9 +15,15 @@ export class PlanRecommendationRequest {
   @Min(0)
   protectedAssetCount!: number;
 
+  @IsOptional()
   @IsNumber({ allowNaN: false, allowInfinity: false })
   @Min(0)
-  estimatedDailyTelemetryGb!: number;
+  estimatedDailyTelemetryGb?: number;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  estimatedDailyGb?: number;
 
   @IsOptional()
   @IsBoolean()
@@ -67,12 +73,10 @@ export class PlanTierService {
    * Calculate recommended plan tier based on organizational scale and requirements.
    */
   recommendPlan(req: PlanRecommendationRequest): PlanRecommendation {
-    const {
-      protectedAssetCount,
-      estimatedDailyTelemetryGb,
-      requiresAiSecurity,
-      requiresManagedDefense,
-    } = req;
+    const protectedAssetCount = req.protectedAssetCount || 0;
+    const estimatedDailyTelemetryGb = req.estimatedDailyTelemetryGb ?? req.estimatedDailyGb ?? 0;
+    const requiresAiSecurity = req.requiresAiSecurity;
+    const requiresManagedDefense = req.requiresManagedDefense;
 
     const rationale: string[] = [];
 

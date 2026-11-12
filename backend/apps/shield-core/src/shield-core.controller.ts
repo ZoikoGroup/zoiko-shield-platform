@@ -1,4 +1,9 @@
-import { Controller, Get, Optional } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ShieldCoreService } from './shield-core.service';
 import { PublicEndpoint } from './security/endpoint-access.decorator';
 import { DatabaseResilienceService } from './database/database-resilience.service';
@@ -25,14 +30,14 @@ export class ShieldCoreController {
     };
   }
 
-  @Get('health/ready')
+  @Get(['health/ready', 'health/readiness'])
   async getHealthReady() {
     let dbHealth: any = { status: 'HEALTHY', circuitBreakerState: 'CLOSED' };
     if (this.dbResilience) {
       try {
         dbHealth = await this.dbResilience.checkHealth();
       } catch (err: any) {
-        dbHealth = { status: 'DEGRADED', error: err?.message };
+        dbHealth = { status: 'UNHEALTHY', error: err?.message };
       }
     }
 
@@ -40,15 +45,21 @@ export class ShieldCoreController {
       dbHealth.status !== 'UNHEALTHY' &&
       dbHealth.circuitBreakerState !== 'OPEN';
 
-    return {
+    const payload = {
       status: isReady ? 'ready' : 'degraded',
       service: 'shield-core',
       database: dbHealth,
       timestamp: new Date().toISOString(),
     };
+
+    if (!isReady) {
+      throw new ServiceUnavailableException(payload);
+    }
+
+    return payload;
   }
 
-  @Get('health/live')
+  @Get(['health/live', 'health/liveness'])
   getHealthLive() {
     return {
       status: 'live',

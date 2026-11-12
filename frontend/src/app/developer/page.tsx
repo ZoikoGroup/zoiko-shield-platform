@@ -346,7 +346,7 @@ export default function DeveloperSurfacePage() {
             />
             <div className="flex flex-wrap items-center gap-2">
               <a
-                href="http://localhost:3001/docs"
+                href={process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/docs/` : "https://api.zoikoshield.com/docs/"}
                 target="_blank"
                 rel="noreferrer"
                 className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-semibold text-cyan-200 transition-colors"
