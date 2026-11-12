@@ -143,8 +143,6 @@ describe('CaseController DTOs survive the global whitelist ValidationPipe', () =
       {} as any,
       decisionService as any,
       {} as any,
-      {} as any,
-      {} as any,
     );
 
     const res = await controller.listDecisions('tenant-a', 'case-1');
@@ -158,8 +156,6 @@ describe('CaseController DTOs survive the global whitelist ValidationPipe', () =
     const caseService = { createStandalone: jest.fn().mockResolvedValue(createdCase) };
     const controller = new CaseController(
       caseService as any,
-      {} as any,
-      {} as any,
       {} as any,
       {} as any,
       {} as any,

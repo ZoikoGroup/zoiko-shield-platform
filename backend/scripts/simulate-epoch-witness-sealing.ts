@@ -62,7 +62,7 @@ async function main() {
   for (const t of activeTenants) {
     const proof = epochReceipt.tenantInclusionProofs[t.tenantId];
     console.log(`  ✔ Tenant [${t.tenantId}]: Audit Proof Steps = ${proof.length} hashes`);
-    console.log(`    Path: [${proof.map((h) => h.slice(0, 12) + '...').join(' -> ')}]`);
+    console.log(`    Path: [${proof.map((h) => h.siblingHash.slice(0, 12) + '...').join(' -> ')}]`);
   }
   console.log(`  🔒 Epoch Seal Digest: ${epochReceipt.epochSealDigest}`);
 
