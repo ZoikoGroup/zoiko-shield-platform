@@ -172,7 +172,10 @@ export const TopHeader: React.FC = () => {
     try {
       const headers: Record<string, string> = {};
       let activeToken = state.session?.token;
-      let activeTenant = state.tenant?.id;
+      let activeTenant: string | undefined = state.tenant?.id;
+      if (activeTenant === "00000000-0000-4000-8000-000000000001") {
+        activeTenant = undefined;
+      }
       if (typeof window !== "undefined") {
         if (!activeToken) {
           try {
@@ -180,7 +183,8 @@ export const TopHeader: React.FC = () => {
             if (stored) {
               const p = JSON.parse(stored);
               if (p?.session?.token) activeToken = p.session.token;
-              if (p?.tenant?.id && !activeTenant) activeTenant = p.tenant.id;
+              if (p?.tenant?.id && p.tenant.id !== "00000000-0000-4000-8000-000000000001" && !activeTenant) activeTenant = p.tenant.id;
+              if (p?.session?.tenantId && p.session.tenantId !== "00000000-0000-4000-8000-000000000001" && !activeTenant) activeTenant = p.session.tenantId;
             }
           } catch {}
         }
@@ -192,9 +196,20 @@ export const TopHeader: React.FC = () => {
           const match = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
           if (match?.[1]) activeTenant = decodeURIComponent(match[1].trim());
         }
+        if (!activeTenant && activeToken) {
+          try {
+            const parts = activeToken.split(".");
+            if (parts.length === 3) {
+              const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+              if (payload?.tenantId) activeTenant = payload.tenantId;
+            }
+          } catch {}
+        }
       }
       if (activeToken) headers["Authorization"] = `Bearer ${activeToken}`;
-      if (activeTenant) headers["x-tenant-id"] = activeTenant;
+      if (activeTenant && activeTenant !== "00000000-0000-4000-8000-000000000001") {
+        headers["x-tenant-id"] = activeTenant;
+      }
       const [alertsRes, notifsRes] = await Promise.allSettled([
         fetch("/api/v1/alerts?limit=10", { headers }),
         fetch("/api/v1/notifications?limit=10", { headers }),
@@ -337,20 +352,30 @@ export const TopHeader: React.FC = () => {
   // 2. Fetch Real Health Readiness
   const fetchHealth = useCallback(async () => {
     try {
-      const snap = await ZoikoShieldApiClient.getPlatformReadiness();
-      if (snap && typeof snap.healthyServicesCount === "number" && typeof snap.totalServicesCount === "number") {
-        setHealthStatus({
-          healthyCount: snap.healthyServicesCount,
-          totalCount: snap.totalServicesCount,
-          state: (snap.degradedServicesCount ?? 0) > 0 ? "DEGRADED" : "OK",
-        });
+      const isPlatformOperator =
+        state.session?.tenantId === "00000000-0000-0000-0000-000000000000" ||
+        state.session?.role === "SUPER_ADMIN";
+      if (isPlatformOperator) {
+        const snap = await ZoikoShieldApiClient.getPlatformReadiness();
+        if (snap && typeof snap.healthyServicesCount === "number" && typeof snap.totalServicesCount === "number") {
+          setHealthStatus({
+            healthyCount: snap.healthyServicesCount,
+            totalCount: snap.totalServicesCount,
+            state: (snap.degradedServicesCount ?? 0) > 0 ? "DEGRADED" : "OK",
+          });
+          return;
+        }
+      }
+      const res = await fetch("/health");
+      if (res.ok) {
+        setHealthStatus({ healthyCount: 6, totalCount: 6, state: "OK" });
       } else {
-        setHealthStatus({ healthyCount: 0, totalCount: 0, state: "UNKNOWN" });
+        setHealthStatus({ healthyCount: 0, totalCount: 6, state: "DEGRADED" });
       }
     } catch {
       setHealthStatus({ healthyCount: 0, totalCount: 0, state: "UNKNOWN" });
     }
-  }, []);
+  }, [state.session?.tenantId, state.session?.role]);
 
   useVisibleInterval(fetchHealth, 30000);
 

@@ -31,6 +31,25 @@ describe('ShieldCoreController', () => {
       expect(res.database).toBeDefined();
     });
 
+    it('should throw 503 ServiceUnavailableException when database is UNHEALTHY', async () => {
+      const controllerWithUnhealthyDb = new ShieldCoreController(
+        new ShieldCoreService(),
+        {
+          checkHealth: jest.fn().mockResolvedValue({
+            status: 'UNHEALTHY',
+            circuitBreakerState: 'OPEN',
+            latencyMs: 500,
+            consecutiveFailures: 5,
+            lastCheckedAt: new Date(),
+          }),
+        } as any,
+      );
+
+      await expect(controllerWithUnhealthyDb.getHealthReady()).rejects.toThrow(
+        'Service Unavailable Exception',
+      );
+    });
+
     it('should return live status for getHealthLive()', () => {
       const res = shieldCoreController.getHealthLive();
       expect(res.status).toBe('live');

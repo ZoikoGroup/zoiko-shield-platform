@@ -62,6 +62,13 @@ export function useEventStream({
 
   const connect = useCallback(() => {
     if (typeof window === "undefined" || !enabled) return;
+    if (
+      !tenantId ||
+      tenantId === "00000000-0000-4000-8000-000000000001" ||
+      tenantId === "default"
+    ) {
+      return;
+    }
 
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -73,7 +80,7 @@ export function useEventStream({
     }`;
 
     try {
-      const es = new EventSource(streamUrl);
+      const es = new EventSource(streamUrl, { withCredentials: true });
       eventSourceRef.current = es;
 
       es.onopen = () => {

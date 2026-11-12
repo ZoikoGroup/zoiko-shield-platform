@@ -146,8 +146,14 @@ async function main() {
   }
   if (markApplied) {
     execFileSync(
-      join(__dirname, '..', 'node_modules', '.bin', 'prisma'),
-      ['migrate', 'resolve', '--applied', BASELINE],
+      process.execPath,
+      [
+        join(__dirname, '..', 'node_modules', 'prisma', 'build', 'index.js'),
+        'migrate',
+        'resolve',
+        '--applied',
+        BASELINE,
+      ],
       {
         stdio: 'inherit',
         cwd: join(__dirname, '..'),

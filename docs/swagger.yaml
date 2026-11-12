@@ -9,6 +9,8 @@ info:
   license:
     name: Proprietary
 servers:
+  - url: https://api.zoikoshield.com
+    description: Production Environment (ZoikoShield Core Gateway)
   - url: http://localhost:3001
     description: Local development (Shield Core Gateway)
   - url: http://localhost:3002
@@ -36689,6 +36691,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCasesByCaseIdDecisions
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
   /api/v1/cases/{caseId}/ai/hypotheses:
     post:
@@ -55711,6 +55715,69 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/ai/cases/{caseId}/attack-path:
+    get:
+      tags:
+        - CaseAI
+      summary: Retrieve multi-hop attack path trajectory graph for a case
+      description: Returns correlated attack graph nodes, hops, MITRE ATT&CK techniques, and blast radius.
+      operationId: getAiCaseAttackPath
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifier of the security case
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Attack path trajectory graph successfully retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pathId:
+                    type: string
+                  caseId:
+                    type: string
+                  title:
+                    type: string
+                  severity:
+                    type: string
+                  totalHops:
+                    type: integer
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                  blastRadius:
+                    type: object
+                  generatedAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Case not found
           content:
             application/json:
               schema:

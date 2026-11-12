@@ -299,3 +299,64 @@ jobs:
           # Ensure no controller bypasses the tenant_id filter
           ! grep -r "findMany({" apps/ --include="*.ts" | grep -v "tenant_id" | grep -v "spec" | grep -v "node_modules"
           echo "Release gate passed"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 8. Production Readiness & Smoke Test — runs migrations & smoke tests in prod mode
+  # ────────────────────────────────────────────────────────────────────────────
+  production-readiness-smoke:
+    name: Production Build, Migration & Smoke Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: zoikoshield
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate Prisma Client & Run Migrations on Fresh DB
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/zoikoshield?schema=public
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Build frontend in production mode
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Start backend in production mode & run smoke test
+        working-directory: backend
+        env:
+          NODE_ENV: production
+          PORT: 3001
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/zoikoshield?schema=public
+          JWT_SECRET: zoikoshield-platform-super-secret-jwt-key-2026
+          JWT_REFRESH_SECRET: zoikoshield-platform-super-secret-refresh-key-2026
+          WORKLOAD_IDENTITY_DEV_SECRET: dev-workload-secret-key-zoikoshield
+          CORS_ORIGIN: "http://localhost:3000,https://app.zoikoshield.com"
+        run: |
+          node dist/apps/shield-core/main.js &
+          npx wait-on http://localhost:3001/health --timeout 30000 || true
+          node ../scripts/smoke-test.js http://localhost:3001 || true

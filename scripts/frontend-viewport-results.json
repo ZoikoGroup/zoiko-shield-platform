@@ -1,0 +1,722 @@
+[
+  {
+    "width": 320,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 3,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 6,
+    "failedRequestCount": 5,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 7,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 14,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 17,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 20,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 25,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 30,
+    "failedRequestCount": 28,
+    "pass": false
+  },
+  {
+    "width": 320,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 34,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 5,
+    "failedRequestCount": 5,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 8,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 29,
+    "failedRequestCount": 28,
+    "pass": false
+  },
+  {
+    "width": 480,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 8,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 29,
+    "failedRequestCount": 28,
+    "pass": false
+  },
+  {
+    "width": 768,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 5,
+    "failedRequestCount": 5,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 8,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 29,
+    "failedRequestCount": 28,
+    "pass": false
+  },
+  {
+    "width": 1024,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 5,
+    "failedRequestCount": 5,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 8,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 28,
+    "failedRequestCount": 27,
+    "pass": false
+  },
+  {
+    "width": 1280,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 6,
+    "failedRequestCount": 6,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 29,
+    "failedRequestCount": 28,
+    "pass": false
+  },
+  {
+    "width": 1440,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 8,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 28,
+    "failedRequestCount": 27,
+    "pass": false
+  },
+  {
+    "width": 1600,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/login",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 1,
+    "failedRequestCount": 1,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/customer/dashboard",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 2,
+    "failedRequestCount": 2,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/alerts",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 5,
+    "failedRequestCount": 5,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/cases",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 8,
+    "failedRequestCount": 8,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/findings",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 13,
+    "failedRequestCount": 13,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/connectors",
+    "overflow": false,
+    "clickableCount": 7,
+    "consoleErrorCount": 16,
+    "failedRequestCount": 16,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/notifications",
+    "overflow": false,
+    "clickableCount": 8,
+    "consoleErrorCount": 19,
+    "failedRequestCount": 19,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/pricing",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 24,
+    "failedRequestCount": 23,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/ai-governance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 29,
+    "failedRequestCount": 28,
+    "pass": false
+  },
+  {
+    "width": 1920,
+    "route": "/compliance",
+    "overflow": false,
+    "clickableCount": 5,
+    "consoleErrorCount": 33,
+    "failedRequestCount": 32,
+    "pass": false
+  }
+]

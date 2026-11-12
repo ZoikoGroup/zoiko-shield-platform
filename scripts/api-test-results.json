@@ -1,0 +1,426 @@
+[
+  {
+    "method": "GET",
+    "path": "/health",
+    "case": "success (public)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "case": "success (public)",
+    "expected": "200/201",
+    "actual": "201",
+    "pass": "PASS"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "case": "invalid input",
+    "expected": "400/422",
+    "actual": "400",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/alerts",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/alerts",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/alerts",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/summary",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/summary",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/summary",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/non-existent-uuid-9999",
+    "case": "success (authenticated)",
+    "expected": "200 or 404",
+    "actual": "404",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/non-existent-uuid-9999",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/non-existent-uuid-9999",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/non-existent-uuid-9999",
+    "case": "missing resource",
+    "expected": "404",
+    "actual": "404",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/case-non-existent-9999",
+    "case": "success (authenticated)",
+    "expected": "200 or 404",
+    "actual": "404",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/case-non-existent-9999",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/case-non-existent-9999",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/case-non-existent-9999",
+    "case": "missing resource",
+    "expected": "404",
+    "actual": "404",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connectors",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connectors",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connectors",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/assets",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/assets",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/assets",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/plans",
+    "case": "success (public)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/plans/recommend",
+    "case": "success (public)",
+    "expected": "200/201",
+    "actual": "201",
+    "pass": "PASS"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/plans/recommend",
+    "case": "invalid input",
+    "expected": "400/422",
+    "actual": "400",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/incidents",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/incidents",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/incidents",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/readiness",
+    "case": "platform scope guard",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/readiness",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evidence/cross-region/status",
+    "case": "success (authenticated)",
+    "expected": "200/201",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evidence/cross-region/status",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evidence/cross-region/status",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/policies",
+    "case": "wrong role (403)",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/policies",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/policies",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/jit/sessions",
+    "case": "wrong role (403)",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/jit/sessions",
+    "case": "no token",
+    "expected": "401/403",
+    "actual": "401",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/jit/sessions",
+    "case": "wrong tenant",
+    "expected": "403",
+    "actual": "403",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "case": "gzip compression",
+    "expected": "gzip or 200",
+    "actual": "gzip",
+    "pass": "PASS"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "case": "rate limiter (burst)",
+    "expected": "429 or blocked",
+    "actual": "429",
+    "pass": "PASS"
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "case": "database health",
+    "expected": "200",
+    "actual": "200",
+    "pass": "PASS"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "case": "large payload (12MB)",
+    "expected": "413/400",
+    "actual": "413",
+    "pass": "PASS"
+  }
+]

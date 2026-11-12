@@ -1,0 +1,3452 @@
+[
+  {
+    "method": "GET",
+    "path": "/metrics",
+    "file": "backend/apps/shield-core/src/metrics/metrics.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/usage",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/usage/:id",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ai/usage/:id/mark-billable",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/usage",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/usage/evaluate",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/usage",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/usage",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/usage/:id",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/usage/:id/visibility",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ai/usage/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/usage/:id/activate",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/usage",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/usage/over-budget",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/incidents",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/incidents",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/incidents/metrics",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/incidents/:id",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/incidents/:id/contain",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/incidents/:id/fallback",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/incidents/:id/rca",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/incidents/:id/resolve",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/incidents/:id/close",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/decisions",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/decisions/:envelopeId",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/decisions/:envelopeId/accept",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/decisions/:envelopeId/modify",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/decisions/:envelopeId/reject",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/decisions/:envelopeId/escalate",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/inventory",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/inventory",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/inventory/:modelId",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ai/inventory/:modelId",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/ai/inventory/:modelId",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/supply-chain",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/finops/budget",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/drift",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/drift/evaluate",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/red-team/simulate-scenario",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/red-team/execute-chain",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/copilot/hunt",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/threat-hunting/hunt",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/rca/generate",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ai/cases/:caseId/attack-path",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/ai-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/governance/disclosures",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/customer-disclosures.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/governance/g1-roster",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/g1-gate.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/governance/g1-roster/sign",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/g1-gate.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/governance/g1-roster/reset",
+    "file": "backend/apps/shield-core/src/modules/ai-governance/g1-gate.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/alerts",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/alerts/:alertId",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/alerts/:alertId/detail",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/alerts/:alertId/status",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/alerts/:alertId/acknowledge",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/alerts/:alertId/assign",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/alerts/:alertId/triage",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/alerts/:alertId/escalate",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/alerts/:alertId/close",
+    "file": "backend/apps/shield-core/src/modules/alert/controllers/alert.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/anchor/batches/seal",
+    "file": "backend/apps/shield-core/src/modules/anchor-proxy/anchor-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/anchor/proofs/verify",
+    "file": "backend/apps/shield-core/src/modules/anchor-proxy/anchor-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/anchor/receipts/:epochNumber",
+    "file": "backend/apps/shield-core/src/modules/anchor-proxy/anchor-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/anchor/proofs/:epochNumber/:leafIndex",
+    "file": "backend/apps/shield-core/src/modules/anchor-proxy/anchor-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/approvals",
+    "file": "backend/apps/shield-core/src/modules/approvals/commercial-approval.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/approvals/:id",
+    "file": "backend/apps/shield-core/src/modules/approvals/commercial-approval.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/approvals/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/approvals/commercial-approval.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assessments",
+    "file": "backend/apps/shield-core/src/modules/assessments/assessments.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assessments",
+    "file": "backend/apps/shield-core/src/modules/assessments/assessments.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assessments/:id",
+    "file": "backend/apps/shield-core/src/modules/assessments/assessments.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assessments/:id/review",
+    "file": "backend/apps/shield-core/src/modules/assessments/assessments.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assessments/:id/gaps",
+    "file": "backend/apps/shield-core/src/modules/assessments/assessments.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/compliance/airgap/export-package",
+    "file": "backend/apps/shield-core/src/modules/audit-package/airgap/airgap-compliance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/compliance/airgap/packages/:bundleId",
+    "file": "backend/apps/shield-core/src/modules/audit-package/airgap/airgap-compliance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-packages",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/audit-packages",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-packages/:packageId",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/audit-packages/:packageId/build",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/audit-packages/:packageId/validate",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/audit-packages/:packageId/approve",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/audit-packages/:packageId/freeze",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-packages/:packageId/manifest",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-packages/:packageId/evidence",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-packages/:packageId/proofs",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit-packages/:packageId/claim-eligibility",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/audit-packages/:packageId/supersede",
+    "file": "backend/apps/shield-core/src/modules/audit-package/audit-package.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auditor/workspace",
+    "file": "backend/apps/shield-core/src/modules/audit-package/auditor/external-auditor.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auditor/merkle-path/:nodeHash",
+    "file": "backend/apps/shield-core/src/modules/audit-package/auditor/external-auditor.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auditor/evidence-chain/:packageId",
+    "file": "backend/apps/shield-core/src/modules/audit-package/auditor/external-auditor.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auditor/freeze-certificate/:packageId",
+    "file": "backend/apps/shield-core/src/modules/audit-package/auditor/external-auditor.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/me/roles",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/me/permissions",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/permissions",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/roles",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/roles",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/roles/:roleId",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/invitations",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/invitations",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invitations/:token/accept",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/members",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/tenants/:tenantId/members/:memberId",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/tenants/:tenantId/members/:memberId",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/authz/jit/request",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/authz/jit/:requestId/approve",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/authz/jit/:requestId/reject",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/authz/jit/:requestId/revoke",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/authz/jit/:requestId/stepup",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/jit-audit",
+    "file": "backend/apps/shield-core/src/modules/authorization/authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/policies",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/policies/:policyId",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/policies/:policyId/simulate",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/policies/:policyId/audit",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/policies/:policyId/stage",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/policies/:policyId/approve",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/policies/:policyId/rollback",
+    "file": "backend/apps/shield-core/src/modules/authorization/policy-lifecycle.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/invoices",
+    "file": "backend/apps/shield-core/src/modules/billing/billing.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/billing/invoices/:id/fx-rate",
+    "file": "backend/apps/shield-core/src/modules/billing/billing.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/invoices/:id/credit-notes",
+    "file": "backend/apps/shield-core/src/modules/billing/billing.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/invoices/:id/debit-notes",
+    "file": "backend/apps/shield-core/src/modules/billing/billing.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/billing/invoices/:id/issue",
+    "file": "backend/apps/shield-core/src/modules/billing/billing.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing/invoices",
+    "file": "backend/apps/shield-core/src/modules/billing/billing.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/ai/summary",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case-ai.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/ai/hypotheses",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case-ai.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/ai/next-queries",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case-ai.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/ai/response-recommendation",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case-ai.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ai/outputs/:outputId/review",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case-ai.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/handover",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cases/:caseId",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/assign",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/transition",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/alerts",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/timeline",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/notes",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/notes",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/evidence",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/evidence",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/sla",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/sla/pause",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/sla/resume",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/quality-reviews",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/quality-reviews",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/quality-reviews/:reviewId/decide",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/decisions",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/decisions",
+    "file": "backend/apps/shield-core/src/modules/case-management/controllers/case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/internal/v1/cases/from-alert",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/timeline",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/evidence",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/detections",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/context-snapshot",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/entities",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/assets",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/cases/:caseId/connectors-health",
+    "file": "backend/apps/shield-core/src/modules/case-management/internal/internal-case.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/catalog/versions",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/catalog/versions/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/catalog/products",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/catalog/products/:id/bundle-rules",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/catalog/products/:id/release",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/catalog/price-books",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/catalog/price-books/:id/approval",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/catalog/price-books/:id/approval/:approvalId/decision",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/catalog/price-books/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/catalog/price-books/active",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/catalog/products",
+    "file": "backend/apps/shield-core/src/modules/catalog/catalog.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evaluation-programs",
+    "file": "backend/apps/shield-core/src/modules/catalog/evaluation-program.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evaluation-programs/:id",
+    "file": "backend/apps/shield-core/src/modules/catalog/evaluation-program.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evaluation-programs/:id/submit",
+    "file": "backend/apps/shield-core/src/modules/catalog/evaluation-program.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/evaluation-programs/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/catalog/evaluation-program.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evaluation-programs/:id/activate",
+    "file": "backend/apps/shield-core/src/modules/catalog/evaluation-program.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evaluation-programs/:id/convert",
+    "file": "backend/apps/shield-core/src/modules/catalog/evaluation-program.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commerce/contracts",
+    "file": "backend/apps/shield-core/src/modules/commerce/contract.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commerce/contracts/:id/transition",
+    "file": "backend/apps/shield-core/src/modules/commerce/contract.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commerce/contracts/activate",
+    "file": "backend/apps/shield-core/src/modules/commerce/contract.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/capabilities/public-services",
+    "file": "backend/apps/shield-core/src/modules/commercial/capability-status/capability-status.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/capabilities/public-services/:serviceId",
+    "file": "backend/apps/shield-core/src/modules/commercial/capability-status/capability-status.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/capabilities/domains",
+    "file": "backend/apps/shield-core/src/modules/commercial/capability-status/capability-status.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/capabilities/all",
+    "file": "backend/apps/shield-core/src/modules/commercial/capability-status/capability-status.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/capabilities/check/:capabilityId",
+    "file": "backend/apps/shield-core/src/modules/commercial/capability-status/capability-status.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/capabilities/evaluators/check",
+    "file": "backend/apps/shield-core/src/modules/commercial/capability-status/capability-status.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/claims/registrations",
+    "file": "backend/apps/shield-core/src/modules/commercial/claim-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/claims/registrations",
+    "file": "backend/apps/shield-core/src/modules/commercial/claim-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/claims/registrations/:id",
+    "file": "backend/apps/shield-core/src/modules/commercial/claim-register.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/claims/registrations/:id/reviews/legal",
+    "file": "backend/apps/shield-core/src/modules/commercial/claim-register.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/claims/registrations/:id/reviews/compliance",
+    "file": "backend/apps/shield-core/src/modules/commercial/claim-register.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/claims/registrations/:id/revoke",
+    "file": "backend/apps/shield-core/src/modules/commercial/claim-register.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/group-accounts",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/group-accounts",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/group-accounts/:accountId/bindings",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/group-accounts/:accountId/bindings/:bindingId/status",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/group-accounts",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/group-accounts/:accountId",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/group-accounts/:accountId/bindings",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/group-accounts/:accountId/group-summary",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/group-accounts/:accountId/change-requests",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/group-accounts/:accountId/change-requests",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/group-accounts/:accountId/change-requests/:approvalId/decision",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/group-accounts/:accountId/change-requests/:approvalId/apply",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-account.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/entitlements",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-entitlement.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/entitlements/:id/status",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-entitlement.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/entitlements",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-entitlement.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/entitlements/check",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-entitlement.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/claims/check",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-entitlement.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/portal/summary",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-portal.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/portal/usage",
+    "file": "backend/apps/shield-core/src/modules/commercial/commercial-portal.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/transfers",
+    "file": "backend/apps/shield-core/src/modules/commercial/corporate-transfer.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/transfers",
+    "file": "backend/apps/shield-core/src/modules/commercial/corporate-transfer.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/commercial/transfers/:transferId/decision",
+    "file": "backend/apps/shield-core/src/modules/commercial/corporate-transfer.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/transfers/:transferId/execute",
+    "file": "backend/apps/shield-core/src/modules/commercial/corporate-transfer.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/transfers/:transferId/reconcile",
+    "file": "backend/apps/shield-core/src/modules/commercial/corporate-transfer.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/plans",
+    "file": "backend/apps/shield-core/src/modules/commercial/plan-tier/plan-tier.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/plans/:planKey",
+    "file": "backend/apps/shield-core/src/modules/commercial/plan-tier/plan-tier.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/plans/recommend",
+    "file": "backend/apps/shield-core/src/modules/commercial/plan-tier/plan-tier.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/trust-center/overview",
+    "file": "backend/apps/shield-core/src/modules/commercial/trust-center.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/trust-center/procurement",
+    "file": "backend/apps/shield-core/src/modules/commercial/trust-center.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/trust-center/publish",
+    "file": "backend/apps/shield-core/src/modules/commercial/trust-center.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/zoiko-one/bundle-orders",
+    "file": "backend/apps/shield-core/src/modules/commercial/zoiko-one-bundling.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/zoiko-one/scope-view",
+    "file": "backend/apps/shield-core/src/modules/commercial/zoiko-one-bundling.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/zoiko-one/reconcile-overlap",
+    "file": "backend/apps/shield-core/src/modules/commercial/zoiko-one-bundling.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connector-types",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connectors",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/connectors",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connectors/:id",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/connectors/:id",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/connectors/:id",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/connectors/:id/test",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/connectors/:id/sync",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/connectors/:id/health",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/events",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/control-evaluations",
+    "file": "backend/apps/shield-core/src/modules/connectors-proxy/connectors-proxy.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/continuous-assurance/profiles",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/continuous-assurance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/continuous-assurance/profiles/:id",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/continuous-assurance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/continuous-assurance/profiles",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/continuous-assurance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/continuous-assurance/profiles/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/continuous-assurance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assurance/posture-drift/scan",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/posture-drift.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/assurance/posture-drift/findings",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/posture-drift.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/assurance/posture-drift/remediate",
+    "file": "backend/apps/shield-core/src/modules/continuous-assurance/posture-drift.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/controls",
+    "file": "backend/apps/shield-core/src/modules/controls/controls.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/controls/:controlId",
+    "file": "backend/apps/shield-core/src/modules/controls/controls.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/control-implementations",
+    "file": "backend/apps/shield-core/src/modules/controls/controls.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/control-implementations",
+    "file": "backend/apps/shield-core/src/modules/controls/controls.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/control-implementations/:id",
+    "file": "backend/apps/shield-core/src/modules/controls/controls.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/control-implementations/:id/scopes",
+    "file": "backend/apps/shield-core/src/modules/controls/controls.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/platform/assurance/frameworks",
+    "file": "backend/apps/shield-core/src/modules/controls/frameworks/framework-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/platform/assurance/frameworks/versions/:id/submission",
+    "file": "backend/apps/shield-core/src/modules/controls/frameworks/framework-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/platform/assurance/frameworks/versions/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/controls/frameworks/framework-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/compliance/dora/evaluate",
+    "file": "backend/apps/shield-core/src/modules/controls/frameworks/sector-compliance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/compliance/nis2/evaluate",
+    "file": "backend/apps/shield-core/src/modules/controls/frameworks/sector-compliance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/compliance/sector-summary",
+    "file": "backend/apps/shield-core/src/modules/controls/frameworks/sector-compliance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/internal/cost-records",
+    "file": "backend/apps/shield-core/src/modules/cost-records/cost-record.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/quotes",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/quotes/:id",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:id/submit",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:id/reject",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:id/cancel",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/quotes",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/quotes/:id",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:id/provision",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:id/reject",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/quotes/verify",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/quotes/products/:productId",
+    "file": "backend/apps/shield-core/src/modules/cpq/cpq.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/platform/cpq/discount-authority-policies",
+    "file": "backend/apps/shield-core/src/modules/cpq/discount-approval.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/platform/cpq/discount-authority-policies/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/cpq/discount-approval.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/platform/cpq/discount-authority-policies",
+    "file": "backend/apps/shield-core/src/modules/cpq/discount-approval.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/platform/cpq/discount-authority-policies/decision",
+    "file": "backend/apps/shield-core/src/modules/cpq/discount-approval.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/quotes/:quoteId/roadmap-commitments",
+    "file": "backend/apps/shield-core/src/modules/cpq/roadmap-commitment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/quotes/:quoteId/roadmap-commitments",
+    "file": "backend/apps/shield-core/src/modules/cpq/roadmap-commitment.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:quoteId/roadmap-commitments/:commitmentId/submit",
+    "file": "backend/apps/shield-core/src/modules/cpq/roadmap-commitment.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:quoteId/roadmap-commitments/:id/legal-decision",
+    "file": "backend/apps/shield-core/src/modules/cpq/roadmap-commitment.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:quoteId/roadmap-commitments/:id/product-decision",
+    "file": "backend/apps/shield-core/src/modules/cpq/roadmap-commitment.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/quotes/:quoteId/roadmap-commitments/:id/release-gate",
+    "file": "backend/apps/shield-core/src/modules/cpq/roadmap-commitment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/subscriptions/:id",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/subscriptions/:id/upgrades",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/subscriptions/:id/downgrades",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/subscriptions/amendments/:amendmentId",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/subscriptions/amendments/:amendmentId/decision",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/subscriptions/amendments/:amendmentId/remediation",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/subscriptions/amendments/:amendmentId/schedule",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/subscriptions/:id/amendments",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/subscriptions/:id/activate",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/subscriptions/:id/cancel",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/subscriptions/amendments/:amendmentId/readiness",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/subscriptions/amendments/:amendmentId/apply",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/subscriptions",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/cpq/subscriptions/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cpq/subscriptions/:id/activate",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cpq/subscriptions",
+    "file": "backend/apps/shield-core/src/modules/cpq/subscription-change.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/crypto-escrow/kms-health",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/kms-health/probe",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/kms-health/failover",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/byok/configure",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/crypto-escrow/byok/status",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/byok/probe",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/attestation/verify",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/crypto-escrow/attestation/posture",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/mpc/split",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/crypto-escrow/mpc/recover",
+    "file": "backend/apps/shield-core/src/modules/crypto-escrow/crypto-escrow.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/tenant/:tenantId/customers",
+    "file": "backend/apps/shield-core/src/modules/customer/customer.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/customers",
+    "file": "backend/apps/shield-core/src/modules/customer/customer.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/customers/:id",
+    "file": "backend/apps/shield-core/src/modules/customer/customer.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/tenant/:tenantId/customers/:id",
+    "file": "backend/apps/shield-core/src/modules/customer/customer.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/tenant/:tenantId/customers/:id",
+    "file": "backend/apps/shield-core/src/modules/customer/customer.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/detections/definitions",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/detections/definitions",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/detections/definitions/:definitionId/versions",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/detections/versions/:versionId/publish",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/detections/matches",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/detections/evaluations/:evaluationId",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/detections/evaluations/:evaluationId/replay",
+    "file": "backend/apps/shield-core/src/modules/detection/detection.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/detection/ot/rules",
+    "file": "backend/apps/shield-core/src/modules/detection/ot-threat.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/detection/ot/analyze",
+    "file": "backend/apps/shield-core/src/modules/detection/ot-threat.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/api-clients",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/api-clients",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/api-clients/:id/suspend",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/api-clients/:id/revoke",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/api-clients/:id/rotate-credential",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/api-clients/:id/scopes",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/api-clients/token",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/api-clients",
+    "file": "backend/apps/shield-core/src/modules/developer-api/developer-api.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/dunning/policies",
+    "file": "backend/apps/shield-core/src/modules/dunning/dunning.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/dunning/policies",
+    "file": "backend/apps/shield-core/src/modules/dunning/dunning.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/dunning/policies/:id/advance",
+    "file": "backend/apps/shield-core/src/modules/dunning/dunning.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/dunning/policies/:id/resolve",
+    "file": "backend/apps/shield-core/src/modules/dunning/dunning.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/tenant/:tenantId/environments",
+    "file": "backend/apps/shield-core/src/modules/environment/environment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/environments",
+    "file": "backend/apps/shield-core/src/modules/environment/environment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/environments/:id",
+    "file": "backend/apps/shield-core/src/modules/environment/environment.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/tenant/:tenantId/environments/:id",
+    "file": "backend/apps/shield-core/src/modules/environment/environment.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/tenant/:tenantId/environments/:id",
+    "file": "backend/apps/shield-core/src/modules/environment/environment.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/events/publish",
+    "file": "backend/apps/shield-core/src/modules/events/event-stream.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ingest/airgap/batch-sync",
+    "file": "backend/apps/shield-core/src/modules/evidence/airgap-ingest.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ingest/airgap/batch-status/:batchId",
+    "file": "backend/apps/shield-core/src/modules/evidence/airgap-ingest.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evidence/manual",
+    "file": "backend/apps/shield-core/src/modules/evidence/controllers/evidence.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evidence/:evidenceId/manual-review",
+    "file": "backend/apps/shield-core/src/modules/evidence/controllers/evidence.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evidence/:evidenceId",
+    "file": "backend/apps/shield-core/src/modules/evidence/controllers/evidence.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evidence/:evidenceId/lineage",
+    "file": "backend/apps/shield-core/src/modules/evidence/controllers/evidence.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evidence/:evidenceId/verify",
+    "file": "backend/apps/shield-core/src/modules/evidence/controllers/evidence.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/evidence/cross-region/status",
+    "file": "backend/apps/shield-core/src/modules/evidence/cross-region-replication.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evidence/cross-region/failover-drill",
+    "file": "backend/apps/shield-core/src/modules/evidence/cross-region-replication.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/experience/command-center/overview",
+    "file": "backend/apps/shield-core/src/modules/experience/command-center-bff.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/experience/command-center/cases/:caseId",
+    "file": "backend/apps/shield-core/src/modules/experience/command-center-bff.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/experience/command-center/evidence-freshness",
+    "file": "backend/apps/shield-core/src/modules/experience/command-center-bff.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exports",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exports",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exports/:exportId",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exports/:exportId/cancel",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exports/:exportId/manifest",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exports/:exportId/download",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exports/:exportId/download/file",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exports/data/:dataType",
+    "file": "backend/apps/shield-core/src/modules/export/export.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/summary",
+    "file": "backend/apps/shield-core/src/modules/findings/findings.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings",
+    "file": "backend/apps/shield-core/src/modules/findings/findings.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/findings/:findingId",
+    "file": "backend/apps/shield-core/src/modules/findings/findings.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/findings/:findingId/accept",
+    "file": "backend/apps/shield-core/src/modules/findings/findings.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/findings/acceptances/expire-lapsed",
+    "file": "backend/apps/shield-core/src/modules/findings/findings.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/verify-email",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/resend-verification",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/password-recovery/request",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/password-recovery/verify",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/password-recovery/reset",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/passkeys/registration/options",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/passkeys/registration",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/passkeys",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/auth/passkeys/:id",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/passkeys/authentication/options",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/passkeys/authentication",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/passkeys/step-up/options",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/passkeys/step-up",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout-all",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/switch-tenant",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/auth.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/sso/discovery/:tenantSlug",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/federation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/sso/start",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/federation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/sso/oidc/callback",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/federation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/sso/saml/callback",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/federation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/sso/saml/metadata/:tenantSlug/:providerId",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/federation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/identity-provider-configuration.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/identity-provider-configuration.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/:providerId",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/identity-provider-configuration.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/:providerId/activate",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/identity-provider-configuration.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/:providerId/saml-metadata",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/identity-provider-configuration.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/:providerId/disable",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/identity-provider-configuration.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/scim/v2/ServiceProviderConfig",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/scim/v2/ResourceTypes",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/scim/v2/Users",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/scim/v2/Users/:id",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/scim/v2/Users",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/scim/v2/Users/:id",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/scim/v2/Users/:id",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/scim/v2/Groups",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/scim/v2/Groups",
+    "file": "backend/apps/shield-core/src/modules/identity-adapter/scim/scim.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/identity-context/ciem/analyze",
+    "file": "backend/apps/shield-core/src/modules/identity-context/ciem-remediation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers/:id",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ir/retainers/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers/:id/sla-policy",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers/:id",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers/:id/consumption",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers/:id/hours",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers/:id/overage-approval",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers/:id/emergency-reconciliation",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ir/retainers/:id/emergency-reconciliation/decision",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers/:id/third-party-costs",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ir/retainers/:id/third-party-costs/:costId/decision",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ir/retainers/:id/close",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers/:id/sla-status",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers/:id/settle-sla-credit",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ir/retainers/work-orders/:workOrderId",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ir/retainers",
+    "file": "backend/apps/shield-core/src/modules/ir-work-orders/incident-work-order.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/jit/elevate",
+    "file": "backend/apps/shield-core/src/modules/jit-elevation/jit-elevation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/jit/sessions",
+    "file": "backend/apps/shield-core/src/modules/jit-elevation/jit-elevation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/jit/sessions/:id",
+    "file": "backend/apps/shield-core/src/modules/jit-elevation/jit-elevation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/jit/sessions/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/jit-elevation/jit-elevation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/jit/sessions/:id/step-up",
+    "file": "backend/apps/shield-core/src/modules/jit-elevation/jit-elevation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/jit/sessions/:id/revoke",
+    "file": "backend/apps/shield-core/src/modules/jit-elevation/jit-elevation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/kill-switch",
+    "file": "backend/apps/shield-core/src/modules/kill-switch/commercial-kill-switch.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/kill-switch/check",
+    "file": "backend/apps/shield-core/src/modules/kill-switch/commercial-kill-switch.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/tenant/:tenantId/legal-entities",
+    "file": "backend/apps/shield-core/src/modules/legal-entity/legal-entity.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/legal-entities",
+    "file": "backend/apps/shield-core/src/modules/legal-entity/legal-entity.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/legal-entities/:id",
+    "file": "backend/apps/shield-core/src/modules/legal-entity/legal-entity.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/tenant/:tenantId/legal-entities/:id",
+    "file": "backend/apps/shield-core/src/modules/legal-entity/legal-entity.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/tenant/:tenantId/legal-entities/:id",
+    "file": "backend/apps/shield-core/src/modules/legal-entity/legal-entity.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/profiles",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/profiles/:id",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/profiles",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/managed-defense/profiles/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/profiles/:id/delivery-events",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/profiles/:id/delivery-summary",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/capacity-exceptions",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/managed-defense/capacity-exceptions/:id/paid-work-decision",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/capacity-exceptions/:id/reconciliation",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/capability-impacts",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/managed-defense/profiles/:id/readiness",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/delivery-events",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/capacity-exceptions",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/capability-impacts",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/managed-defense/capability-impacts/:id/resolve",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/managed-defense.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/service-obligations/:contractId",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/mdr-service-obligation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/managed-defense/service-obligations/:contractId/verify-claim",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/mdr-service-obligation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/service-obligations/register",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/mdr-service-obligation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/managed-defense/service-obligations/verify-readiness",
+    "file": "backend/apps/shield-core/src/modules/managed-defense/mdr-service-obligation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/policies",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/policies/:id",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/metering/policies",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/metering/policies/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/policies/:id/usage-summary",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/threshold-events",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/events",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/events/:id",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/events/:id/lineage",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/usage-authorizations",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/metering/usage-authorizations",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/metering/usage-authorizations/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/corrections",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/metering/corrections",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/metering/corrections/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/billing-exports",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/metering/billing-exports",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/metering/billing-exports/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/billing-exports/:id/reconciliation",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/policies",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/policies/:id/usage-summary",
+    "file": "backend/apps/shield-core/src/modules/metering/meter-governance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/metering/definitions",
+    "file": "backend/apps/shield-core/src/modules/metering/metering.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/metering/definitions",
+    "file": "backend/apps/shield-core/src/modules/metering/metering.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/metering/definitions",
+    "file": "backend/apps/shield-core/src/modules/metering/metering.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/usage-corrections/disputes",
+    "file": "backend/apps/shield-core/src/modules/metering/usage-correction.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/usage-corrections/disputes",
+    "file": "backend/apps/shield-core/src/modules/metering/usage-correction.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/usage-corrections/apply",
+    "file": "backend/apps/shield-core/src/modules/metering/usage-correction.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications/templates",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/templates/:templateId/preview",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/templates/:templateId/send-test",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications/:notificationId",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/:notificationId/acknowledge",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-preferences",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/notification-preferences/:id",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-policies",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notification-deliveries/:id",
+    "file": "backend/apps/shield-core/src/modules/notification/notification.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/notifications/webhooks/delivery-status",
+    "file": "backend/apps/shield-core/src/modules/notification/webhooks/notification-delivery-webhook.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/obligations",
+    "file": "backend/apps/shield-core/src/modules/obligations/service-obligation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/obligations",
+    "file": "backend/apps/shield-core/src/modules/obligations/service-obligation.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/obligations/:id/status",
+    "file": "backend/apps/shield-core/src/modules/obligations/service-obligation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/backup/status",
+    "file": "backend/apps/shield-core/src/modules/observability/backup-observability.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/backup/drill",
+    "file": "backend/apps/shield-core/src/modules/observability/backup-observability.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/phase-gates/phase-0/status",
+    "file": "backend/apps/shield-core/src/modules/observability/phase-exit-gate.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/phase-gates/phase-0/execute",
+    "file": "backend/apps/shield-core/src/modules/observability/phase-exit-gate.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/phase-gates/phase-0/proof",
+    "file": "backend/apps/shield-core/src/modules/observability/phase-exit-gate.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/phase-gates/phase-0/verify",
+    "file": "backend/apps/shield-core/src/modules/observability/phase-exit-gate.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/metrics",
+    "file": "backend/apps/shield-core/src/modules/observability/prometheus-metrics.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/readiness",
+    "file": "backend/apps/shield-core/src/modules/observability/service-readiness.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/readiness/:serviceId",
+    "file": "backend/apps/shield-core/src/modules/observability/service-readiness.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/readiness/:serviceId/override",
+    "file": "backend/apps/shield-core/src/modules/observability/service-readiness.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/readiness/:serviceId/clear-override",
+    "file": "backend/apps/shield-core/src/modules/observability/service-readiness.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/synthetic/status",
+    "file": "backend/apps/shield-core/src/modules/observability/synthetic-observability.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/synthetic/probe",
+    "file": "backend/apps/shield-core/src/modules/observability/synthetic-observability.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/observability/synthetic/gameday/execute",
+    "file": "backend/apps/shield-core/src/modules/observability/synthetic-observability.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/observability/synthetic/gameday/annex-p/:exerciseId",
+    "file": "backend/apps/shield-core/src/modules/observability/synthetic-observability.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/offboarding",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/validate",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/start-export",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/freeze-access",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/start-deletion",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/approve-deletion",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/issue-attestation",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/resume-deletion",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/offboarding/deletion-verification",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/offboarding/retention-policy",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/offboarding/retention-policy",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/offboarding/legal-holds",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/offboarding/backup-expiry",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/offboarding/deletion-attestation",
+    "file": "backend/apps/shield-core/src/modules/offboarding/offboarding.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/privacy/deletion-requests",
+    "file": "backend/apps/shield-core/src/modules/offboarding/privacy-operations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/privacy/deletion-requests",
+    "file": "backend/apps/shield-core/src/modules/offboarding/privacy-operations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/privacy/deletion-requests/:requestId",
+    "file": "backend/apps/shield-core/src/modules/offboarding/privacy-operations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tenants/:tenantId/privacy/legal-holds",
+    "file": "backend/apps/shield-core/src/modules/offboarding/privacy-operations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants/:tenantId/privacy/legal-holds",
+    "file": "backend/apps/shield-core/src/modules/offboarding/privacy-operations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/onboarding",
+    "file": "backend/apps/shield-core/src/modules/onboarding/onboarding.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/owner-invitations/:token",
+    "file": "backend/apps/shield-core/src/modules/onboarding/owner-activation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/owner-invitations/:token/start",
+    "file": "backend/apps/shield-core/src/modules/onboarding/owner-activation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/tenant/:tenantId/organizations",
+    "file": "backend/apps/shield-core/src/modules/organization/organization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/organizations",
+    "file": "backend/apps/shield-core/src/modules/organization/organization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/tenant/:tenantId/organizations/:id",
+    "file": "backend/apps/shield-core/src/modules/organization/organization.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/tenant/:tenantId/organizations/:id",
+    "file": "backend/apps/shield-core/src/modules/organization/organization.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/tenant/:tenantId/organizations/:id",
+    "file": "backend/apps/shield-core/src/modules/organization/organization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/fleet/summary",
+    "file": "backend/apps/shield-core/src/modules/partners/mssp-fleet.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/fleet/isolation-audit",
+    "file": "backend/apps/shield-core/src/modules/partners/mssp-fleet.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/fleet/jit/request",
+    "file": "backend/apps/shield-core/src/modules/partners/mssp-fleet.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/fleet/jit/approve-customer",
+    "file": "backend/apps/shield-core/src/modules/partners/mssp-fleet.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/fleet/jit/authorize-lead",
+    "file": "backend/apps/shield-core/src/modules/partners/mssp-fleet.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/fleet/jit/revoke",
+    "file": "backend/apps/shield-core/src/modules/partners/mssp-fleet.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/delegated/accounts/:accountId/usage",
+    "file": "backend/apps/shield-core/src/modules/partners/partner-operations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/delegated/accounts/:accountId/invoices",
+    "file": "backend/apps/shield-core/src/modules/partners/partner-operations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/delegated/accounts/:accountId/entitlements",
+    "file": "backend/apps/shield-core/src/modules/partners/partner-operations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/delegated/accounts/:accountId/support-cases",
+    "file": "backend/apps/shield-core/src/modules/partners/partner-operations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/delegated/accounts/:accountId/support-cases",
+    "file": "backend/apps/shield-core/src/modules/partners/partner-operations.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/partners/delegated/accounts/:accountId/support-cases/:supportCaseId",
+    "file": "backend/apps/shield-core/src/modules/partners/partner-operations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/partners/agreements/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/:partnerId/principals",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/:partnerId/principals",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/partners/:partnerId/principals/:contextId/deactivate",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/partners/:id/revoke",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/check",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/partners/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/partners/:id/mark-paid",
+    "file": "backend/apps/shield-core/src/modules/partners/partner.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/methods",
+    "file": "backend/apps/shield-core/src/modules/payments/payment-method.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/methods",
+    "file": "backend/apps/shield-core/src/modules/payments/payment-method.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/methods/merchant-config",
+    "file": "backend/apps/shield-core/src/modules/payments/payment-method.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/methods/accounting-handoff",
+    "file": "backend/apps/shield-core/src/modules/payments/payment-method.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/:id",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/payments/:id/refund",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/checkout-session",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/session/:sessionId/status",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/payments/checkout-session/:sessionId/status",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/webhook",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/payments/stripe/webhook",
+    "file": "backend/apps/shield-core/src/modules/payments/payment.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/professional-services/engagements",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/professional-services/engagements/:id",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/professional-services/engagements",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/professional-services/engagements/:id/profile-decision",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/professional-services/engagements/:id/activate",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/professional-services/engagements/:id/activities",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/professional-services/engagements/:id/overage-approvals",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/professional-services/engagements/:id/deliverables",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/professional-services/engagements/:id/acceptance-decisions",
+    "file": "backend/apps/shield-core/src/modules/professional-services/professional-service.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/commercial/period-close/list",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/financial-period-close.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/period-close/lock",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/financial-period-close.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/commercial/period-close/emergency-override",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/financial-period-close.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reconciliation/runs/:id",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/contract-entitlement",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/invoice-payments",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/service-obligations",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/service-credits",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/partner-costs",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/claim-eligibility",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reconciliation/runs/:id/checks/meter-billing-exports",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/reconciliation/runs/:id/complete",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/reconciliation/issues/:id/resolve",
+    "file": "backend/apps/shield-core/src/modules/reconciliation/reconciliation.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/operational",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/security",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/assurance",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/service-health",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/definitions",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reporting/snapshots",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/snapshots",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reporting/snapshots/:snapshotId",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reporting/executive/snapshots",
+    "file": "backend/apps/shield-core/src/modules/reporting/reporting.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/requirements",
+    "file": "backend/apps/shield-core/src/modules/requirements-register/controllers/requirements-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/requirements",
+    "file": "backend/apps/shield-core/src/modules/requirements-register/controllers/requirements-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/requirements/coverage/report",
+    "file": "backend/apps/shield-core/src/modules/requirements-register/controllers/requirements-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/requirements/precedence/hierarchy",
+    "file": "backend/apps/shield-core/src/modules/requirements-register/controllers/requirements-register.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/requirements/reconciliation/run",
+    "file": "backend/apps/shield-core/src/modules/requirements-register/controllers/requirements-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/requirements/:id",
+    "file": "backend/apps/shield-core/src/modules/requirements-register/controllers/requirements-register.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/notices/pending",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/resources/definitions/notices/:id/delivered",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions/process",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/observations",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/observations/:id",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/observations/:id/decisions",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions/observations/:id/accept",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions/observations/:id/exclude",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/coverage-policies",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/coverage-policies/:id",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions/coverage-policies",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/resources/definitions/coverage-policies/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/auto-enrollment/notices",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions/auto-enrollment/notices/:id/cancel",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/count-previews",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/resources/definitions/count-previews/:id",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/resources/definitions/count-previews",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/resources/definitions/count-previews/:id/finalize",
+    "file": "backend/apps/shield-core/src/modules/resources/resources.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/playbooks/runs",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/playbook-run.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/playbooks/runs/:runId",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/playbook-run.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/cases/:caseId/response-proposals",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/cases/:caseId/response-proposals",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/response-proposals/:proposalId",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/response-proposals/:proposalId/approve",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/response-proposals/:proposalId/reject",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/response-proposals/:proposalId/simulate",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/response/freeze",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/response/unfreeze",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/response/freeze-status",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/controllers/response-proposal.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/action-proposals/:proposalId/authorization-context",
+    "file": "backend/apps/shield-core/src/modules/response-proposal/internal/action-authorization.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/risks",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/risks",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/risks/:riskId",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/risks/:riskId",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/risks/:riskId/treatments",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/risks/:riskId/accept",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exceptions",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exceptions",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exceptions/:id/approve",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exceptions/:id/revoke",
+    "file": "backend/apps/shield-core/src/modules/risk/risk.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/platform/sector-packs",
+    "file": "backend/apps/shield-core/src/modules/sector-packs/sector-pack.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/platform/sector-packs/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/sector-packs/sector-pack.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/platform/sector-packs/:id/availability",
+    "file": "backend/apps/shield-core/src/modules/sector-packs/sector-pack.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/platform/sector-packs/availability",
+    "file": "backend/apps/shield-core/src/modules/sector-packs/sector-pack.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/assets",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/assets/:assetId",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/identities",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/identities/:identityId",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/context/snapshots/:snapshotId",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/context/assets/resolve",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/context/identities/resolve",
+    "file": "backend/apps/shield-core/src/modules/security-context/security-context.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sla/definitions",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sla/definitions",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sla/definitions/:id",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/sla/definitions",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/sla/definitions/:id",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/sla/definitions/:id/decision",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/sla/definitions/:id/post",
+    "file": "backend/apps/shield-core/src/modules/sla/sla.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/streaming/broadcast",
+    "file": "backend/apps/shield-core/src/modules/streaming/live-telemetry-stream.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/streaming/simulate",
+    "file": "backend/apps/shield-core/src/modules/streaming/live-telemetry-stream.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/streaming/health",
+    "file": "backend/apps/shield-core/src/modules/streaming/live-telemetry-stream.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/tax/rules",
+    "file": "backend/apps/shield-core/src/modules/tax/tax-rule.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tax/rules/resolve",
+    "file": "backend/apps/shield-core/src/modules/tax/tax-rule.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/internal/v1/tenants/:tenantId/residency",
+    "file": "backend/apps/shield-core/src/modules/tenant/internal/internal-tenant.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tenants",
+    "file": "backend/apps/shield-core/src/modules/tenant/tenant.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/tenants/:id",
+    "file": "backend/apps/shield-core/src/modules/tenant/tenant.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/identity/verifiable-credentials/issuer",
+    "file": "backend/apps/shield-core/src/modules/verifiable-credentials/verifiable-credential.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/identity/verifiable-credentials/issue",
+    "file": "backend/apps/shield-core/src/modules/verifiable-credentials/verifiable-credential.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/identity/verifiable-credentials/verify",
+    "file": "backend/apps/shield-core/src/modules/verifiable-credentials/verifiable-credential.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/webhooks",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/webhooks",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/webhooks/:id",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/webhooks/:id",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/webhooks/:id",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/webhooks/:id/test",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/webhooks/:id/rotate-secret",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/webhooks/:id/deliveries",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/webhooks/:id/deliveries/:deliveryId",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/webhooks/:id/deliveries/:deliveryId/replay",
+    "file": "backend/apps/shield-core/src/modules/webhook/webhook.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/",
+    "file": "backend/apps/shield-core/src/shield-core.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/health/ready",
+    "file": "backend/apps/shield-core/src/shield-core.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/health/live",
+    "file": "backend/apps/shield-core/src/shield-core.controller.ts"
+  }
+]

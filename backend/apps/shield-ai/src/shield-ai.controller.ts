@@ -110,7 +110,7 @@ export class ShieldAiController {
     };
   }
 
-  @Get('health/ready')
+  @Get(['health/ready', 'health/readiness'])
   getHealthReady() {
     return {
       status: 'ready',
@@ -119,7 +119,7 @@ export class ShieldAiController {
     };
   }
 
-  @Get('health/live')
+  @Get(['health/live', 'health/liveness'])
   getHealthLive() {
     return {
       status: 'live',
