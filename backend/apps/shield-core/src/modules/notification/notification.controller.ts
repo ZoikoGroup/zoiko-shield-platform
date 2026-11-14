@@ -63,6 +63,15 @@ export class NotificationController {
     });
   }
 
+  @Get('notifications/deliveries')
+  async listDeliveries(
+    @Headers('x-tenant-id') tenantId: string,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    return this.list(tenantId, user, limit);
+  }
+
   @Get('notifications/templates')
   async listTemplates(@Query('domain') domain?: string) {
     return {

@@ -129,6 +129,22 @@ export class SecurityContextController {
     return { statusCode: HttpStatus.OK, data: assets };
   }
 
+  @Get('assets/resolution-decisions')
+  async getAssetResolutionDecisions(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('tenantId') queryTenantId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
+    const take = Math.min(Math.max(Number(limit) || 100, 1), 500);
+    const decisions = await this.prisma.resolutionDecision.findMany({
+      where: { tenant_id: tenantId, entity_type: 'ASSET' },
+      take,
+      orderBy: { created_at: 'desc' },
+    });
+    return { statusCode: HttpStatus.OK, data: decisions };
+  }
+
   @Get('assets/:assetId')
   async getAssetById(
     @Headers('x-tenant-id') tenantId: string,

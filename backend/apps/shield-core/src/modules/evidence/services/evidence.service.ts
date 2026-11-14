@@ -292,6 +292,15 @@ export class EvidenceService {
     });
   }
 
+  async listByTenant(tenantId: string, limit = 100) {
+    const take = Math.min(Math.max(limit || 100, 1), 500);
+    return this.prisma.evidenceRecord.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'desc' },
+      take,
+    });
+  }
+
   async getById(tenantId: string, evidenceId: string) {
     const evidence = await this.evidenceRepository.findByTenantAndId(
       tenantId,

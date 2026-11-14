@@ -42,6 +42,9 @@ export class MailService implements OnModuleInit {
         port: smtpPort,
         secure: smtpSecure,
         auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
       this.logger.log(`MailService initialized with SMTP transport (${smtpHost}:${smtpPort}, from: ${smtpFrom}).`);
       return;
@@ -52,6 +55,9 @@ export class MailService implements OnModuleInit {
       this.transporter = createTransport({
         service: 'gmail',
         auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
       this.logger.log(`MailService initialized with Gmail transport (${smtpUser}).`);
       return;
@@ -84,7 +90,7 @@ export class MailService implements OnModuleInit {
 
     if (this.transactionalEmailService) {
       try {
-        await this.transactionalEmailService.dispatchTransactionalEmail({
+        const receipt = await this.transactionalEmailService.dispatchTransactionalEmail({
           tenantId: 'identity-service',
           templateKey,
           recipients: [{ email, name: email.split('@')[0] }],
@@ -99,6 +105,9 @@ export class MailService implements OnModuleInit {
             actionUrl,
           },
         });
+        if (receipt?.deliveryStatus === 'DELIVERED') {
+          return;
+        }
       } catch (err: any) {
         this.logger.debug(
           `Transactional email engine fallback: ${err.message}`,

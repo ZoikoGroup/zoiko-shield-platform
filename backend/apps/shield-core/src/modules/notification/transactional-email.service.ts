@@ -117,6 +117,9 @@ export class TransactionalEmailService {
           user: emailUser,
           pass: emailPass,
         },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
       this.logger.log(
         `TransactionalEmailService initialized with active SMTP transport (${smtpHost}).`,
@@ -128,6 +131,9 @@ export class TransactionalEmailService {
           user: emailUser,
           pass: emailPass,
         },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
       this.logger.log(
         `TransactionalEmailService initialized with active Gmail transport (${emailUser}).`,

@@ -114,6 +114,62 @@ export class ConnectorsProxyController {
     return this.shieldIngestClient.getConnectorHealth(tenantId, id);
   }
 
+  @Post('connectors/:id/activate')
+  async activateConnector(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Headers('idempotency-key') headerIdempotencyKey: string | undefined,
+    @Headers('x-idempotency-key') xIdempotencyKey: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.activateConnector(
+      tenantId,
+      id,
+      headerIdempotencyKey || xIdempotencyKey,
+    );
+  }
+
+  @Post('connectors/:id/disable')
+  async disableConnector(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.disableConnector(tenantId, id);
+  }
+
+  @Post('connectors/:id/heartbeat')
+  async recordConnectorHeartbeat(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body?: Record<string, unknown>,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.heartbeatConnector(tenantId, id, body);
+  }
+
+  @Post('dlq/auto-retry')
+  async triggerDlqAutoRetry(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.triggerDlqAutoRetry(tenantId, limit);
+  }
+
+  @Get('dlq/metrics')
+  async getDlqMetrics(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getDlqMetrics(tenantId);
+  }
+
   /**
    * Normalized events and control evaluations live in shield-ingest, which
    * accepts only workload tokens. The browser reaches them through here.

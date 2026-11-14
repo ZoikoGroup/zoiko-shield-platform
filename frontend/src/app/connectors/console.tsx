@@ -90,15 +90,25 @@ export default function ConnectorsPage() {
   const [p1TermsAccepted, setP1TermsAccepted] = useState(false);
 
   // Form states
+  const defaultResidencyRegion = state?.tenant?.dataResidencyRegion || state?.session?.region || "us-east-1";
   const [name, setName] = useState("Custom AWS GuardDuty Telemetry");
   const [provider, setProvider] = useState<ConnectorProviderType>("generic-webhook");
   const [region, setRegion] = useState("us-east-1");
+  const [region, setRegion] = useState(defaultResidencyRegion);
   const [isLoading, setIsLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleSaveConfiguredConnector = (config: {
+  useEffect(() => {
+    const committedRegion = state?.tenant?.dataResidencyRegion || state?.session?.region;
+    if (committedRegion) {
+      setRegion(committedRegion);
+    }
+  }, [state?.tenant?.dataResidencyRegion, state?.session?.region]);
+
+  const handleSaveConfiguredConnector = async (config: {
     name: string;
     provider: ConnectorProviderType;
     region: string;
@@ -120,6 +130,27 @@ export default function ConnectorsPage() {
     };
     setConnectors((prev) => [newConn, ...prev]);
     setActionMessage(`Successfully activated ${config.name} (${tier}) with verified TLS 1.3 mutual handshake.`);
+    setIsLoading(true);
+    setActionMessage(null);
+    try {
+      const tier = getProviderTier(config.provider);
+      const targetRegion = state?.tenant?.dataResidencyRegion || state?.session?.region || config.region;
+      const created = await ZoikoShieldApiClient.createConnector({
+        tenantId: state?.tenant?.id,
+        environmentId: state?.tenant?.environmentId,
+        name: config.name,
+        provider: config.provider,
+        sourceRegion: targetRegion,
+        tier,
+        config: config.authConfig,
+      });
+      setConnectors((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
+      setActionMessage(`Created and registered ${created.name} (${created.tier}) in region ${targetRegion}.`);
+    } catch (err: any) {
+      setActionMessage(`⚠️ Failed to register connector: ${err?.message || "Unknown backend error"}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Subscribe to real-time SSE stream for instant connector health updates
@@ -190,14 +221,18 @@ export default function ConnectorsPage() {
   const handleCreateConnector = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setActionMessage(null);
     try {
       const calculatedTier = getProviderTier(provider);
       const created = await ZoikoShieldApiClient.createConnector({
+      const createdRaw = await ZoikoShieldApiClient.createConnector({
         tenantId: state?.tenant?.id || "demo-tenant",
+        environmentId: state?.session?.environmentId || state?.session?.environment,
         name,
         provider,
         sourceRegion: region,
       });
+      const created = (createdRaw as any)?.data ?? createdRaw;
 
       // Add the newly created connector (with certification metadata) to the
       // real list on top — previously this relied on the connector already
@@ -214,10 +249,13 @@ export default function ConnectorsPage() {
       setIsAddModalOpen(false);
       setActionMessage(`✅ Connector created successfully with tier ${calculatedTier}`);
     } catch (err) {
+    } catch (err: any) {
       console.error("Connector Creation Error:", err);
+      setActionMessage(`❌ Failed to create connector: ${err?.message || "Bad request"}`);
     } finally {
       setIsLoading(false);
       setTimeout(() => setActionMessage(null), 4000);
+      setTimeout(() => setActionMessage(null), 5000);
     }
   };
 
@@ -227,11 +265,19 @@ export default function ConnectorsPage() {
     try {
       const res = await ZoikoShieldApiClient.testConnector(connectorId);
       setActionMessage(`✅ Test passed (${res.latencyMs || 24}ms latency, HMAC signature verified)`);
+      const raw = await ZoikoShieldApiClient.testConnector(connectorId);
+      const res = (raw as any)?.data ?? raw;
+      if (res?.status === "UNVERIFIED") {
+        setActionMessage(`ℹ️ ${res.reason || "Passive/unverified connector — send a webhook or check credentials to verify live delivery."}`);
+      } else {
+        setActionMessage(`✅ Test passed (${res?.latencyMs || 24}ms latency, HMAC signature verified)`);
+      }
     } catch (err: any) {
       setActionMessage(`❌ Test failed: ${err.message}`);
     } finally {
       setActionLoadingId(null);
       setTimeout(() => setActionMessage(null), 4000);
+      setTimeout(() => setActionMessage(null), 5000);
     }
   };
 

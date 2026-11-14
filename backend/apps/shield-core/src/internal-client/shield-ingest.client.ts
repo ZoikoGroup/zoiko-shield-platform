@@ -10,6 +10,9 @@ const SHIELD_INGEST_BASE_URL =
   process.env.SHIELD_INGEST_URL ||
   process.env.SHIELD_INGEST_BASE_URL ||
   'http://localhost:3002';
+const SHIELD_INGEST_TIMEOUT_MS = Number(
+  process.env.SHIELD_INGEST_TIMEOUT_MS || 10000,
+);
 
 /**
  * Maps a shield-ingest error to what the caller should see. A 4xx is ingest's
@@ -110,6 +113,48 @@ export class ShieldIngestClient {
     });
   }
 
+  async activateConnector(
+    tenantId: string,
+    id: string,
+    idempotencyKey?: string,
+  ): Promise<any> {
+    return this.post(
+      `/api/v1/connectors/${id}/activate`,
+      {},
+      {
+        'x-tenant-id': tenantId,
+        ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
+      },
+    );
+  }
+
+  async disableConnector(tenantId: string, id: string): Promise<any> {
+    return this.post(
+      `/api/v1/connectors/${id}/disable`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
+  async heartbeatConnector(
+    tenantId: string,
+    id: string,
+    body?: Record<string, unknown>,
+  ): Promise<any> {
+    return this.post(`/api/v1/connectors/${id}/heartbeat`, body || {}, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async triggerDlqAutoRetry(tenantId: string, limit?: string): Promise<any> {
+    const q = limit ? `?limit=${encodeURIComponent(limit)}` : '';
+    return this.post(`/api/v1/dlq/auto-retry${q}`, {}, { 'x-tenant-id': tenantId });
+  }
+
+  async getDlqMetrics(tenantId: string): Promise<any> {
+    return this.get('/api/v1/dlq/metrics', { 'x-tenant-id': tenantId });
+  }
+
   // --- Controls & Control Evaluations ---
   async listControlEvaluations(tenantId: string): Promise<any> {
     return this.get('/api/v1/control-evaluations', { 'x-tenant-id': tenantId });
@@ -147,6 +192,7 @@ export class ShieldIngestClient {
       response = await fetch(`${SHIELD_INGEST_BASE_URL}${path}`, {
         method: 'GET',
         headers: this.headers(extraHeaders),
+        signal: AbortSignal.timeout(SHIELD_INGEST_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ingest unreachable: ${(err as Error).message}`);
@@ -175,6 +221,7 @@ export class ShieldIngestClient {
         method: 'POST',
         headers: this.headers(extraHeaders),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(SHIELD_INGEST_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ingest unreachable: ${(err as Error).message}`);
@@ -203,6 +250,7 @@ export class ShieldIngestClient {
         method: 'PATCH',
         headers: this.headers(extraHeaders),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(SHIELD_INGEST_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ingest unreachable: ${(err as Error).message}`);
@@ -229,6 +277,7 @@ export class ShieldIngestClient {
       response = await fetch(`${SHIELD_INGEST_BASE_URL}${path}`, {
         method: 'DELETE',
         headers: this.headers(extraHeaders),
+        signal: AbortSignal.timeout(SHIELD_INGEST_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ingest unreachable: ${(err as Error).message}`);

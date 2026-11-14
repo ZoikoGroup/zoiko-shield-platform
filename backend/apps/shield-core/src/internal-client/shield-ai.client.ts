@@ -1,4 +1,5 @@
 import {
+  HttpException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -7,6 +8,28 @@ import { workloadAuthorizationHeaders } from '../../../../libs/security/src/work
 
 const SHIELD_AI_BASE_URL =
   process.env.SHIELD_AI_BASE_URL || 'http://localhost:3003';
+const SHIELD_AI_TIMEOUT_MS = Number(process.env.SHIELD_AI_TIMEOUT_MS || 10000);
+
+function aiError(status: number, bodyText: string): HttpException {
+  if (status >= 400 && status < 500 && status !== 401) {
+    let message: unknown = bodyText;
+    try {
+      const parsed = JSON.parse(bodyText);
+      message = parsed?.message ?? bodyText;
+    } catch {
+      // keep raw text
+    }
+    return new HttpException(
+      {
+        statusCode: status,
+        error: status === 403 ? 'POLICY_DENIED' : 'AI_REQUEST_REJECTED',
+        message: message || `shield-ai returned ${status}`,
+      },
+      status,
+    );
+  }
+  return new ServiceUnavailableException('AI_UNAVAILABLE');
+}
 
 export interface AiRequestContext {
   tenantId: string;
@@ -301,6 +324,7 @@ export class ShieldAiClient {
       response = await fetch(`${SHIELD_AI_BASE_URL}${path}`, {
         method: 'GET',
         headers: this.headers(extraHeaders),
+        signal: AbortSignal.timeout(SHIELD_AI_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ai unreachable: ${(err as Error).message}`);
@@ -312,9 +336,7 @@ export class ShieldAiClient {
       this.logger.warn(
         `shield-ai GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'AI_UNAVAILABLE',
-      );
+      throw aiError(response.status, text);
     }
 
     return response.json();
@@ -331,6 +353,7 @@ export class ShieldAiClient {
         method: 'POST',
         headers: this.headers(extraHeaders),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(SHIELD_AI_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ai unreachable: ${(err as Error).message}`);
@@ -342,9 +365,7 @@ export class ShieldAiClient {
       this.logger.warn(
         `shield-ai POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'AI_UNAVAILABLE',
-      );
+      throw aiError(response.status, text);
     }
 
     return response.json();
@@ -361,6 +382,7 @@ export class ShieldAiClient {
         method: 'PATCH',
         headers: this.headers(extraHeaders),
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(SHIELD_AI_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ai unreachable: ${(err as Error).message}`);
@@ -372,9 +394,7 @@ export class ShieldAiClient {
       this.logger.warn(
         `shield-ai PATCH returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'AI_UNAVAILABLE',
-      );
+      throw aiError(response.status, text);
     }
 
     return response.json();
@@ -389,6 +409,7 @@ export class ShieldAiClient {
       response = await fetch(`${SHIELD_AI_BASE_URL}${path}`, {
         method: 'DELETE',
         headers: this.headers(extraHeaders),
+        signal: AbortSignal.timeout(SHIELD_AI_TIMEOUT_MS),
       });
     } catch (err) {
       this.logger.error(`shield-ai unreachable: ${(err as Error).message}`);
@@ -400,9 +421,7 @@ export class ShieldAiClient {
       this.logger.warn(
         `shield-ai DELETE returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
       );
-      throw new ServiceUnavailableException(
-        response.status === 403 ? 'POLICY_DENIED' : 'AI_UNAVAILABLE',
-      );
+      throw aiError(response.status, text);
     }
 
     return response.json();

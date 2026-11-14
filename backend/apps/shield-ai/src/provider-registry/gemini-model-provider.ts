@@ -58,10 +58,12 @@ export class GeminiModelProvider implements ModelProvider {
           },
         };
 
+        const timeoutMs = Number(process.env.AI_PROVIDER_TIMEOUT_MS || 9000);
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(timeoutMs),
         });
 
         if (response.ok) {

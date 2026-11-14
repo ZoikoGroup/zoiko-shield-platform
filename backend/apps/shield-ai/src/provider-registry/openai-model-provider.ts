@@ -54,6 +54,7 @@ export class OpenAiModelProvider implements ModelProvider {
           max_tokens: input.maxOutputTokens || 2048,
         };
 
+        const timeoutMs = Number(process.env.AI_PROVIDER_TIMEOUT_MS || 9000);
         const response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -61,6 +62,7 @@ export class OpenAiModelProvider implements ModelProvider {
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(timeoutMs),
         });
 
         if (response.ok) {

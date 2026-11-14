@@ -49,6 +49,7 @@ export interface Tenant {
     registeredAddress?: string;
   };
   environmentName: string;
+  environmentId?: string;
   environment?: {
     name?: string;
     environmentType?: 'PRODUCTION' | 'STAGING';
@@ -71,6 +72,8 @@ export interface UserSession {
   role: 'TENANT_OWNER' | 'SECURITY_ANALYST' | 'SUPER_ADMIN' | 'AUDITOR';
   tenantId: string;
   environment: string;
+  environmentId?: string;
+  region?: string;
   token?: string;
   isAuthenticated: boolean;
 }

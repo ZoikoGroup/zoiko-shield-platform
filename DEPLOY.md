@@ -110,6 +110,9 @@ To prevent connection refused errors or missing dependency races, always restart
    - `shield-action` (Port 3003) — containment orchestration
    - `shield-anchor` (Port 3004) — Merkle cryptographic ledger
    - `shield-ai` (Port 3005) — reasoning & threat hunting models
+   - `shield-ai` (Port 3003) — reasoning & threat hunting models
+   - `shield-action` (Port 3004) — containment orchestration
+   - `shield-anchor` (Port 3005) — Merkle cryptographic ledger
 4. **Frontend Web Tier**:
    - Next.js Web Server (Port 3000)
 

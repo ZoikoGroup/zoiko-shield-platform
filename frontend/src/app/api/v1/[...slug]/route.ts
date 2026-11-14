@@ -39,10 +39,13 @@ function resolveServiceBaseUrl(path: string): string {
  */
 async function callerOwnsConnector(connectorId: string, headers: Record<string, string>): Promise<boolean | null> {
   if (!connectorId || !headers["Authorization"]) return false;
+  if (!connectorId || (!headers["Authorization"] && !headers["Cookie"])) return false;
   try {
     const res = await fetch(`${coreBaseUrl()}/api/v1/connectors/${encodeURIComponent(connectorId)}`, {
       headers: {
         Authorization: headers["Authorization"],
+        ...(headers["Authorization"] ? { Authorization: headers["Authorization"] } : {}),
+        ...(headers["Cookie"] ? { Cookie: headers["Cookie"] } : {}),
         ...(headers["x-tenant-id"] ? { "x-tenant-id": headers["x-tenant-id"] } : {}),
       },
       redirect: "manual",

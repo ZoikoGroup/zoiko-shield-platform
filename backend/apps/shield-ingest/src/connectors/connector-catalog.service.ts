@@ -413,6 +413,17 @@ export class ConnectorCatalogService {
   async testConnector(tenantId: string, connectorId: string) {
     const instance = await this.getConnectorById(tenantId, connectorId);
     if (!this.registry.has(instance.definition.provider)) {
+      if (
+        instance.definition.provider === 'generic-webhook' ||
+        instance.definition.provider === 'github'
+      ) {
+        return {
+          status: 'UNVERIFIED',
+          provider: instance.definition.provider,
+          lastCheckedAt: new Date().toISOString(),
+          reason: `Connector '${instance.definition.provider}' is an inbound webhook receiver; send a signed webhook payload to verify end-to-end delivery.`,
+        };
+      }
       throw new BadRequestException(
         `Provider '${instance.definition.provider}' has no executable connection test`,
       );

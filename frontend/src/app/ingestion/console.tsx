@@ -28,8 +28,12 @@ import { RegionalShardTopology } from "@/components/ingestion/RegionalShardTopol
 export default function IngestionPage() {
   const router = useRouter();
   const [state] = useDemoState();
+  const [connectors, setConnectors] = useState<Array<{ id: string; name: string; provider?: string }>>(
+    state?.connectors || []
+  );
   const [selectedConnectorId, setSelectedConnectorId] = useState(
     state?.connectors?.[0]?.id ?? "conn-webhook-gateway-01"
+    state?.connectors?.[0]?.id ?? ""
   );
   const [rawJson, setRawJson] = useState(`{
   "eventName": "AttachUserPolicy",
@@ -46,11 +50,25 @@ export default function IngestionPage() {
   }
 }`);
   const [isSending, setIsSending] = useState(false);
+  const [ingestionError, setIngestionError] = useState<string | null>(null);
   const [lastNormalized, setLastNormalized] = useState<any>(null);
   const [lastMeta, setLastMeta] = useState<any>(null);
   const [alertTriggered, setAlertTriggered] = useState(false);
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
+
+  const fetchConnectors = async () => {
+    try {
+      const list = await ZoikoShieldApiClient.getConnectors();
+      setConnectors(list || []);
+      setSelectedConnectorId((prev) => {
+        if (prev && (list || []).some((c) => c.id === prev)) return prev;
+        return list?.[0]?.id || "";
+      });
+    } catch (err) {
+      console.error("Failed to fetch connectors:", err);
+    }
+  };
 
   const fetchLiveEvents = async () => {
     setIsLoadingLive(true);
@@ -67,8 +85,17 @@ export default function IngestionPage() {
   useEffect(() => {
     fetchLiveEvents();
   }, []);
+    void fetchConnectors();
+    void fetchLiveEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.tenant?.id]);
 
   const handleSend = async () => {
+    setIngestionError(null);
+    if (!selectedConnectorId) {
+      setIngestionError("No active workspace connector selected. Create a connector in /connectors first.");
+      return;
+    }
     setIsSending(true);
     setAlertTriggered(false);
     try {
@@ -83,6 +110,8 @@ export default function IngestionPage() {
       fetchLiveEvents();
     } catch (err: any) {
       alert("Invalid JSON payload or Ingestion error: " + err.message);
+      const message = err?.message || "Invalid JSON payload or Ingestion error";
+      setIngestionError(message);
     } finally {
       setIsSending(false);
     }
@@ -261,9 +290,21 @@ export default function IngestionPage() {
         <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Connectors Configured</div>
           <div className="text-2xl font-bold font-mono text-white mt-1">{state?.connectors?.length ?? 0} Connectors</div>
+          <div className="text-2xl font-bold font-mono text-white mt-1">{connectors.length} Connectors</div>
           <div className="text-[11px] text-cyan-400 mt-0.5">Multi-vendor telemetry</div>
         </div>
       </div>
+
+      {ingestionError && (
+        <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-200 text-xs font-mono flex items-center justify-between gap-3">
+          <span>{ingestionError}</span>
+          {!selectedConnectorId && (
+            <Button size="sm" variant="cyan" onClick={() => router.push("/connectors")}>
+              Configure Connector
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Preset Buttons Grid (10 Providers) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
@@ -299,6 +340,15 @@ export default function IngestionPage() {
                   {c.name}
                 </option>
               ))}
+              {connectors.length === 0 ? (
+                <option value="">No connectors in workspace</option>
+              ) : (
+                connectors.map((c, idx) => (
+                  <option key={c.id || idx} value={c.id}>
+                    {c.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

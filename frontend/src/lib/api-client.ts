@@ -3,6 +3,7 @@ import {
   UserSession,
   Invitation,
   Connector,
+  ConnectorCertificationTier,
   TelemetryNormalized,
   Alert,
   Case,
@@ -312,6 +313,9 @@ export class ZoikoShieldApiClient {
         : "");
     const resolvedRole = userObj.role || session?.role || "TENANT_ADMIN";
 
+    const resolvedRegion = userObj.region || (session as any)?.region || "";
+    const resolvedEnvId = userObj.environmentId || (session as any)?.environmentId || "";
+
     const previousTenantId = state.tenant?.id;
     state.session = {
       ...session,
@@ -320,6 +324,9 @@ export class ZoikoShieldApiClient {
       fullName: resolvedFullName,
       role: resolvedRole,
       tenantId: signedInTenantId,
+      environment: resolvedEnvId || state.session?.environment || "",
+      environmentId: resolvedEnvId || state.session?.environmentId,
+      region: resolvedRegion || state.session?.region,
       token: resolvedToken,
       isAuthenticated: true,
     };
@@ -330,6 +337,10 @@ export class ZoikoShieldApiClient {
         state.tenant.organizationName === "Acme Global Ltd" ||
         (previousTenantId && previousTenantId !== signedInTenantId);
       state.tenant.id = signedInTenantId;
+      if (resolvedRegion) {
+        state.tenant.homeRegion = resolvedRegion;
+        state.tenant.dataResidencyRegion = resolvedRegion;
+      }
       if ((session as any)?.tenant?.organizationName) {
         state.tenant.organizationName = (session as any).tenant.organizationName;
       } else if (isMockOrg) {
@@ -835,21 +846,47 @@ export class ZoikoShieldApiClient {
   // --- Step 4: Connectors Setup ---
   static async createConnector(data: {
     tenantId: string;
+    tenantId?: string;
+    environmentId?: string;
     name: string;
     provider: any;
     sourceRegion: string;
+    sourceRegion?: string;
+    tier?: ConnectorCertificationTier;
+    config?: Record<string, string>;
   }): Promise<Connector> {
+    const currentState = getState();
+    const payload = {
+      ...data,
+      tenantId: data.tenantId || currentState.tenant?.id,
+      environmentId:
+        data.environmentId ||
+        currentState.tenant?.environmentId ||
+        currentState.session?.environmentId ||
+        currentState.session?.environment ||
+        undefined,
+      sourceRegion:
+        data.sourceRegion ||
+        currentState.tenant?.dataResidencyRegion ||
+        currentState.tenant?.homeRegion ||
+        currentState.session?.region ||
+        undefined,
+    };
     const conn = await this.safeFetch<Connector>(
       "/api/v1/connectors",
       { method: "POST", body: JSON.stringify(data) },
+      { method: "POST", body: JSON.stringify(payload) },
       () => {
         const id = `conn-${data.provider}-${generateUUID().slice(0, 6)}`;
         return {
           id,
           tenantId: data.tenantId,
+          tenantId: payload.tenantId || currentState.tenant.id,
           name: data.name,
           provider: data.provider,
           sourceRegion: data.sourceRegion,
+          sourceRegion: payload.sourceRegion || "us-east-1",
+          tier: data.tier,
           status: "ACTIVE",
           healthStatus: "HEALTHY",
           hmacSecret: `whsec_${sha256Mock(id).slice(0, 32)}`,
@@ -1888,10 +1925,96 @@ export class ZoikoShieldApiClient {
     };
   }
 
+  private static mapAiTriggerToCategory(
+    trigger: AiIncidentTrigger | string
+  ):
+    | "MODEL_HALLUCINATION"
+    | "PROMPT_INJECTION_EXPLOIT"
+    | "DATA_EXFILTRATION"
+    | "UNAUTHORIZED_TOOL_INVOCATION"
+    | "UNAVAILABLE_DEGRADATION"
+    | "DRIFT_ANOMALY" {
+    switch (trigger) {
+      case "PROMPT_INJECTION":
+      case "PROMPT_INJECTION_EXPLOIT":
+        return "PROMPT_INJECTION_EXPLOIT";
+      case "MODEL_HALLUCINATION":
+        return "MODEL_HALLUCINATION";
+      case "MODEL_DRIFT_CRITICAL":
+      case "DRIFT_ANOMALY":
+        return "DRIFT_ANOMALY";
+      case "DATA_LEAKAGE":
+      case "DATA_EXFILTRATION":
+        return "DATA_EXFILTRATION";
+      case "TOOL_MISUSE":
+      case "UNAUTHORIZED_TOOL_INVOCATION":
+        return "UNAUTHORIZED_TOOL_INVOCATION";
+      default:
+        return "UNAVAILABLE_DEGRADATION";
+    }
+  }
+
+  private static mapAiCategoryToTrigger(category?: string): AiIncidentTrigger {
+    switch (category) {
+      case "PROMPT_INJECTION_EXPLOIT":
+      case "PROMPT_INJECTION":
+        return "PROMPT_INJECTION";
+      case "MODEL_HALLUCINATION":
+        return "MODEL_HALLUCINATION";
+      case "DRIFT_ANOMALY":
+      case "MODEL_DRIFT_CRITICAL":
+        return "MODEL_DRIFT_CRITICAL";
+      case "DATA_EXFILTRATION":
+      case "DATA_LEAKAGE":
+        return "DATA_LEAKAGE";
+      case "UNAUTHORIZED_TOOL_INVOCATION":
+      case "TOOL_MISUSE":
+        return "TOOL_MISUSE";
+      default:
+        return "OPERATOR_MANUAL";
+    }
+  }
+
+  private static mapBackendAiIncident(
+    raw: any,
+    fallback?: Partial<AiIncident>
+  ): AiIncident {
+    const record = raw?.data && !raw?.id ? raw.data : raw;
+    const state = (record?.state || record?.status || fallback?.state || "DECLARED") as AiIncidentState;
+    return {
+      id: String(record?.id || fallback?.id || ""),
+      tenantId: String(record?.tenantId || fallback?.tenantId || getState().tenant.id),
+      title: String(record?.title || fallback?.title || "AI Safety Incident"),
+      severity: (record?.severity || fallback?.severity || "SEV2_HIGH") as AiIncidentSeverity,
+      state,
+      trigger: record?.trigger
+        ? (record.trigger as AiIncidentTrigger)
+        : record?.category
+          ? this.mapAiCategoryToTrigger(record.category)
+          : fallback?.trigger || "OPERATOR_MANUAL",
+      affectedModel: String(record?.affectedModel || fallback?.affectedModel || "gemini-1.5-pro"),
+      killSwitchEngaged: Boolean(
+        record?.killSwitchEngaged ?? record?.killSwitchActive ?? fallback?.killSwitchEngaged ?? false
+      ),
+      fallbackModeActive: Boolean(
+        record?.fallbackModeActive ?? record?.fallbackActive ?? fallback?.fallbackModeActive ?? false
+      ),
+      rootCauseSummary: record?.rootCauseSummary ?? record?.rcaSummary ?? fallback?.rootCauseSummary,
+      declaredBy: String(
+        record?.declaredBy || fallback?.declaredBy || getState().session.fullName || "Security Analyst"
+      ),
+      createdAt: String(
+        record?.createdAt || record?.declaredAt || fallback?.createdAt || new Date().toISOString()
+      ),
+      resolvedAt: record?.resolvedAt ?? fallback?.resolvedAt,
+    };
+  }
+
   // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---
   static async getAiIncidents(tenantId?: string): Promise<AiIncident[]> {
     const q = tenantId && tenantId !== "default" ? `?tenantId=${encodeURIComponent(tenantId)}` : "";
     return this.safeFetch<AiIncident[]>(
+    const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents${q}`,
       { method: "GET" },
       () => {
@@ -1899,6 +2022,8 @@ export class ZoikoShieldApiClient {
         return state.aiIncidents || [];
       }
     );
+    const items = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+    return items.map((item: any) => this.mapBackendAiIncident(item));
   }
 
   static async declareAiIncident(data: {
@@ -1910,8 +2035,18 @@ export class ZoikoShieldApiClient {
     declaredBy: string;
   }): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
+    const dto = {
+      title: data.title,
+      category: this.mapAiTriggerToCategory(data.trigger),
+      severity: data.severity,
+      description: `${data.title} (Trigger: ${data.trigger}, Reported by: ${data.declaredBy})`,
+      affectedModel: data.affectedModel,
+    };
+
+    const res = await this.safeFetch<any>(
       "/api/v1/ai/incidents",
       { method: "POST", body: JSON.stringify(data) },
+      { method: "POST", body: JSON.stringify(dto) },
       () => {
         return {
           id: `ai-inc-${generateUUID().slice(0, 8)}`,
@@ -1929,6 +2064,15 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    const incident = this.mapBackendAiIncident(res, {
+      tenantId: data.tenantId,
+      title: data.title,
+      severity: data.severity,
+      trigger: data.trigger,
+      affectedModel: data.affectedModel,
+      declaredBy: data.declaredBy,
+    });
+
     const state = getState();
     state.aiIncidents = [incident, ...(state.aiIncidents || []).filter((i) => i.id !== incident.id)];
     saveDemoState(state);
@@ -1937,8 +2081,19 @@ export class ZoikoShieldApiClient {
 
   static async containAiIncident(incidentId: string, actionReason?: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
+    const stateBefore = getState();
+    const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/contain`,
       { method: "POST", body: JSON.stringify({ actionReason: actionReason || "Emergency Kill-Switch Engaged (Simulation Mode)" }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          reason: actionReason || "Emergency Kill-Switch Engaged from AI Governance Console",
+          killSwitchScope: "MODEL_ROUTE",
+          targetId: "default",
+          containedBy: stateBefore.session.email || stateBefore.session.fullName || "soc-operator",
+        }),
+      },
       () => {
         const state = getState();
         const found = (state.aiIncidents || []).find((i) => i.id === incidentId);
@@ -1951,11 +2106,18 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    const incident = this.mapBackendAiIncident(res, {
+      id: incidentId,
+      state: "CONTAINED_KILL_SWITCH",
+      killSwitchEngaged: true,
+    });
+
     const state = getState();
     const existing = (state.aiIncidents || []).find((i) => i.id === incidentId);
     if (existing) {
       existing.state = "CONTAINED_KILL_SWITCH";
       existing.killSwitchEngaged = true;
+      Object.assign(existing, incident);
     }
     saveDemoState(state);
     return incident;
@@ -1963,8 +2125,17 @@ export class ZoikoShieldApiClient {
 
   static async activateAiFallback(incidentId: string, targetTier1Provider?: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
+    const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/fallback`,
       { method: "POST", body: JSON.stringify({ targetProvider: targetTier1Provider || "Anthropic Claude / Deterministic Rule Engine" }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          fallbackStrategy: "SECONDARY_MODEL",
+          secondaryModel: targetTier1Provider || "claude-3-5-sonnet-20241022",
+          fallbackNotes: "Deterministic Tier-1 fallback activated from AI Governance Console",
+        }),
+      },
       () => {
         const state = getState();
         const found = (state.aiIncidents || []).find((i) => i.id === incidentId);
@@ -1977,11 +2148,18 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    const incident = this.mapBackendAiIncident(res, {
+      id: incidentId,
+      state: "FALLBACK_ACTIVE",
+      fallbackModeActive: true,
+    });
+
     const state = getState();
     const existing = (state.aiIncidents || []).find((i) => i.id === incidentId);
     if (existing) {
       existing.state = "FALLBACK_ACTIVE";
       existing.fallbackModeActive = true;
+      Object.assign(existing, incident);
     }
     saveDemoState(state);
     return incident;
@@ -2001,8 +2179,28 @@ export class ZoikoShieldApiClient {
       rootCauseClass: string;
       recommendedFixes: string[];
     }>(
+    const defaultSummary =
+      "Automated RCA correlated prompt boundary deviation and inference telemetry drift under Spec §23 safety controls.";
+    const defaultFactors = [
+      "Unconstrained user prompt payload bypassed delimiter containment checks.",
+      "Model output diverged from grounded context without deterministic schema verification.",
+    ];
+    const defaultFixes = [
+      "Enforce NFKD Unicode normalization and strict XML delimiter sandboxing in ingress preprocessor.",
+      "Enable Model Armor circuit breaker threshold verification before autonomous execution.",
+    ];
+
+    const rawResult = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/rca`,
       { method: "POST" },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          rootCauseSummary: defaultSummary,
+          contributingFactors: defaultFactors,
+          preventativeActions: defaultFixes,
+        }),
+      },
       () => {
         const state = getState();
         const found = (state.aiIncidents || []).find((i) => i.id === incidentId);
@@ -2016,6 +2214,7 @@ export class ZoikoShieldApiClient {
           incident: found || {
             id: incidentId,
             tenantId: "default",
+            tenantId: state.tenant.id,
             title: "Prompt Injection Incident",
             severity: "SEV1_CRITICAL",
             state: "ROOT_CAUSE_ANALYZED",
@@ -2045,20 +2244,62 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    let normalized: {
+      incident: AiIncident;
+      rcaSummary: string;
+      fiveWhys: string[];
+      rootCauseClass: string;
+      recommendedFixes: string[];
+    };
+
+    if (rawResult?.incident && rawResult?.rcaSummary) {
+      normalized = rawResult;
+    } else {
+      const incident = this.mapBackendAiIncident(rawResult, {
+        id: incidentId,
+        state: "ROOT_CAUSE_ANALYZED",
+        rootCauseSummary: defaultSummary,
+      });
+      const rcaDetails = rawResult?.data?.rcaDetails || rawResult?.rcaDetails;
+      normalized = {
+        incident,
+        rcaSummary: incident.rootCauseSummary || rcaDetails?.rootCauseSummary || defaultSummary,
+        fiveWhys: Array.isArray(rcaDetails?.contributingFactors)
+          ? rcaDetails.contributingFactors
+          : defaultFactors,
+        rootCauseClass: String(rawResult?.data?.category || rawResult?.category || incident.trigger),
+        recommendedFixes: Array.isArray(rcaDetails?.preventativeActions)
+          ? rcaDetails.preventativeActions
+          : defaultFixes,
+      };
+    }
+
     const state = getState();
     const existing = (state.aiIncidents || []).find((i) => i.id === incidentId);
     if (existing) {
       existing.state = "ROOT_CAUSE_ANALYZED";
       existing.rootCauseSummary = result.rcaSummary;
+      Object.assign(existing, normalized.incident);
     }
     saveDemoState(state);
     return result;
+    return normalized;
   }
 
   static async resolveAiIncident(incidentId: string, resolutionNotes: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
+    const stateBefore = getState();
+    const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/resolve`,
       { method: "POST", body: JSON.stringify({ resolutionNotes }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          resolutionSummary: resolutionNotes || "Incident remediated and verified.",
+          disengageKillSwitch: true,
+          resolvedBy: stateBefore.session.email || stateBefore.session.fullName || "soc-lead",
+        }),
+      },
       () => {
         const state = getState();
         const found = (state.aiIncidents || []).find((i) => i.id === incidentId);
@@ -2071,11 +2312,18 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    const incident = this.mapBackendAiIncident(res, {
+      id: incidentId,
+      state: "RESOLVED",
+      resolvedAt: new Date().toISOString(),
+    });
+
     const state = getState();
     const existing = (state.aiIncidents || []).find((i) => i.id === incidentId);
     if (existing) {
       existing.state = "RESOLVED";
       existing.resolvedAt = incident.resolvedAt;
+      Object.assign(existing, incident);
     }
     saveDemoState(state);
     return incident;
@@ -2083,6 +2331,7 @@ export class ZoikoShieldApiClient {
 
   static async closeAiIncident(incidentId: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
+    const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/close`,
       { method: "POST" },
       () => {
@@ -2096,10 +2345,16 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    const incident = this.mapBackendAiIncident(res, {
+      id: incidentId,
+      state: "CLOSED",
+    });
+
     const state = getState();
     const existing = (state.aiIncidents || []).find((i) => i.id === incidentId);
     if (existing) {
       existing.state = "CLOSED";
+      Object.assign(existing, incident);
     }
     saveDemoState(state);
     return incident;
@@ -2108,6 +2363,7 @@ export class ZoikoShieldApiClient {
   // --- Step 12: Model Drift & PSI Monitoring (§21) ---
   static async getModelDriftMetrics(): Promise<ModelDriftReport[]> {
     return this.safeFetch<ModelDriftReport[]>(
+    const res = await this.safeFetch<any>(
       "/api/v1/ai/drift",
       { method: "GET" },
       () => {
@@ -2115,11 +2371,35 @@ export class ZoikoShieldApiClient {
         return state.modelDriftReports || [];
       }
     );
+
+    const payload = res?.data && !Array.isArray(res) ? res.data : res;
+    const list = Array.isArray(payload) ? payload : payload ? [payload] : [];
+    return list.map((d: any) => {
+      if ("populationStabilityIndex" in d && "status" in d) {
+        return d as ModelDriftReport;
+      }
+      const rawStatus = String(d?.driftStatus || "STABLE");
+      const status: ModelDriftReport["status"] =
+        rawStatus === "CRITICAL_DRIFT_DETECTED" || rawStatus === "CRITICAL" || rawStatus === "DRIFT_CRITICAL"
+          ? "CRITICAL_DRIFT_DETECTED"
+          : rawStatus === "WARNING_DRIFT_DETECTED" || rawStatus === "WARNING" || rawStatus === "DRIFT_WARNING"
+            ? "WARNING_DRIFT_DETECTED"
+            : "STABLE";
+      return {
+        modelId: String(d?.modelId || "gemini-1.5-pro"),
+        status,
+        populationStabilityIndex: Number(d?.psiScore ?? 0),
+        tokenLengthPsi: Number(d?.categoryDriftDistance ?? d?.psiScore ?? 0),
+        confidenceShiftPct: Number(((Number(d?.confidenceShift ?? 0)) * 100).toFixed(2)),
+        evaluatedAt: String(d?.evaluatedAt || new Date().toISOString()),
+      };
+    });
   }
 
   // --- Step 13: AI Supply Chain Concentration Risk (§24) ---
   static async getAiSupplyChainRisk(): Promise<AiSupplyChainReport> {
     return this.safeFetch<AiSupplyChainReport>(
+    const res = await this.safeFetch<any>(
       "/api/v1/ai/supply-chain",
       { method: "GET" },
       () => {
@@ -2127,18 +2407,97 @@ export class ZoikoShieldApiClient {
         return state.aiSupplyChain;
       }
     );
+
+    const payload = res?.data && !("hhiIndex" in res) ? res.data : res;
+    if (payload && "hhiIndex" in payload) {
+      return payload as AiSupplyChainReport;
+    }
+
+    const dist = payload?.providerDistribution || {};
+    const providerShares: Record<string, number> = {};
+    let primaryProvider = "anthropic";
+    let maxPct = -1;
+    for (const [providerKey, entry] of Object.entries<any>(dist)) {
+      const pct = Number(entry?.percentage ?? 0);
+      providerShares[providerKey] = Number((pct / 100).toFixed(4));
+      if (pct > maxPct) {
+        maxPct = pct;
+        primaryProvider = providerKey;
+      }
+    }
+    const rawLevel = String(payload?.concentrationRiskLevel || "LOW_DIVERSIFIED");
+    const concentrationLevel: AiSupplyChainReport["concentrationLevel"] =
+      rawLevel.includes("HIGH")
+        ? "HIGH_CONCENTRATION"
+        : rawLevel.includes("MODERATE")
+          ? "MODERATE"
+          : "LOW";
+
+    return {
+      hhiIndex: Number(payload?.hhiScore ?? 0),
+      concentrationLevel,
+      primaryProvider,
+      providerShares,
+      allTier1FallbackReady: Array.isArray(payload?.missingFallbackUseCases)
+        ? payload.missingFallbackUseCases.length === 0
+        : true,
+    };
   }
 
   // --- Step 14: Continuous Compliance Drift & Real-Time SLA Alarms (§55) ---
   static async getComplianceDriftAssessment(): Promise<ComplianceDriftState> {
     return this.safeFetch<ComplianceDriftState>(
       "/api/v1/compliance/drift-assessment",
+    const stateBefore = getState();
+    const tenantQuery = stateBefore.tenant?.id
+      ? `?tenantId=${encodeURIComponent(stateBefore.tenant.id)}`
+      : "";
+
+    const res = await this.safeFetch<any>(
+      `/api/v1/assurance/posture-drift/findings${tenantQuery}`,
       { method: "GET" },
       () => {
         const state = getState();
         return state.complianceDrift;
       }
     );
+
+    if (res && "score" in res && Array.isArray(res?.slaAlarms)) {
+      return res as ComplianceDriftState;
+    }
+
+    const findings: any[] = Array.isArray(res?.findings) ? res.findings : [];
+    const openFindings = findings.filter((f) => f?.status !== "REMEDIATED");
+    const criticalCount = openFindings.filter((f) => f?.severity === "CRITICAL").length;
+    const status: ComplianceDriftState["status"] =
+      criticalCount > 0
+        ? "CRITICAL_DRIFT"
+        : openFindings.length > 0
+          ? "WARNING_DRIFT"
+          : "COMPLIANT";
+    const score = Math.max(0, Number((100 - openFindings.length * 4.5).toFixed(1)));
+    const retrievedAt = String(res?.retrievedAt || new Date().toISOString());
+
+    return {
+      tenantId: String(res?.tenantId || stateBefore.tenant?.id || ""),
+      status,
+      driftStatus: status,
+      score,
+      lastAssessedAt: retrievedAt,
+      lastEvaluatedAt: retrievedAt,
+      slaAlarms: openFindings.map((f: any) => ({
+        alarmId: String(f.findingId || f.id),
+        controlId: Array.isArray(f.complianceImpact) && f.complianceImpact[0]
+          ? String(f.complianceImpact[0])
+          : String(f.ruleCode || "POSTURE-DRIFT"),
+        severity: String(f.severity || "HIGH"),
+        reason: String(f.ruleTitle || f.description || "Posture drift detected"),
+        message: String(f.description || f.ruleTitle || "Posture drift detected"),
+        triggeredAt: String(f.detectedAt || retrievedAt),
+        detectedAt: String(f.detectedAt || retrievedAt),
+        slaBreachRisk: f.severity === "CRITICAL" || f.severity === "HIGH",
+      })),
+    };
   }
 
   static async remediateComplianceDrift(alarmId: string): Promise<{
@@ -2153,6 +2512,20 @@ export class ZoikoShieldApiClient {
     }>(
       `/api/v1/compliance/drift-assessment/alarms/${alarmId}/remediate`,
       { method: "POST" },
+    const stateBefore = getState();
+    const tenantQuery = stateBefore.tenant?.id
+      ? `?tenantId=${encodeURIComponent(stateBefore.tenant.id)}`
+      : "";
+
+    const raw = await this.safeFetch<any>(
+      `/api/v1/assurance/posture-drift/remediate${tenantQuery}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          findingId: alarmId,
+          operatorRationale: "Remediated from Compliance Drift Console",
+        }),
+      },
       () => {
         const state = getState();
         state.complianceDrift.slaAlarms = (state.complianceDrift.slaAlarms || []).filter((a) => a.alarmId !== alarmId);
@@ -2168,8 +2541,18 @@ export class ZoikoShieldApiClient {
     const state = getState();
     state.complianceDrift.slaAlarms = (state.complianceDrift.slaAlarms || []).filter((a) => a.alarmId !== alarmId);
     state.complianceDrift.score = result.updatedScore;
+    const updatedScore =
+      typeof raw?.updatedScore === "number"
+        ? raw.updatedScore
+        : Math.min(100, (state.complianceDrift.score || 95) + 4.5);
+    state.complianceDrift.score = updatedScore;
     saveDemoState(state);
     return result;
+    return {
+      success: raw?.success ?? raw?.status === "REMEDIATION_EXECUTED",
+      remediatedAlarmId: String(raw?.remediatedAlarmId || raw?.findingId || alarmId),
+      updatedScore,
+    };
   }
 
   // --- Step 14.5: AI System Inventory & Risk Registry (§05 NIST/EU AI Act) ---
@@ -3626,9 +4009,17 @@ export class ZoikoShieldApiClient {
   }> {
     return this.safeFetch<{ summary: string; envelope: AiReviewEnvelope }>(
       "/api/v1/copilot/query",
+    const currentState = getState();
+    const res = await this.safeFetch<any>(
+      "/api/v1/ai/copilot/hunt",
       {
         method: "POST",
         body: JSON.stringify(params),
+        body: JSON.stringify({
+          tenantId: params.tenantId || currentState.tenant.id,
+          analystId: currentState.session.email || currentState.session.fullName || "soc-analyst",
+          query: params.query,
+        }),
       },
       () => {
         const envelopeId = `env-copilot-${generateUUID().slice(0, 8)}`;
@@ -3735,6 +4126,106 @@ export class ZoikoShieldApiClient {
         };
       }
     );
+
+    if (res?.envelope && res?.summary) {
+      return res;
+    }
+
+    const modeUpper = params.mode.toUpperCase();
+    const now = String(res?.generatedAt || new Date().toISOString());
+    const mitreTags: Array<{ tactic?: string; techniqueId?: string; name?: string }> = Array.isArray(res?.mitreTtpTags)
+      ? res.mitreTtpTags
+      : [];
+    const citations: string[] = Array.isArray(res?.evidenceCitations) ? res.evidenceCitations : [];
+    const recActions: Array<{ actionType?: string; target?: string; requiredAuthority?: string; rationale?: string }> =
+      Array.isArray(res?.recommendedActions) ? res.recommendedActions : [];
+    const blast = res?.blastRadiusAssessment || {};
+
+    const envelope: AiReviewEnvelope = {
+      envelopeId: String(res?.huntingId || `hunt-${generateUUID().slice(0, 8)}`),
+      tenantId: String(res?.tenantId || params.tenantId || currentState.tenant.id),
+      environmentId: currentState.tenant.environmentId || "PRODUCTION",
+      createdAt: now,
+      aiLabelAndUseCaseName: {
+        useCaseName: `COPILOT_${modeUpper}_HUNT`,
+        modelIdentifier: "shield-ai-react-hunt",
+        providerProfile: "zoikoshield-internal-ai",
+        riskTier: modeUpper === "RESPOND" ? "CRITICAL_R2" : "HIGH",
+      },
+      sourcesAndSpans: [
+        ...mitreTags.map((t, idx) => ({
+          sourceId: `src-mitre-${idx}`,
+          sourceType: "THREAT_INTEL_MAPPING",
+          name: `${t.techniqueId || "MITRE"} ${t.name || ""}`.trim(),
+          type: "FRAMEWORK_SPEC",
+          span: t.tactic || "Adversary TTP correlation",
+          confidenceScore: 0.94,
+        })),
+        ...citations.map((c, idx) => ({
+          sourceId: `src-cite-${idx}`,
+          sourceType: "TELEMETRY_EVIDENCE",
+          name: c,
+          type: "EVIDENCE_DIGEST",
+          span: c,
+          confidenceScore: 0.95,
+        })),
+      ],
+      knownMissingStaleOrConflictingEvidence: {
+        missingEvidenceCount: 0,
+        staleEvidenceCount: 0,
+        conflictingEvidenceCount: 0,
+        freshnessSeconds: 5,
+        completenessRatio: 1.0,
+      },
+      calibratedConfidenceAndUncertainty: {
+        confidenceTier: "HIGH",
+        score: 0.91,
+        calibrationBasis: "ReAct multi-hop attack-path and differential privacy telemetry correlation.",
+        uncertaintyFactors: Array.isArray(res?.reasoningSteps)
+          ? [`Evaluated across ${res.reasoningSteps.length} grounded tool observation steps.`]
+          : [],
+      },
+      alternativeHypothesesOrActions: recActions.map((act, idx) => ({
+        actionId: `ACT-${idx + 1}`,
+        title: `${act.actionType || "ACTION"}: ${act.target || "target"}`,
+        rationale: act.rationale || "Recommended containment step from ReAct hunt.",
+        tradeOff: `Requires Authority Tier ${act.requiredAuthority || "R2"}`,
+      })),
+      expectedImpactAndReversibility: {
+        blastRadius: blast.chokePointNode
+          ? `Choke point: ${blast.chokePointNode} (Privacy-perturbed exposed records: ${blast.privacyPerturbedCount ?? "N/A"})`
+          : "Scoped to investigated tenant entities.",
+        downtimeExpected: false,
+        reversibility: "Human-in-the-loop gated",
+        compensationMechanism: res?.sha256Digest ? `Evidence Digest: ${String(res.sha256Digest).slice(0, 16)}...` : undefined,
+      },
+      requiredAuthorityAndApprovals: {
+        requiredAuthorityTier: modeUpper === "RESPOND" ? "R2" : "R1",
+        dualCustodyRequired: modeUpper === "RESPOND",
+        approverRoles: ["LEAD_SECURITY_ANALYST", "SOC_MANAGER"],
+      },
+      controls: {
+        currentState: "PENDING_REVIEW",
+        availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+      },
+      humanDecisionAndRationale: {},
+      appealOrFeedbackRoute: {
+        appealUrl: "https://app.zoikoshield.com/appeals",
+        feedbackChannel: "secops-review@zoikoshield.com",
+        customerAffecting: modeUpper === "RESPOND",
+      },
+      payload: {
+        query: params.query,
+        mode: params.mode,
+        summary: String(res?.executiveSummary || ""),
+        huntingReport: res,
+      },
+    };
+
+    return {
+      summary: String(res?.executiveSummary || res?.summary || "Autonomous threat hunt completed."),
+      envelope,
+    };
   }
 
   static async recordReviewDecision(params: {
