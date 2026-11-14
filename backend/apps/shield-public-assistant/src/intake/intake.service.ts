@@ -9,7 +9,8 @@ import {
 import { AssistantConfigService } from '../config/assistant-config.service';
 import { hasSecret } from '../conversation/classifier';
 
-export type Journey = 'demo' | 'support' | 'quote' | 'trust' | 'tech' | 'onboarding' | 'privacy';
+export type Journey =
+  'demo' | 'support' | 'quote' | 'trust' | 'tech' | 'onboarding' | 'privacy';
 
 export const JOURNEYS: Journey[] = [
   'demo',
@@ -31,7 +32,10 @@ const REFERENCE_PREFIX: Record<Journey, string> = {
   privacy: 'PRIVACY',
 };
 
-const FLAG_FOR_JOURNEY: Record<Journey, keyof ReturnType<AssistantConfigService['flags']>> = {
+const FLAG_FOR_JOURNEY: Record<
+  Journey,
+  keyof ReturnType<AssistantConfigService['flags']>
+> = {
   demo: 'assistant_lead_submit',
   support: 'assistant_support_submit',
   quote: 'assistant_lead_submit',
@@ -74,7 +78,10 @@ export class IntakeService {
   private readonly submissions = new Map<string, Submission>();
   private readonly byReference = new Map<string, string>();
   private readonly outbox: Array<Record<string, unknown>> = [];
-  private readonly marketingPreferences = new Map<string, Record<string, unknown>>();
+  private readonly marketingPreferences = new Map<
+    string,
+    Record<string, unknown>
+  >();
 
   constructor(private readonly config: AssistantConfigService) {}
 
@@ -92,7 +99,10 @@ export class IntakeService {
   submit(journey: Journey, body: Record<string, unknown>) {
     const flags = this.config.flags();
     if (flags.assistant_kill) {
-      throw this.disabled(journey, 'The assistant is in static mode and cannot take requests right now.');
+      throw this.disabled(
+        journey,
+        'The assistant is in static mode and cannot take requests right now.',
+      );
     }
     const flag = FLAG_FOR_JOURNEY[journey];
     if (!flags[flag]) {
@@ -106,28 +116,48 @@ export class IntakeService {
 
     const idempotencyKey = String(body.idempotency_key ?? '');
     if (!idempotencyKey) {
-      throw this.badRequest('IDEMPOTENCY_KEY_REQUIRED', 'Start the request again from the beginning.', {
-        idempotency_key: ['Required'],
-      });
+      throw this.badRequest(
+        'IDEMPOTENCY_KEY_REQUIRED',
+        'Start the request again from the beginning.',
+        {
+          idempotency_key: ['Required'],
+        },
+      );
     }
     const record = this.keys.get(idempotencyKey);
-    if (!record || record.expiresAt <= Date.now() || record.journey !== journey) {
-      throw this.badRequest('IDEMPOTENCY_KEY_INVALID', 'This request key has expired. Start the request again.', {
-        idempotency_key: ['Expired or invalid'],
-      });
+    if (
+      !record ||
+      record.expiresAt <= Date.now() ||
+      record.journey !== journey
+    ) {
+      throw this.badRequest(
+        'IDEMPOTENCY_KEY_INVALID',
+        'This request key has expired. Start the request again.',
+        {
+          idempotency_key: ['Expired or invalid'],
+        },
+      );
     }
 
     if (body.consent !== true) {
-      throw this.badRequest('CONSENT_REQUIRED', 'Confirm that you agree to the notice before submitting.', {
-        consent: ['Required'],
-      });
+      throw this.badRequest(
+        'CONSENT_REQUIRED',
+        'Confirm that you agree to the notice before submitting.',
+        {
+          consent: ['Required'],
+        },
+      );
     }
     const noticeVersion = String(body.notice_version ?? '');
     const expectedNotice = this.config.policyVersions().privacy_notice;
     if (noticeVersion !== expectedNotice) {
-      throw this.badRequest('NOTICE_VERSION_MISMATCH', 'The notice has changed. Reload the form and try again.', {
-        notice_version: ['Out of date'],
-      });
+      throw this.badRequest(
+        'NOTICE_VERSION_MISMATCH',
+        'The notice has changed. Reload the form and try again.',
+        {
+          notice_version: ['Out of date'],
+        },
+      );
     }
 
     const fields = this.validateFields(journey, body);
@@ -152,7 +182,9 @@ export class IntakeService {
       publicReference: reference,
       status: 'ACCEPTED',
       payloadEncrypted: this.encrypt(JSON.stringify(fields)),
-      payloadHash: createHash('sha256').update(JSON.stringify(fields)).digest('hex'),
+      payloadHash: createHash('sha256')
+        .update(JSON.stringify(fields))
+        .digest('hex'),
       market: String(body.market ?? 'undecided'),
       locale: String(body.locale ?? 'en-US'),
       noticeVersion,
@@ -167,13 +199,16 @@ export class IntakeService {
 
     if (marketingOptIn && fields.work_email) {
       // Segregated from the request: the request itself never depends on this.
-      this.marketingPreferences.set(createHash('sha256').update(String(fields.work_email)).digest('hex'), {
-        opted_in: true,
-        notice_version: noticeVersion,
-        purpose: 'marketing',
-        source: `public-assistant:${journey}`,
-        recorded_at: new Date(now).toISOString(),
-      });
+      this.marketingPreferences.set(
+        createHash('sha256').update(String(fields.work_email)).digest('hex'),
+        {
+          opted_in: true,
+          notice_version: noticeVersion,
+          purpose: 'marketing',
+          source: `public-assistant:${journey}`,
+          recorded_at: new Date(now).toISOString(),
+        },
+      );
     }
 
     const response = {
@@ -215,7 +250,8 @@ export class IntakeService {
       kind: submission.kind,
       accepted_at: new Date(submission.createdAt).toISOString(),
       delivery: 'ACCEPTED_FOR_TEAM',
-      message: 'The request is durably accepted. Delivery state is tracked separately by the team.',
+      message:
+        'The request is durably accepted. Delivery state is tracked separately by the team.',
     };
   }
 
@@ -234,40 +270,60 @@ export class IntakeService {
     };
   }
 
-  private validateFields(journey: Journey, body: Record<string, unknown>): Record<string, unknown> {
+  private validateFields(
+    journey: Journey,
+    body: Record<string, unknown>,
+  ): Record<string, unknown> {
     const required = (name: string, max?: number) => {
       const value = body[name];
       if (typeof value !== 'string' || value.trim().length === 0) {
-        throw this.badRequest('FIELD_REQUIRED', 'Complete the required fields.', {
-          [name]: ['Required'],
-        });
+        throw this.badRequest(
+          'FIELD_REQUIRED',
+          'Complete the required fields.',
+          {
+            [name]: ['Required'],
+          },
+        );
       }
       const trimmed = value.trim();
       if (max && [...trimmed].length > max) {
-        throw this.badRequest('FIELD_TOO_LONG', 'One of the fields is too long.', {
-          [name]: [`Must be ${max} characters or fewer`],
-        });
+        throw this.badRequest(
+          'FIELD_TOO_LONG',
+          'One of the fields is too long.',
+          {
+            [name]: [`Must be ${max} characters or fewer`],
+          },
+        );
       }
       return trimmed;
     };
     const optional = (name: string, max?: number) => {
       const value = body[name];
-      if (value === undefined || value === null || value === '') return undefined;
+      if (value === undefined || value === null || value === '')
+        return undefined;
       if (typeof value !== 'string') return undefined;
       const trimmed = value.trim();
       if (max && [...trimmed].length > max) {
-        throw this.badRequest('FIELD_TOO_LONG', 'One of the fields is too long.', {
-          [name]: [`Must be ${max} characters or fewer`],
-        });
+        throw this.badRequest(
+          'FIELD_TOO_LONG',
+          'One of the fields is too long.',
+          {
+            [name]: [`Must be ${max} characters or fewer`],
+          },
+        );
       }
       return trimmed;
     };
 
     const workEmail = required('work_email', 254);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail)) {
-      throw this.badRequest('EMAIL_INVALID', 'Enter a valid work email address.', {
-        work_email: ['Enter a valid email address'],
-      });
+      throw this.badRequest(
+        'EMAIL_INVALID',
+        'Enter a valid work email address.',
+        {
+          work_email: ['Enter a valid email address'],
+        },
+      );
     }
     const organization = required('organization', 160);
     const contactName = optional('contact_name', 120);
@@ -314,21 +370,29 @@ export class IntakeService {
       ingestion_band: optional('ingestion_band', 32),
       persona: optional('persona', 64),
       topic_ids: Array.isArray(body.topic_ids)
-        ? body.topic_ids.filter((item): item is string => typeof item === 'string').slice(0, 20)
+        ? body.topic_ids
+            .filter((item): item is string => typeof item === 'string')
+            .slice(0, 20)
         : undefined,
       transcript_share: body.transcript_share === true,
       marketing_opt_in: body.marketing_opt_in === true,
     };
   }
 
-  private fingerprint(journey: Journey, fields: Record<string, unknown>): string {
+  private fingerprint(
+    journey: Journey,
+    fields: Record<string, unknown>,
+  ): string {
     const canonical = JSON.stringify(
       Object.keys(fields)
         .sort()
-        .reduce<Record<string, unknown>>((acc, key) => {
-          acc[key] = fields[key];
-          return acc;
-        }, { journey }),
+        .reduce<Record<string, unknown>>(
+          (acc, key) => {
+            acc[key] = fields[key];
+            return acc;
+          },
+          { journey },
+        ),
     );
     return createHash('sha256').update(canonical).digest('hex');
   }
@@ -343,14 +407,22 @@ export class IntakeService {
   private encrypt(plain: string): string {
     const configured = process.env.PUBLIC_ASSISTANT_PAYLOAD_KEY;
     if (process.env.NODE_ENV === 'production' && !configured) {
-      throw this.disabled('demo', 'Request intake is not configured for encryption in this environment.');
+      throw this.disabled(
+        'demo',
+        'Request intake is not configured for encryption in this environment.',
+      );
     }
     const key = configured
       ? createHash('sha256').update(configured).digest()
-      : createHash('sha256').update('dev-public-assistant-payload-key').digest();
+      : createHash('sha256')
+          .update('dev-public-assistant-payload-key')
+          .digest();
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', key, iv);
-    const encrypted = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(plain, 'utf8'),
+      cipher.final(),
+    ]);
     const tag = cipher.getAuthTag();
     return `v1:${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
   }
@@ -358,13 +430,19 @@ export class IntakeService {
   private redactLine(line: string): string {
     let result = line.replace(/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED_KEY]');
     result = result.replace(/\bsk-[A-Za-z0-9]{20,}\b/g, '[REDACTED_KEY]');
-    result = result.replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTED_KEY]');
+    result = result.replace(
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+      '[REDACTED_KEY]',
+    );
     result = result.replace(/\b(?:\d[ -]*?){13,19}\b/g, '[REDACTED_NUMBER]');
     result = result.replace(
       /((?:password|passwd|pwd|api[_-]?key|secret|access[_-]?token|refresh[_-]?token|client[_-]?secret)\s*[:=]\s*)\S+/gi,
       '$1[REDACTED]',
     );
-    result = result.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[REDACTED_EMAIL]');
+    result = result.replace(
+      /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+      '[REDACTED_EMAIL]',
+    );
     return result;
   }
 
@@ -375,7 +453,11 @@ export class IntakeService {
     }
   }
 
-  private badRequest(code: string, message: string, fieldErrors?: Record<string, string[]>) {
+  private badRequest(
+    code: string,
+    message: string,
+    fieldErrors?: Record<string, string[]>,
+  ) {
     return new BadRequestException({
       error_code: code,
       user_safe_message: message,
@@ -386,7 +468,8 @@ export class IntakeService {
   private conflict() {
     return new ConflictException({
       error_code: 'IDEMPOTENCY_CONFLICT',
-      user_safe_message: 'This request key was already used with different details. Start a new request.',
+      user_safe_message:
+        'This request key was already used with different details. Start a new request.',
     });
   }
 

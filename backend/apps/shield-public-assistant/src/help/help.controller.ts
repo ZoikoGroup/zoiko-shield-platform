@@ -115,7 +115,10 @@ export class HelpController {
     const nextIndex = nextStepId
       ? guide.steps.findIndex((step) => step.id === nextStepId)
       : currentIndex + (body.choice ? 1 : 0);
-    const next = nextIndex >= 0 && nextIndex < guide.steps.length ? guide.steps[nextIndex] : undefined;
+    const next =
+      nextIndex >= 0 && nextIndex < guide.steps.length
+        ? guide.steps[nextIndex]
+        : undefined;
 
     return {
       guide_id: guide.id,

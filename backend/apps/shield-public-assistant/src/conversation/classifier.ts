@@ -118,7 +118,11 @@ export function classify(content: string): Classification {
     };
   }
   if (INJECTION_PATTERNS.some((pattern) => pattern.test(text))) {
-    return { intent: 'INJECTION', reason: 'instruction-override', blocked: true };
+    return {
+      intent: 'INJECTION',
+      reason: 'instruction-override',
+      blocked: true,
+    };
   }
   if (PRIVILEGED_PATTERNS.some((pattern) => pattern.test(text))) {
     return {
@@ -136,17 +140,36 @@ export function classify(content: string): Classification {
     };
   }
   if (DEMO_PATTERNS.some((pattern) => pattern.test(text))) {
-    return { intent: 'WRITE_DEMO', writeFlow: 'demo', reason: 'demo-intent', blocked: false };
+    return {
+      intent: 'WRITE_DEMO',
+      writeFlow: 'demo',
+      reason: 'demo-intent',
+      blocked: false,
+    };
   }
   if (QUOTE_PATTERNS.some((pattern) => pattern.test(text))) {
-    return { intent: 'WRITE_QUOTE', writeFlow: 'quote', reason: 'quote-intent', blocked: false };
+    return {
+      intent: 'WRITE_QUOTE',
+      writeFlow: 'quote',
+      reason: 'quote-intent',
+      blocked: false,
+    };
   }
   if (SUPPORT_PATTERNS.some((pattern) => pattern.test(text))) {
-    return { intent: 'WRITE_SUPPORT', writeFlow: 'support', reason: 'support-intent', blocked: false };
+    return {
+      intent: 'WRITE_SUPPORT',
+      writeFlow: 'support',
+      reason: 'support-intent',
+      blocked: false,
+    };
   }
 
   if (IDENTITY_PATTERNS.some((pattern) => pattern.test(text))) {
-    return { intent: 'IDENTITY', reason: 'identity-or-greeting', blocked: false };
+    return {
+      intent: 'IDENTITY',
+      reason: 'identity-or-greeting',
+      blocked: false,
+    };
   }
 
   return { intent: 'INFO', reason: 'information', blocked: false };
@@ -155,11 +178,17 @@ export function classify(content: string): Classification {
 /** Removes obvious secret-shaped values before anything is logged or stored. */
 export function redact(text: string): string {
   let result = text;
-  result = result.replace(/\b((?:password|passwd|pwd|passcode|pin)\s+(?:is|was)\s+)\S+/gi, '$1[REDACTED]');
+  result = result.replace(
+    /\b((?:password|passwd|pwd|passcode|pin)\s+(?:is|was)\s+)\S+/gi,
+    '$1[REDACTED]',
+  );
   result = result.replace(/\bAKIA[0-9A-Z]{16}\b/g, '[REDACTED_KEY]');
   result = result.replace(/\bsk-[A-Za-z0-9]{20,}\b/g, '[REDACTED_KEY]');
   result = result.replace(/\bghp_[A-Za-z0-9]{20,}\b/g, '[REDACTED_KEY]');
-  result = result.replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTED_KEY]');
+  result = result.replace(
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+    '[REDACTED_KEY]',
+  );
   result = result.replace(/\b(?:\d[ -]*?){13,19}\b/g, '[REDACTED_NUMBER]');
   result = result.replace(
     /((?:password|passwd|pwd|api[_-]?key|secret|access[_-]?token|refresh[_-]?token|client[_-]?secret)\s*[:=]\s*)\S+/gi,

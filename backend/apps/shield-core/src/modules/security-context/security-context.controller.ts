@@ -20,7 +20,14 @@ import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { requireEnvironmentId, requireTenantId } from '../../tenant-context';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { BadRequestException } from '@nestjs/common';
 
 const MANUAL_SOURCE_ACCOUNT = 'manual';
@@ -95,7 +102,13 @@ export class ResolveIdentityRequestDto {
   externalType?: string;
 
   @IsOptional()
-  @IsIn(['HUMAN', 'SERVICE_ACCOUNT', 'WORKLOAD', 'APPLICATION', 'MANAGED_IDENTITY'])
+  @IsIn([
+    'HUMAN',
+    'SERVICE_ACCOUNT',
+    'WORKLOAD',
+    'APPLICATION',
+    'MANAGED_IDENTITY',
+  ])
   identityType?:
     | 'HUMAN'
     | 'SERVICE_ACCOUNT'
@@ -127,6 +140,22 @@ export class SecurityContextController {
       limit ? Number(limit) : 50,
     );
     return { statusCode: HttpStatus.OK, data: assets };
+  }
+
+  @Get('assets/resolution-decisions')
+  async getAssetResolutionDecisions(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('tenantId') queryTenantId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
+    const take = Math.min(Math.max(Number(limit) || 100, 1), 500);
+    const decisions = await this.prisma.resolutionDecision.findMany({
+      where: { tenant_id: tenantId, entity_type: 'ASSET' },
+      take,
+      orderBy: { created_at: 'desc' },
+    });
+    return { statusCode: HttpStatus.OK, data: decisions };
   }
 
   @Get('assets/:assetId')

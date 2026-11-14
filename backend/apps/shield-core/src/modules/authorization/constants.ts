@@ -61,7 +61,8 @@ export const PERMISSION_CODES = {
   RESPONSE_PROPOSAL_APPROVE: 'response_proposal:approve',
   RESPONSE_ACTION_EXECUTE: 'response_action:execute',
   CONTROL_IMPLEMENTATION_CREATE: 'control_implementation:create',
-  CONTROL_IMPLEMENTATION_MARK_NOT_APPLICABLE: 'control_implementation:mark_not_applicable',
+  CONTROL_IMPLEMENTATION_MARK_NOT_APPLICABLE:
+    'control_implementation:mark_not_applicable',
   AUDIT_PACKAGE_APPROVE: 'audit_package:approve',
   AI_INVOKE_USE_CASE: 'ai:invoke_use_case',
   AI_REVIEW_OUTPUT: 'ai:review_output',

@@ -26,7 +26,8 @@ export class OriginCsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
     const method = request.method.toUpperCase();
-    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS')
+      return true;
 
     if (request.header('x-zs-assistant') !== '1') {
       throw new ForbiddenException({
@@ -37,7 +38,10 @@ export class OriginCsrfGuard implements CanActivate {
 
     const origin = request.header('origin');
     if (origin) {
-      const allowed = (process.env.PUBLIC_ASSISTANT_ALLOWED_ORIGINS ?? DEFAULT_ORIGINS.join(','))
+      const allowed = (
+        process.env.PUBLIC_ASSISTANT_ALLOWED_ORIGINS ??
+        DEFAULT_ORIGINS.join(',')
+      )
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean);

@@ -27,7 +27,9 @@ async function bootstrap() {
   app.useGlobalFilters(new ErrorEnvelopeFilter());
   app.useGlobalInterceptors(new ApiEnvelopeInterceptor());
 
-  const origins = (process.env.PUBLIC_ASSISTANT_ALLOWED_ORIGINS ?? DEFAULT_ORIGINS.join(','))
+  const origins = (
+    process.env.PUBLIC_ASSISTANT_ALLOWED_ORIGINS ?? DEFAULT_ORIGINS.join(',')
+  )
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
@@ -36,18 +38,22 @@ async function bootstrap() {
     origin: origins,
     credentials: true,
     methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['content-type', 'x-zs-assistant', 'x-correlation-id', 'x-requested-with'],
+    allowedHeaders: [
+      'content-type',
+      'x-zs-assistant',
+      'x-correlation-id',
+      'x-requested-with',
+    ],
     exposedHeaders: ['x-correlation-id', 'retry-after'],
   });
 
   const port = Number(process.env.PUBLIC_ASSISTANT_PORT ?? 3006);
   await app.listen(port, '0.0.0.0');
-  // eslint-disable-next-line no-console
+
   console.log(`ZoikoShield public assistant listening on ${port}`);
 }
 
 bootstrap().catch((error) => {
-  // eslint-disable-next-line no-console
   console.error('Unable to start shield-public-assistant', error);
   process.exit(1);
 });

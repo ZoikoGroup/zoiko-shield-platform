@@ -51,7 +51,11 @@ export class LlmService {
     return this.enabled() && Date.now() >= this.openUntil;
   }
 
-  async answer(question: string, sources: PublicSource[], earlier: string[] = []): Promise<LlmAnswer | null> {
+  async answer(
+    question: string,
+    sources: PublicSource[],
+    earlier: string[] = [],
+  ): Promise<LlmAnswer | null> {
     if (!this.available()) return null;
 
     const context = sources
@@ -61,9 +65,10 @@ export class LlmService {
       )
       .join('\n');
     const clean = (text: string) => text.replace(/[<>]/g, ' ');
-    const history = earlier.length > 0
-      ? `\n\nEARLIER VISITOR QUESTIONS (context only, oldest first; use them to resolve words like "it" or "that"):\n${earlier.map((item) => `<question>${clean(item)}</question>`).join('\n')}`
-      : '';
+    const history =
+      earlier.length > 0
+        ? `\n\nEARLIER VISITOR QUESTIONS (context only, oldest first; use them to resolve words like "it" or "that"):\n${earlier.map((item) => `<question>${clean(item)}</question>`).join('\n')}`
+        : '';
     const user = `SOURCES:\n${context}${history}\n\nVISITOR QUESTION (answer this one):\n<question>${clean(question)}</question>`;
 
     const model = process.env.GROQ_MODEL?.trim() || DEFAULT_MODEL;
@@ -105,7 +110,11 @@ export class LlmService {
       this.failures = 0;
       return parsed;
     } catch (error) {
-      this.recordFailure(error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'network');
+      this.recordFailure(
+        error instanceof Error && error.name === 'AbortError'
+          ? 'timeout'
+          : 'network',
+      );
       return null;
     } finally {
       clearTimeout(timer);
@@ -117,9 +126,19 @@ export class LlmService {
       const value = JSON.parse(raw) as Partial<LlmAnswer>;
       const strings = (input: unknown) =>
         Array.isArray(input)
-          ? input.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim())
+          ? input
+              .filter(
+                (item): item is string =>
+                  typeof item === 'string' && item.trim().length > 0,
+              )
+              .map((item) => item.trim())
           : [];
-      const kind = value.kind === 'abstain' ? 'abstain' : value.kind === 'answer' ? 'answer' : null;
+      const kind =
+        value.kind === 'abstain'
+          ? 'abstain'
+          : value.kind === 'answer'
+            ? 'answer'
+            : null;
       if (!kind) return null;
       return {
         kind,
@@ -144,8 +163,10 @@ export class LlmService {
   }
 }
 
-const NEGATION = /\b(?:not|no|never|cannot|can't|can’t|unable|without|n't|won't|won’t)\b/i;
-const CERT_TERMS = /\b(?:soc\s?2|iso\s?27001|iso\s?27017|pci(?:\s?dss)?|hipaa|fedramp|gdpr|csa\s?star)\b/i;
+const NEGATION =
+  /\b(?:not|no|never|cannot|can't|can’t|unable|without|n't|won't|won’t)\b/i;
+const CERT_TERMS =
+  /\b(?:soc\s?2|iso\s?27001|iso\s?27017|pci(?:\s?dss)?|hipaa|fedramp|gdpr|csa\s?star)\b/i;
 
 /**
  * Output guard (fail-closed). Returns a reason if the model output must not be
@@ -156,8 +177,14 @@ export function guardOutput(answer: LlmAnswer): string | null {
   if (text.length === 0) return 'empty';
   if (text.length > 1600) return 'too_long';
   if (/https?:\/\/|www\./i.test(text)) return 'url';
-  if (/[$€£]\s?\d|\b\d[\d,.]*\s?(?:usd|eur|gbp|dollars?|euros?|pounds?)\b/i.test(text)) return 'price';
-  if (/(?:system prompt|my instructions)/i.test(text)) return 'prompt_disclosure';
+  if (
+    /[$€£]\s?\d|\b\d[\d,.]*\s?(?:usd|eur|gbp|dollars?|euros?|pounds?)\b/i.test(
+      text,
+    )
+  )
+    return 'price';
+  if (/(?:system prompt|my instructions)/i.test(text))
+    return 'prompt_disclosure';
   for (const sentence of text.split(/(?<=[.!?\n])\s+/)) {
     // A sentence that declines ("cannot guarantee 99.99% uptime") may repeat the visitor's number.
     if (!NEGATION.test(sentence)) {
@@ -165,7 +192,11 @@ export function guardOutput(answer: LlmAnswer): string | null {
       if (/\b(?:24\s?[x×/]\s?7|99\.\d+)\b/i.test(sentence)) return 'sla_claim';
     }
     if (!CERT_TERMS.test(sentence) || NEGATION.test(sentence)) continue;
-    if (/\b(?:certified|compliant|attested|accredited|holds?|achieved|received|passed|audited)\b/i.test(sentence)) {
+    if (
+      /\b(?:certified|compliant|attested|accredited|holds?|achieved|received|passed|audited)\b/i.test(
+        sentence,
+      )
+    ) {
       return 'certification_claim';
     }
   }

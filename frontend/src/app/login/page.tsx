@@ -160,12 +160,21 @@ function LoginForm() {
           email,
           fullName: authResult.fullName || email.split("@")[0].replace(/[._]/g, " ").toUpperCase(),
           role: (authResult.role || "SECURITY_ANALYST") as "TENANT_OWNER" | "SECURITY_ANALYST" | "SUPER_ADMIN" | "AUDITOR",
+          environment: authResult.environmentId || authResult.environment || prev.session.environment,
+          environmentId: authResult.environmentId || prev.session.environmentId,
+          region: authResult.region || prev.session.region,
           token: authResult.token,
           isAuthenticated: true,
         },
         tenant: {
           ...prev.tenant,
           id: authResult.tenantId,
+          ...(authResult.region
+            ? {
+                homeRegion: authResult.region,
+                dataResidencyRegion: authResult.region,
+              }
+            : {}),
         },
       }));
 
@@ -236,10 +245,13 @@ function LoginForm() {
           role: (authResult.role || "TENANT_OWNER") as any,
           token: authResult.token || `passkey-${Date.now()}`,
           isAuthenticated: true,
+          region: authResult.region || prev.session.region,
         },
         tenant: {
           ...prev.tenant,
           id: authResult.tenantId || prev.tenant.id,
+          environmentId: authResult.environmentId || prev.tenant.environmentId,
+          dataResidencyRegion: authResult.region || prev.tenant.dataResidencyRegion,
         },
       }));
 

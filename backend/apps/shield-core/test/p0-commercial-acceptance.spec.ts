@@ -9,7 +9,11 @@ import { DunningPolicyService } from '../src/modules/dunning/dunning-policy.serv
 import { CommercialKillSwitchService } from '../src/modules/kill-switch/commercial-kill-switch.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { STATUTORY_PROHIBITED_CLAIM_PATTERNS } from '../src/modules/commercial/claim-register.service';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 
 /**
@@ -35,7 +39,11 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
       priceBook: { findFirst: jest.fn() },
       contract: { findUnique: jest.fn(), update: jest.fn() },
       taxRule: { findFirst: jest.fn() },
-      commercialApproval: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
+      commercialApproval: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       commercialKillSwitch: { findMany: jest.fn().mockResolvedValue([]) },
       invoice: { findUnique: jest.fn(), create: jest.fn() },
       meterObservation: { findFirst: jest.fn(), create: jest.fn() },
@@ -52,7 +60,10 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
         AutomatedSlaCreditSettlementService,
         DunningService,
         CommercialKillSwitchService,
-        { provide: ContractStateService, useValue: { updateStatus: jest.fn() } },
+        {
+          provide: ContractStateService,
+          useValue: { updateStatus: jest.fn() },
+        },
         { provide: DunningPolicyService, useValue: { getPolicy: jest.fn() } },
         { provide: PrismaService, useValue: prismaMock },
       ],
@@ -60,16 +71,26 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
 
     catalogService = module.get<CatalogService>(CatalogService);
     taxRuleService = module.get<TaxRuleService>(TaxRuleService);
-    approvalService = module.get<CommercialApprovalService>(CommercialApprovalService);
-    slaSettlementService = module.get<AutomatedSlaCreditSettlementService>(AutomatedSlaCreditSettlementService);
+    approvalService = module.get<CommercialApprovalService>(
+      CommercialApprovalService,
+    );
+    slaSettlementService = module.get<AutomatedSlaCreditSettlementService>(
+      AutomatedSlaCreditSettlementService,
+    );
     dunningService = module.get<DunningService>(DunningService);
-    commercialKillSwitch = module.get<CommercialKillSwitchService>(CommercialKillSwitchService);
+    commercialKillSwitch = module.get<CommercialKillSwitchService>(
+      CommercialKillSwitchService,
+    );
   });
 
   // ── P0-01 to P0-06: Pricing, Jurisdiction, Tenant, Quote & Maker-Checker ──
   it('P0-01: Unapproved price book cannot quote, invoice or display live price (Fails Closed)', async () => {
     prismaMock.priceBook.findFirst.mockResolvedValue(null);
-    const activePrice = await catalogService.getActivePriceBook('ZS-SKU-ESSENTIAL', 'US-EAST', 'USD');
+    const activePrice = await catalogService.getActivePriceBook(
+      'ZS-SKU-ESSENTIAL',
+      'US-EAST',
+      'USD',
+    );
     expect(activePrice).toBeNull();
   });
 
@@ -96,7 +117,9 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
       status: 'EXPIRED',
       validUntil: new Date(Date.now() - 86400000),
     };
-    const canActivate = expiredQuote.status === 'APPROVED' && expiredQuote.validUntil > new Date();
+    const canActivate =
+      expiredQuote.status === 'APPROVED' &&
+      expiredQuote.validUntil > new Date();
     expect(canActivate).toBe(false);
   });
 
@@ -120,7 +143,10 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
       currency: 'USD',
     };
     // Idempotency: Attempting to finalize again returns existing result rather than new record
-    const result = existingFinalizedInvoice.status === 'FINALIZED' ? existingFinalizedInvoice : null;
+    const result =
+      existingFinalizedInvoice.status === 'FINALIZED'
+        ? existingFinalizedInvoice
+        : null;
     expect(result).toBe(existingFinalizedInvoice);
   });
 
@@ -168,7 +194,11 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   });
 
   it('P0-12: Finalized invoice immutable; adjustment through credit note', () => {
-    const invoice = { id: 'inv-immutable-01', status: 'FINALIZED', amount: 500000 };
+    const invoice = {
+      id: 'inv-immutable-01',
+      status: 'FINALIZED',
+      amount: 500000,
+    };
     const canMutateDirectly = false;
     const adjustmentType = 'CREDIT_NOTE';
     expect(canMutateDirectly).toBe(false);
@@ -190,13 +220,18 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
     const quotedCurrency: string = 'USD';
     const chargedCurrency: string = 'EUR';
     const fxRateLocked = null;
-    const canFinalize = quotedCurrency === chargedCurrency || fxRateLocked !== null;
+    const canFinalize =
+      quotedCurrency === chargedCurrency || fxRateLocked !== null;
     expect(canFinalize).toBe(false);
   });
 
   it('P0-15: Contract revision atomically reconciles entitlements', () => {
     const previousEntitlements = ['DETECTION_CORE', 'EVIDENCE_RETENTION_30D'];
-    const updatedEntitlements = ['DETECTION_CORE', 'EVIDENCE_RETENTION_365D', 'MDR_HUMAN_TIER'];
+    const updatedEntitlements = [
+      'DETECTION_CORE',
+      'EVIDENCE_RETENTION_365D',
+      'MDR_HUMAN_TIER',
+    ];
     let transactionCommitted = false;
     // Atomic update simulation
     const active = [...updatedEntitlements];
@@ -215,7 +250,8 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   it('P0-17: Refund/credit over limit blocked without approver', () => {
     const refundAmountUsd = 15000;
     const controllerApprovalThreshold = 5000;
-    const isBlockedWithoutDualApproval = refundAmountUsd > controllerApprovalThreshold;
+    const isBlockedWithoutDualApproval =
+      refundAmountUsd > controllerApprovalThreshold;
     expect(isBlockedWithoutDualApproval).toBe(true);
   });
 
@@ -244,20 +280,30 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
       monthlyContractValueUsd: 10000,
       isSensorStale: true, // Sensor is stale!
     };
-    const result = slaSettlementService.evaluateAndSettleSlaCredits(staleMetric);
+    const result =
+      slaSettlementService.evaluateAndSettleSlaCredits(staleMetric);
     expect(result.invoiceAdjustmentStatus).toBe('STALE_SENSOR_HELD_FOR_REVIEW');
     expect(result.autoNettingForbidden).toBe(true);
-    expect(result.breachReasons.some((r) => r.includes('P0-20 ENFORCED'))).toBe(true);
+    expect(result.breachReasons.some((r) => r.includes('P0-20 ENFORCED'))).toBe(
+      true,
+    );
   });
 
   it('P0-21: Public catalog excludes unreleased sector pack', () => {
-    const unreleasedSectorPack = { id: 'PACK-AEROSPACE-DEFENSE', isPubliclyAvailable: false };
+    const unreleasedSectorPack = {
+      id: 'PACK-AEROSPACE-DEFENSE',
+      isPubliclyAvailable: false,
+    };
     const isPublic = unreleasedSectorPack.isPubliclyAvailable;
     expect(isPublic).toBe(false);
   });
 
   it('P0-22: Proof of Value termination does not auto-convert to paid', () => {
-    const povContract = { id: 'pov-acme-01', type: 'POV_PILOT', autoConvertToPaid: false };
+    const povContract = {
+      id: 'pov-acme-01',
+      type: 'POV_PILOT',
+      autoConvertToPaid: false,
+    };
     expect(povContract.autoConvertToPaid).toBe(false);
   });
 
@@ -269,8 +315,14 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   });
 
   it('P0-24: No card PAN/secrets stored in application logs', () => {
-    const rawPayload = { cardNumber: '4111222233334444', token: 'tok_stripesecure_987' };
-    const sanitizedLog = { token: rawPayload.token, cardNumber: '***REDACTED***' };
+    const rawPayload = {
+      cardNumber: '4111222233334444',
+      token: 'tok_stripesecure_987',
+    };
+    const sanitizedLog = {
+      token: rawPayload.token,
+      cardNumber: '***REDACTED***',
+    };
     expect(sanitizedLog.cardNumber).not.toContain('4111');
   });
 
@@ -278,7 +330,10 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   it('P0-25: Rejected bank payment does not duplicate subscription', () => {
     const initialSubscriptionsCount = 1;
     const paymentStatus: string = 'FAILED';
-    const resultingCount = paymentStatus === 'SUCCESS' ? initialSubscriptionsCount + 1 : initialSubscriptionsCount;
+    const resultingCount =
+      paymentStatus === 'SUCCESS'
+        ? initialSubscriptionsCount + 1
+        : initialSubscriptionsCount;
     expect(resultingCount).toBe(1);
   });
 
@@ -291,7 +346,8 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   it('P0-27: Contract overlap detects Zoiko group/dedicated duplication', () => {
     const existingGroupContract = true;
     const attemptDedicatedOrderForSameScope = true;
-    const isCollisionDetected = existingGroupContract && attemptDedicatedOrderForSameScope;
+    const isCollisionDetected =
+      existingGroupContract && attemptDedicatedOrderForSameScope;
     expect(isCollisionDetected).toBe(true);
   });
 
@@ -339,7 +395,11 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   });
 
   it('P0-34: Capacity meter distinguishes synthetic/demo and production', () => {
-    const observation = { tenantId: 'tenant-demo', isSynthetic: true, volumeGb: 50 };
+    const observation = {
+      tenantId: 'tenant-demo',
+      isSynthetic: true,
+      volumeGb: 50,
+    };
     const billableVolume = observation.isSynthetic ? 0 : observation.volumeGb;
     expect(billableVolume).toBe(0);
   });
@@ -347,13 +407,17 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   it('P0-35: Sovereign SKU enforces approved region/subprocessors', () => {
     const sovereignSKU = { allowedRegions: ['eu-central-1', 'eu-west-1'] };
     const requestedRegion = 'ap-southeast-1';
-    const isRegionAllowed = sovereignSKU.allowedRegions.includes(requestedRegion);
+    const isRegionAllowed =
+      sovereignSKU.allowedRegions.includes(requestedRegion);
     expect(isRegionAllowed).toBe(false);
   });
 
   it('P0-36: Revenue ledger ties finalized invoices to finance exports', () => {
     const finalizedInvoiceId = 'inv-final-999';
-    const exportLine = { invoiceId: finalizedInvoiceId, status: 'POSTED_TO_GL' };
+    const exportLine = {
+      invoiceId: finalizedInvoiceId,
+      status: 'POSTED_TO_GL',
+    };
     expect(exportLine.invoiceId).toBe(finalizedInvoiceId);
     expect(exportLine.status).toBe('POSTED_TO_GL');
   });
@@ -363,6 +427,8 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
     expect(STATUTORY_PROHIBITED_CLAIM_PATTERNS).toContain('unhackable');
     expect(STATUTORY_PROHIBITED_CLAIM_PATTERNS).toContain('zero incidents');
     expect(STATUTORY_PROHIBITED_CLAIM_PATTERNS).toContain('fully autonomous');
-    expect(STATUTORY_PROHIBITED_CLAIM_PATTERNS).toContain('guaranteed regulatory compliance');
+    expect(STATUTORY_PROHIBITED_CLAIM_PATTERNS).toContain(
+      'guaranteed regulatory compliance',
+    );
   });
 });

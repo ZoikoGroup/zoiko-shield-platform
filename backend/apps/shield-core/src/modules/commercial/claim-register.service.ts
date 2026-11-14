@@ -256,8 +256,8 @@ export class ClaimRegisterService {
       );
     }
 
-    const statutoryViolation = STATUTORY_PROHIBITED_CLAIM_PATTERNS.find((pattern) =>
-      normalizedWording.includes(pattern),
+    const statutoryViolation = STATUTORY_PROHIBITED_CLAIM_PATTERNS.find(
+      (pattern) => normalizedWording.includes(pattern),
     );
     if (statutoryViolation) {
       throw new BadRequestException(

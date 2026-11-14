@@ -306,7 +306,8 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
   it('rejects statutory prohibited claims like "unhackable" and "zero incidents" (ZS-COM-MASTER-002 §11, §19)', async () => {
     const prohibitedClaim = {
       ...registration,
-      approvedWording: 'ZoikoShield is 100% unhackable and delivers zero incidents',
+      approvedWording:
+        'ZoikoShield is 100% unhackable and delivers zero incidents',
     };
 
     await expect(

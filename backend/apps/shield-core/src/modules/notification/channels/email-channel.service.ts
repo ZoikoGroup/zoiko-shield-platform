@@ -24,6 +24,9 @@ export class EmailChannelService implements NotificationChannel, OnModuleInit {
         port: Number(process.env.SMTP_PORT || 587),
         secure: process.env.SMTP_SECURE === 'true',
         auth: { user, pass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
       this.logger.log(
         `EmailChannelService initialized with SMTP transport (${smtpHost}, from: ${this.fromAddress}).`,
@@ -33,6 +36,9 @@ export class EmailChannelService implements NotificationChannel, OnModuleInit {
       this.transporter = createTransport({
         service: 'gmail',
         auth: { user, pass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
       this.logger.log(
         `EmailChannelService initialized with Gmail transport (${user}).`,

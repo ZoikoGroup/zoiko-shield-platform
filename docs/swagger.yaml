@@ -41572,6 +41572,15 @@ paths:
       summary: List notifications delivered to the current actor
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Maximum number of notification delivery records to return.
       responses:
         '200':
           description: List notifications delivered to the current actor successful.
@@ -41586,6 +41595,35 @@ paths:
       description: >-
         List notifications delivered to the current actor. Applies the documented path, query, and tenant filters and
         returns the current persisted or computed result using the response model below.
+  /api/v1/notifications/deliveries:
+    get:
+      tags:
+        - Notifications
+      summary: List notification deliveries for the current tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Maximum number of notification delivery records to return.
+      responses:
+        '200':
+          description: List notification deliveries successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetNotificationsResponse'
+      operationId: getNotificationDeliveries
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: >-
+        List notification delivery records for the active tenant and actor context.
   /api/v1/notifications/{notificationId}:
     get:
       tags:
@@ -43296,6 +43334,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsByConnectorIdActivate
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       description: >-
         Activate a connector instance. Validates the documented request and returns the created or resulting resource.
@@ -43335,6 +43375,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsByConnectorIdDisable
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       description: >-
         Disable a connector instance. Validates the documented request and returns the created or resulting resource.
@@ -44559,6 +44601,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getEvidence
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
@@ -44578,6 +44622,14 @@ paths:
             nullable: true
             format: uuid
           description: Optional tenant ID filter.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+          description: Maximum number of evidence records to return.
   /api/v1/detections:
     post:
       tags:
@@ -53580,6 +53632,8 @@ paths:
       summary: Register active connector heartbeat
       description: Active connector heartbeat registration and health state updating (OPS-INV-13).
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - name: connectorId
@@ -53605,6 +53659,8 @@ paths:
       summary: Trigger DLQ auto-retry sweep
       description: Triggers an automated DLQ auto-retry quarantine replay sweep for a tenant (OPS-INV-13).
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
@@ -53629,6 +53685,8 @@ paths:
       summary: Get DLQ metrics
       description: Returns DLQ quarantine and replay metrics for the tenant in x-tenant-id.
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
@@ -59785,6 +59843,8 @@ paths:
         error.
       operationId: getContextAssetsResolutionDecisions
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'

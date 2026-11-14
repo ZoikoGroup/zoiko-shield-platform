@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AwsCloudTrailPollerService, AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE } from './aws-cloudtrail-poller.service';
+import {
+  AwsCloudTrailPollerService,
+  AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE,
+} from './aws-cloudtrail-poller.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorCheckpointService } from '../services/checkpoint.service';
 import { ConnectorHealthService } from '../services/health.service';

@@ -64,8 +64,13 @@ describe('tenant role grants', () => {
 
   it('keeps legal-hold release with the reviewers who place holds', () => {
     expect(PRIVACY_LEGAL_REVIEWER_PERMISSION_CODES).toEqual(
-      expect.arrayContaining([PERMISSION_CODES.LEGAL_HOLD_CREATE, PERMISSION_CODES.LEGAL_HOLD_RELEASE]),
+      expect.arrayContaining([
+        PERMISSION_CODES.LEGAL_HOLD_CREATE,
+        PERMISSION_CODES.LEGAL_HOLD_RELEASE,
+      ]),
     );
-    expect(TENANT_OWNER_PERMISSION_CODES).not.toContain(PERMISSION_CODES.LEGAL_HOLD_RELEASE);
+    expect(TENANT_OWNER_PERMISSION_CODES).not.toContain(
+      PERMISSION_CODES.LEGAL_HOLD_RELEASE,
+    );
   });
 });

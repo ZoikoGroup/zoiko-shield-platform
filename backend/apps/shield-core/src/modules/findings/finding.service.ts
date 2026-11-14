@@ -301,7 +301,8 @@ export class FindingService {
     const decorated = findings.map((finding: any) => this.decorate(finding));
     // Accepted risk is a decision, not open work: it is counted separately.
     const open = decorated.filter(
-      (f: any) => !['RESOLVED', 'FALSE_POSITIVE', 'ACCEPTED'].includes(f.status),
+      (f: any) =>
+        !['RESOLVED', 'FALSE_POSITIVE', 'ACCEPTED'].includes(f.status),
     );
     return {
       generatedAt: new Date().toISOString(),
@@ -334,7 +335,10 @@ export class FindingService {
   }
 }
 
-function countBy<T>(rows: T[], key: (row: T) => string): Record<string, number> {
+function countBy<T>(
+  rows: T[],
+  key: (row: T) => string,
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const row of rows) {
     const k = key(row) || 'UNKNOWN';

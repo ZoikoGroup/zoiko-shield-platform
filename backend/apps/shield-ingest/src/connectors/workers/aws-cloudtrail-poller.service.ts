@@ -57,7 +57,9 @@ export class AwsCloudTrailPollerService {
         }
       }
     } catch (err) {
-      this.logger.error(`Error during AWS CloudTrail scheduled poll: ${(err as Error).message}`);
+      this.logger.error(
+        `Error during AWS CloudTrail scheduled poll: ${(err as Error).message}`,
+      );
     } finally {
       this.isPolling = false;
     }
@@ -73,12 +75,19 @@ export class AwsCloudTrailPollerService {
     }
     const checkpoint =
       (this.checkpointService && tenantId
-        ? await this.checkpointService.get(instanceId, 'aws-cloudtrail').catch(() => null)
+        ? await this.checkpointService
+            .get(instanceId, 'aws-cloudtrail')
+            .catch(() => null)
         : null) || '0';
 
     if (this.healthService && tenantId) {
       await this.healthService
-        .updateHealth(instanceId, tenantId, 'DEGRADED', AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE)
+        .updateHealth(
+          instanceId,
+          tenantId,
+          'DEGRADED',
+          AWS_CLOUDTRAIL_NOT_COLLECTING_MESSAGE,
+        )
         .catch(() => undefined);
     }
 

@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { IsISO8601, IsOptional, IsString } from 'class-validator';
@@ -82,6 +83,21 @@ export class EvidenceController {
 
   private resolveTenantId(headerTenantId: string): string {
     return requireTenantId(headerTenantId);
+  }
+
+  @Get()
+  async list(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    const parsedLimit = limit ? Number(limit) : 100;
+    const records = await this.evidenceService.listByTenant(
+      tenantId,
+      Number.isFinite(parsedLimit) ? parsedLimit : 100,
+    );
+    return { statusCode: HttpStatus.OK, data: records };
   }
 
   /**

@@ -15,41 +15,95 @@ describe('guardOutput', () => {
   });
 
   it('allows a declining sentence to repeat the visitor figure, but not a bare claim', () => {
-    expect(guardOutput(answer({ paragraphs: ['We cannot guarantee 99.99% uptime here; SLAs are contractual.'] }))).toBeNull();
-    expect(guardOutput(answer({ paragraphs: ['Uptime is 99.99% for all customers.'] }))).toBe('percentage_claim');
+    expect(
+      guardOutput(
+        answer({
+          paragraphs: [
+            'We cannot guarantee 99.99% uptime here; SLAs are contractual.',
+          ],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      guardOutput(
+        answer({ paragraphs: ['Uptime is 99.99% for all customers.'] }),
+      ),
+    ).toBe('percentage_claim');
   });
 
   it.each([
     ['empty', answer({ paragraphs: [], bullets: [] }), 'empty'],
     ['too long', answer({ paragraphs: ['x'.repeat(1700)] }), 'too_long'],
-    ['a URL', answer({ paragraphs: ['See https://example.com for more.'] }), 'url'],
+    [
+      'a URL',
+      answer({ paragraphs: ['See https://example.com for more.'] }),
+      'url',
+    ],
     ['a price', answer({ paragraphs: ['It costs $500 per month.'] }), 'price'],
-    ['a percentage', answer({ paragraphs: ['It has 99% accuracy.'] }), 'percentage_claim'],
-    ['an SLA figure', answer({ paragraphs: ['We offer 24/7 coverage.'] }), 'sla_claim'],
-    ['prompt disclosure', answer({ paragraphs: ['My instructions say to help.'] }), 'prompt_disclosure'],
-    ['a certification claim', answer({ paragraphs: ['We are SOC 2 certified.'] }), 'certification_claim'],
-    ['an audit claim in a bullet', answer({ bullets: ['ISO 27001 audited annually'] }), 'certification_claim'],
+    [
+      'a percentage',
+      answer({ paragraphs: ['It has 99% accuracy.'] }),
+      'percentage_claim',
+    ],
+    [
+      'an SLA figure',
+      answer({ paragraphs: ['We offer 24/7 coverage.'] }),
+      'sla_claim',
+    ],
+    [
+      'prompt disclosure',
+      answer({ paragraphs: ['My instructions say to help.'] }),
+      'prompt_disclosure',
+    ],
+    [
+      'a certification claim',
+      answer({ paragraphs: ['We are SOC 2 certified.'] }),
+      'certification_claim',
+    ],
+    [
+      'an audit claim in a bullet',
+      answer({ bullets: ['ISO 27001 audited annually'] }),
+      'certification_claim',
+    ],
   ])('rejects %s', (_label, value, reason) => {
     expect(guardOutput(value)).toBe(reason);
   });
 
   it('allows a sentence that explicitly declines to claim a certification', () => {
-    expect(guardOutput(answer({ paragraphs: ['I cannot confirm that ZoikoShield is SOC 2 certified.'] }))).toBeNull();
+    expect(
+      guardOutput(
+        answer({
+          paragraphs: ['I cannot confirm that ZoikoShield is SOC 2 certified.'],
+        }),
+      ),
+    ).toBeNull();
   });
 
   it('allows naming a framework without claiming it', () => {
-    expect(guardOutput(answer({ paragraphs: ['Ask the trust team about GDPR scope.'] }))).toBeNull();
+    expect(
+      guardOutput(
+        answer({ paragraphs: ['Ask the trust team about GDPR scope.'] }),
+      ),
+    ).toBeNull();
   });
 });
 
 describe('LlmService', () => {
-  const source = { id: 'cap-detection', title: 'Detection "core"', body: 'Detection body text.' } as PublicSource;
+  const source = {
+    id: 'cap-detection',
+    title: 'Detection "core"',
+    body: 'Detection body text.',
+  } as PublicSource;
   const original = process.env.GROQ_API_KEY;
   const originalModel = process.env.GROQ_MODEL;
   let fetchMock: jest.SpyInstance;
 
   const reply = (content: unknown, ok = true, status = 200) =>
-    ({ ok, status, json: async () => ({ choices: [{ message: { content } }] }) }) as unknown as Response;
+    ({
+      ok,
+      status,
+      json: async () => ({ choices: [{ message: { content } }] }),
+    }) as unknown as Response;
 
   beforeEach(() => {
     process.env.GROQ_API_KEY = 'test-key';
@@ -75,11 +129,27 @@ describe('LlmService', () => {
 
   it('parses a valid JSON answer and sends sources and earlier questions as data', async () => {
     fetchMock.mockResolvedValue(
-      reply(JSON.stringify({ kind: 'answer', paragraphs: [' Hello '], bullets: ['a'], citations: ['cap-detection'] })),
+      reply(
+        JSON.stringify({
+          kind: 'answer',
+          paragraphs: [' Hello '],
+          bullets: ['a'],
+          citations: ['cap-detection'],
+        }),
+      ),
     );
     const service = new LlmService();
-    const result = await service.answer('how does <b>detection</b> work', [source], ['earlier one']);
-    expect(result).toEqual({ kind: 'answer', paragraphs: ['Hello'], bullets: ['a'], citations: ['cap-detection'] });
+    const result = await service.answer(
+      'how does <b>detection</b> work',
+      [source],
+      ['earlier one'],
+    );
+    expect(result).toEqual({
+      kind: 'answer',
+      paragraphs: ['Hello'],
+      bullets: ['a'],
+      citations: ['cap-detection'],
+    });
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toContain('api.groq.com');
@@ -97,7 +167,16 @@ describe('LlmService', () => {
 
   it('does not send reasoning effort to a non-reasoning model', async () => {
     process.env.GROQ_MODEL = 'llama-3.1-8b-instant';
-    fetchMock.mockResolvedValue(reply(JSON.stringify({ kind: 'abstain', paragraphs: [], bullets: [], citations: [] })));
+    fetchMock.mockResolvedValue(
+      reply(
+        JSON.stringify({
+          kind: 'abstain',
+          paragraphs: [],
+          bullets: [],
+          citations: [],
+        }),
+      ),
+    );
     await new LlmService().answer('q', [source]);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.model).toBe('llama-3.1-8b-instant');
@@ -107,8 +186,19 @@ describe('LlmService', () => {
   it.each([
     ['an HTTP error', () => reply('', false, 500)],
     ['non-JSON output', () => reply('not json')],
-    ['an unknown kind', () => reply(JSON.stringify({ kind: 'weird', paragraphs: ['x'] }))],
-    ['a missing choice', () => ({ ok: true, status: 200, json: async () => ({}) }) as unknown as Response],
+    [
+      'an unknown kind',
+      () => reply(JSON.stringify({ kind: 'weird', paragraphs: ['x'] })),
+    ],
+    [
+      'a missing choice',
+      () =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () => ({}),
+        }) as unknown as Response,
+    ],
   ])('returns null on %s', async (_label, make) => {
     fetchMock.mockResolvedValue(make());
     await expect(new LlmService().answer('q', [source])).resolves.toBeNull();

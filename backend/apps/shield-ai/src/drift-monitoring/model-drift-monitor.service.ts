@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  OnModuleInit,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 
@@ -53,7 +54,7 @@ export interface DriftEvaluationResult {
  * using statistical drift indicators (PSI, distribution shift, latency multipliers).
  */
 @Injectable()
-export class ModelDriftMonitorService {
+export class ModelDriftMonitorService implements OnModuleInit {
   private readonly logger = new Logger(ModelDriftMonitorService.name);
 
   // Keyed by modelId
@@ -61,6 +62,40 @@ export class ModelDriftMonitorService {
 
   // In-memory sliding window of recent observations keyed by modelId
   private readonly observations = new Map<string, LiveInferenceObservation[]>();
+
+  onModuleInit(): void {
+    const defaults = [
+      {
+        modelId: 'gemini-1.5-pro',
+        version: 'v1.5-pro-002',
+        avgConfidence: 0.94,
+        avgLatencyMs: 220,
+        avgTokenCount: 450,
+        categoryDistribution: { HIGH: 0.3, MEDIUM: 0.5, LOW: 0.2 },
+      },
+      {
+        modelId: 'gemini-1.5-flash',
+        version: 'v1.5-flash-002',
+        avgConfidence: 0.91,
+        avgLatencyMs: 110,
+        avgTokenCount: 300,
+        categoryDistribution: { HIGH: 0.25, MEDIUM: 0.55, LOW: 0.2 },
+      },
+      {
+        modelId: 'gpt-4o',
+        version: '2024-08-06',
+        avgConfidence: 0.93,
+        avgLatencyMs: 260,
+        avgTokenCount: 480,
+        categoryDistribution: { HIGH: 0.3, MEDIUM: 0.5, LOW: 0.2 },
+      },
+    ];
+    for (const profile of defaults) {
+      if (!this.baselines.has(profile.modelId)) {
+        this.registerBaseline(profile);
+      }
+    }
+  }
 
   /**
    * Register or update a baseline distribution profile for a model

@@ -278,7 +278,9 @@ describe('ConnectorCatalogController — OPS-INV-13 Heartbeat & DLQ', () => {
     });
 
     it('rejects a request without tenant context instead of aggregating across tenants', async () => {
-      await expect(controller.getDlqMetrics(undefined as any)).rejects.toThrow();
+      await expect(
+        controller.getDlqMetrics(undefined as any),
+      ).rejects.toThrow();
     });
   });
 });

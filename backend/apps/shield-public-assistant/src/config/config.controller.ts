@@ -22,7 +22,11 @@ export class ConfigController {
         : 'degraded';
     return {
       status,
-      mode: flags.assistant_kill ? 'disabled' : flags.assistant_ai_answers ? 'ai' : 'static',
+      mode: flags.assistant_kill
+        ? 'disabled'
+        : flags.assistant_ai_answers
+          ? 'ai'
+          : 'static',
       ai_answers: flags.assistant_ai_answers && !flags.assistant_kill,
       fallback_links: {
         help: this.config.snapshot().routes.WEB_CAPABILITIES,
@@ -33,4 +37,3 @@ export class ConfigController {
     };
   }
 }
-

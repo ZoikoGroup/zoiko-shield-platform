@@ -69,9 +69,12 @@ export class AssistantConfigService {
 
   policyVersions() {
     return {
-      content_policy: process.env.PUBLIC_ASSISTANT_CONTENT_POLICY_VERSION ?? '2026.10.1',
-      privacy_notice: process.env.PUBLIC_ASSISTANT_NOTICE_VERSION ?? '2026.10-review',
-      prompt: process.env.PUBLIC_ASSISTANT_PROMPT_VERSION ?? 'pa-prompt-2026.10.1',
+      content_policy:
+        process.env.PUBLIC_ASSISTANT_CONTENT_POLICY_VERSION ?? '2026.10.1',
+      privacy_notice:
+        process.env.PUBLIC_ASSISTANT_NOTICE_VERSION ?? '2026.10-review',
+      prompt:
+        process.env.PUBLIC_ASSISTANT_PROMPT_VERSION ?? 'pa-prompt-2026.10.1',
     };
   }
 
@@ -81,7 +84,9 @@ export class AssistantConfigService {
       counter_visible_at: 1800,
       free_text_chars: 500,
       search_chars: 200,
-      messages_per_minute: Number(process.env.PUBLIC_ASSISTANT_MESSAGES_PER_MINUTE ?? 12),
+      messages_per_minute: Number(
+        process.env.PUBLIC_ASSISTANT_MESSAGES_PER_MINUTE ?? 12,
+      ),
       session_minutes: 1440,
     };
   }
@@ -93,7 +98,11 @@ export class AssistantConfigService {
         display_name: this.displayName(),
         disclosure: 'AI-assisted • Public information',
         clearance_state: this.clearanceState(),
-        mode: flags.assistant_kill ? 'disabled' : flags.assistant_ai_answers ? 'ai' : 'static',
+        mode: flags.assistant_kill
+          ? 'disabled'
+          : flags.assistant_ai_answers
+            ? 'ai'
+            : 'static',
       },
       routes: this.content.routes(),
       flags,

@@ -1,10 +1,4 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { OriginCsrfGuard } from '../common/origin-csrf.guard';
 import { PublicEndpoint } from '../common/public-endpoint.decorator';
 import { RateLimitGuard } from '../common/rate-limit.guard';

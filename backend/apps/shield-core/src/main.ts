@@ -66,10 +66,7 @@ export function gzipCompressionMiddleware(
 export function validateRequiredEnvironmentVariables(): void {
   const isProd = process.env.NODE_ENV === 'production';
   const requiredAlways = ['DATABASE_URL', 'JWT_SECRET'];
-  const requiredInProduction = [
-    'JWT_REFRESH_SECRET',
-    'CORS_ORIGIN',
-  ];
+  const requiredInProduction = ['JWT_REFRESH_SECRET', 'CORS_ORIGIN'];
   const missing: string[] = [];
   for (const key of requiredAlways) {
     if (!process.env[key]) missing.push(key);

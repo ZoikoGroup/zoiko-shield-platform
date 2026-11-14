@@ -57,7 +57,9 @@ export class AzureMonitorPollerService {
         }
       }
     } catch (err) {
-      this.logger.error(`Error during Azure Monitor scheduled poll: ${(err as Error).message}`);
+      this.logger.error(
+        `Error during Azure Monitor scheduled poll: ${(err as Error).message}`,
+      );
     } finally {
       this.isPolling = false;
     }
@@ -73,12 +75,19 @@ export class AzureMonitorPollerService {
     }
     const checkpoint =
       (this.checkpointService && tenantId
-        ? await this.checkpointService.get(instanceId, 'azure-monitor').catch(() => null)
+        ? await this.checkpointService
+            .get(instanceId, 'azure-monitor')
+            .catch(() => null)
         : null) || '0';
 
     if (this.healthService && tenantId) {
       await this.healthService
-        .updateHealth(instanceId, tenantId, 'DEGRADED', AZURE_MONITOR_NOT_COLLECTING_MESSAGE)
+        .updateHealth(
+          instanceId,
+          tenantId,
+          'DEGRADED',
+          AZURE_MONITOR_NOT_COLLECTING_MESSAGE,
+        )
         .catch(() => undefined);
     }
 

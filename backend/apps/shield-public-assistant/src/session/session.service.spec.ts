@@ -10,7 +10,10 @@ describe('SessionService', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('creates a session whose token resolves back to it, storing only a hash', () => {
-    const { session, token } = service.create('203.0.113.9', 'Mozilla/5.0 (Windows)');
+    const { session, token } = service.create(
+      '203.0.113.9',
+      'Mozilla/5.0 (Windows)',
+    );
     expect(session.id).toMatch(/^sess_/);
     expect(session.epoch).toBe(1);
     expect(session.tokenHash).not.toContain(token);
@@ -19,9 +22,15 @@ describe('SessionService', () => {
   });
 
   it('classifies the client without keeping the user agent', () => {
-    expect(service.create('1.1.1.1', 'Mozilla iPhone Mobile').session.uaClass).toBe('mobile');
-    expect(service.create('1.1.1.1', 'Googlebot/2.1').session.uaClass).toBe('bot');
-    expect(service.create('', 'Mozilla/5.0 (Windows)').session.uaClass).toBe('desktop');
+    expect(
+      service.create('1.1.1.1', 'Mozilla iPhone Mobile').session.uaClass,
+    ).toBe('mobile');
+    expect(service.create('1.1.1.1', 'Googlebot/2.1').session.uaClass).toBe(
+      'bot',
+    );
+    expect(service.create('', 'Mozilla/5.0 (Windows)').session.uaClass).toBe(
+      'desktop',
+    );
   });
 
   it('does not resolve a missing, unknown or expired token', () => {

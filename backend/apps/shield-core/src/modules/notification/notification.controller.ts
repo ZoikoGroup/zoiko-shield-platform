@@ -63,6 +63,15 @@ export class NotificationController {
     });
   }
 
+  @Get('notifications/deliveries')
+  async listDeliveries(
+    @Headers('x-tenant-id') tenantId: string,
+    @CurrentUser() user?: AuthenticatedUser,
+    @Query('limit') limit?: string,
+  ) {
+    return this.list(tenantId, user, limit);
+  }
+
   @Get('notifications/templates')
   async listTemplates(@Query('domain') domain?: string) {
     return {
@@ -215,7 +224,8 @@ export class NotificationController {
     const delivery = await this.prisma.notificationDelivery.findFirst({
       where: { id, tenant_id: requireTenantId(tenantId) },
     });
-    if (!delivery) throw new NotFoundException(`Notification '${id}' not found`);
+    if (!delivery)
+      throw new NotFoundException(`Notification '${id}' not found`);
     return delivery;
   }
 

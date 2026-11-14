@@ -377,7 +377,17 @@ export class AuthController {
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);
-    return { success: true };
+    res.cookie('zoiko_shield_access_token', tokens.accessToken, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('shield_access_token', tokens.accessToken, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+    return { success: true, accessToken: tokens.accessToken };
   }
 
   @PublicEndpoint()

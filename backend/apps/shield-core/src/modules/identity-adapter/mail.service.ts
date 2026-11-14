@@ -28,12 +28,31 @@ export class MailService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const smtpHost = this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST;
-    const smtpPort = Number(this.configService.get<string>('SMTP_PORT') || process.env.SMTP_PORT || 587);
-    const smtpUser = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER || this.configService.get<string>('EMAIL_USER') || process.env.EMAIL_USER;
-    const smtpPass = this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS || this.configService.get<string>('EMAIL_APP_PASSWORD') || process.env.EMAIL_APP_PASSWORD;
-    const smtpSecure = (this.configService.get<string>('SMTP_SECURE') || process.env.SMTP_SECURE) === 'true';
-    const smtpFrom = this.configService.get<string>('SMTP_FROM') || process.env.SMTP_FROM || smtpUser || 'no-reply@zoikoshield.com';
+    const smtpHost =
+      this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST;
+    const smtpPort = Number(
+      this.configService.get<string>('SMTP_PORT') ||
+        process.env.SMTP_PORT ||
+        587,
+    );
+    const smtpUser =
+      this.configService.get<string>('SMTP_USER') ||
+      process.env.SMTP_USER ||
+      this.configService.get<string>('EMAIL_USER') ||
+      process.env.EMAIL_USER;
+    const smtpPass =
+      this.configService.get<string>('SMTP_PASS') ||
+      process.env.SMTP_PASS ||
+      this.configService.get<string>('EMAIL_APP_PASSWORD') ||
+      process.env.EMAIL_APP_PASSWORD;
+    const smtpSecure =
+      (this.configService.get<string>('SMTP_SECURE') ||
+        process.env.SMTP_SECURE) === 'true';
+    const smtpFrom =
+      this.configService.get<string>('SMTP_FROM') ||
+      process.env.SMTP_FROM ||
+      smtpUser ||
+      'no-reply@zoikoshield.com';
 
     if (smtpHost && smtpUser && smtpPass) {
       this.fromAddress = smtpFrom;
@@ -42,8 +61,13 @@ export class MailService implements OnModuleInit {
         port: smtpPort,
         secure: smtpSecure,
         auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
-      this.logger.log(`MailService initialized with SMTP transport (${smtpHost}:${smtpPort}, from: ${smtpFrom}).`);
+      this.logger.log(
+        `MailService initialized with SMTP transport (${smtpHost}:${smtpPort}, from: ${smtpFrom}).`,
+      );
       return;
     }
 
@@ -52,8 +76,13 @@ export class MailService implements OnModuleInit {
       this.transporter = createTransport({
         service: 'gmail',
         auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
-      this.logger.log(`MailService initialized with Gmail transport (${smtpUser}).`);
+      this.logger.log(
+        `MailService initialized with Gmail transport (${smtpUser}).`,
+      );
       return;
     }
 
@@ -84,21 +113,25 @@ export class MailService implements OnModuleInit {
 
     if (this.transactionalEmailService) {
       try {
-        await this.transactionalEmailService.dispatchTransactionalEmail({
-          tenantId: 'identity-service',
-          templateKey,
-          recipients: [{ email, name: email.split('@')[0] }],
-          variables: {
-            referenceId: `otp-${Date.now().toString(36)}`,
-            statusLabel: isVerification
-              ? 'EMAIL_VERIFICATION_PENDING'
-              : 'PASSWORD_RESET_REQUESTED',
-            token_expires_at_local: '10 minutes',
-            verificationUrl: isVerification ? actionUrl : undefined,
-            passwordResetUrl: !isVerification ? actionUrl : undefined,
-            actionUrl,
-          },
-        });
+        const receipt =
+          await this.transactionalEmailService.dispatchTransactionalEmail({
+            tenantId: 'identity-service',
+            templateKey,
+            recipients: [{ email, name: email.split('@')[0] }],
+            variables: {
+              referenceId: `otp-${Date.now().toString(36)}`,
+              statusLabel: isVerification
+                ? 'EMAIL_VERIFICATION_PENDING'
+                : 'PASSWORD_RESET_REQUESTED',
+              token_expires_at_local: '10 minutes',
+              verificationUrl: isVerification ? actionUrl : undefined,
+              passwordResetUrl: !isVerification ? actionUrl : undefined,
+              actionUrl,
+            },
+          });
+        if (receipt?.deliveryStatus === 'DELIVERED') {
+          return;
+        }
       } catch (err: any) {
         this.logger.debug(
           `Transactional email engine fallback: ${err.message}`,

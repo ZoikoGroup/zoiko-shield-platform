@@ -4,7 +4,11 @@ import { OriginCsrfGuard } from '../common/origin-csrf.guard';
 import { PublicEndpoint } from '../common/public-endpoint.decorator';
 import { RateLimitGuard } from '../common/rate-limit.guard';
 import { AssistantConfigService } from '../config/assistant-config.service';
-import { SESSION_COOKIE, SESSION_TTL_MS, SessionService } from './session.service';
+import {
+  SESSION_COOKIE,
+  SESSION_TTL_MS,
+  SessionService,
+} from './session.service';
 
 @Controller('api/public/chat/v1/sessions')
 @PublicEndpoint()
@@ -16,7 +20,10 @@ export class SessionController {
   ) {}
 
   @Post()
-  create(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+  create(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const { session, token } = this.sessions.create(
       request.ip ?? '',
       request.header('user-agent') ?? '',
@@ -37,7 +44,10 @@ export class SessionController {
   }
 
   @Post('clear')
-  clear(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+  clear(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const cleared = this.sessions.clear(request.cookies?.[SESSION_COOKIE]);
     response.clearCookie(SESSION_COOKIE, {
       httpOnly: true,

@@ -16,7 +16,9 @@ export const API_VERSION = 'v1';
 @Injectable()
 export class ApiEnvelopeInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest<{ correlationId?: string }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ correlationId?: string }>();
     const correlationId = request.correlationId ?? '';
     return next.handle().pipe(
       map((data) => {
@@ -24,7 +26,11 @@ export class ApiEnvelopeInterceptor implements NestInterceptor {
           return { api_version: API_VERSION, correlation_id: correlationId };
         }
         if (Array.isArray(data) || typeof data !== 'object') {
-          return { data, api_version: API_VERSION, correlation_id: correlationId };
+          return {
+            data,
+            api_version: API_VERSION,
+            correlation_id: correlationId,
+          };
         }
         return {
           ...(data as Record<string, unknown>),

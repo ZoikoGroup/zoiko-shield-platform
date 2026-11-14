@@ -15,14 +15,24 @@ describe('ConnectorCatalogService.testConnector', () => {
   };
 
   function build(connector: Record<string, unknown>) {
-    const prisma = { connectorInstance: { findFirst: jest.fn().mockResolvedValue(instance) } } as any;
-    const registry = { has: jest.fn().mockReturnValue(true), get: jest.fn().mockReturnValue(connector) } as any;
+    const prisma = {
+      connectorInstance: { findFirst: jest.fn().mockResolvedValue(instance) },
+    } as any;
+    const registry = {
+      has: jest.fn().mockReturnValue(true),
+      get: jest.fn().mockReturnValue(connector),
+    } as any;
     return new ConnectorCatalogService(prisma, registry, {} as any, {} as any);
   }
 
   it('reports UNVERIFIED and never calls a provider that has no live check', async () => {
-    const testConnection = jest.fn().mockResolvedValue({ status: 'HEALTHY', latencyMs: 52 });
-    const result = await build({ testConnection }).testConnector('tenant-1', 'conn-1');
+    const testConnection = jest
+      .fn()
+      .mockResolvedValue({ status: 'HEALTHY', latencyMs: 52 });
+    const result = await build({ testConnection }).testConnector(
+      'tenant-1',
+      'conn-1',
+    );
 
     expect(testConnection).not.toHaveBeenCalled();
     expect(result.status).toBe('UNVERIFIED');
@@ -30,8 +40,13 @@ describe('ConnectorCatalogService.testConnector', () => {
   });
 
   it('relays the result of a provider that declares a live check', async () => {
-    const testConnection = jest.fn().mockResolvedValue({ status: 'AUTHENTICATION_FAILED' });
-    const result = await build({ liveConnectivityCheck: true, testConnection }).testConnector('tenant-1', 'conn-1');
+    const testConnection = jest
+      .fn()
+      .mockResolvedValue({ status: 'AUTHENTICATION_FAILED' });
+    const result = await build({
+      liveConnectivityCheck: true,
+      testConnection,
+    }).testConnector('tenant-1', 'conn-1');
 
     expect(testConnection).toHaveBeenCalledTimes(1);
     expect(result.status).toBe('AUTHENTICATION_FAILED');
