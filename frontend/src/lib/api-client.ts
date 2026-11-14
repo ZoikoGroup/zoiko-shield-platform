@@ -845,12 +845,10 @@ export class ZoikoShieldApiClient {
 
   // --- Step 4: Connectors Setup ---
   static async createConnector(data: {
-    tenantId: string;
     tenantId?: string;
     environmentId?: string;
     name: string;
     provider: any;
-    sourceRegion: string;
     sourceRegion?: string;
     tier?: ConnectorCertificationTier;
     config?: Record<string, string>;
@@ -874,17 +872,14 @@ export class ZoikoShieldApiClient {
     };
     const conn = await this.safeFetch<Connector>(
       "/api/v1/connectors",
-      { method: "POST", body: JSON.stringify(data) },
       { method: "POST", body: JSON.stringify(payload) },
       () => {
         const id = `conn-${data.provider}-${generateUUID().slice(0, 6)}`;
         return {
           id,
-          tenantId: data.tenantId,
           tenantId: payload.tenantId || currentState.tenant.id,
           name: data.name,
           provider: data.provider,
-          sourceRegion: data.sourceRegion,
           sourceRegion: payload.sourceRegion || "us-east-1",
           tier: data.tier,
           status: "ACTIVE",
@@ -2013,7 +2008,6 @@ export class ZoikoShieldApiClient {
   // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---
   static async getAiIncidents(tenantId?: string): Promise<AiIncident[]> {
     const q = tenantId && tenantId !== "default" ? `?tenantId=${encodeURIComponent(tenantId)}` : "";
-    return this.safeFetch<AiIncident[]>(
     const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents${q}`,
       { method: "GET" },
@@ -2034,7 +2028,6 @@ export class ZoikoShieldApiClient {
     affectedModel: string;
     declaredBy: string;
   }): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
     const dto = {
       title: data.title,
       category: this.mapAiTriggerToCategory(data.trigger),
@@ -2045,7 +2038,6 @@ export class ZoikoShieldApiClient {
 
     const res = await this.safeFetch<any>(
       "/api/v1/ai/incidents",
-      { method: "POST", body: JSON.stringify(data) },
       { method: "POST", body: JSON.stringify(dto) },
       () => {
         return {
@@ -2080,11 +2072,9 @@ export class ZoikoShieldApiClient {
   }
 
   static async containAiIncident(incidentId: string, actionReason?: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
     const stateBefore = getState();
     const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/contain`,
-      { method: "POST", body: JSON.stringify({ actionReason: actionReason || "Emergency Kill-Switch Engaged (Simulation Mode)" }) },
       {
         method: "POST",
         body: JSON.stringify({
@@ -2124,10 +2114,8 @@ export class ZoikoShieldApiClient {
   }
 
   static async activateAiFallback(incidentId: string, targetTier1Provider?: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
     const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/fallback`,
-      { method: "POST", body: JSON.stringify({ targetProvider: targetTier1Provider || "Anthropic Claude / Deterministic Rule Engine" }) },
       {
         method: "POST",
         body: JSON.stringify({
@@ -2172,13 +2160,6 @@ export class ZoikoShieldApiClient {
     rootCauseClass: string;
     recommendedFixes: string[];
   }> {
-    const result = await this.safeFetch<{
-      incident: AiIncident;
-      rcaSummary: string;
-      fiveWhys: string[];
-      rootCauseClass: string;
-      recommendedFixes: string[];
-    }>(
     const defaultSummary =
       "Automated RCA correlated prompt boundary deviation and inference telemetry drift under Spec §23 safety controls.";
     const defaultFactors = [
@@ -2192,7 +2173,6 @@ export class ZoikoShieldApiClient {
 
     const rawResult = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/rca`,
-      { method: "POST" },
       {
         method: "POST",
         body: JSON.stringify({
@@ -2213,7 +2193,6 @@ export class ZoikoShieldApiClient {
         return {
           incident: found || {
             id: incidentId,
-            tenantId: "default",
             tenantId: state.tenant.id,
             title: "Prompt Injection Incident",
             severity: "SEV1_CRITICAL",
@@ -2278,20 +2257,17 @@ export class ZoikoShieldApiClient {
     const existing = (state.aiIncidents || []).find((i) => i.id === incidentId);
     if (existing) {
       existing.state = "ROOT_CAUSE_ANALYZED";
-      existing.rootCauseSummary = result.rcaSummary;
+      existing.rootCauseSummary = normalized.rcaSummary;
       Object.assign(existing, normalized.incident);
     }
     saveDemoState(state);
-    return result;
     return normalized;
   }
 
   static async resolveAiIncident(incidentId: string, resolutionNotes: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
     const stateBefore = getState();
     const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/resolve`,
-      { method: "POST", body: JSON.stringify({ resolutionNotes }) },
       {
         method: "POST",
         body: JSON.stringify({
@@ -2330,7 +2306,6 @@ export class ZoikoShieldApiClient {
   }
 
   static async closeAiIncident(incidentId: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
     const res = await this.safeFetch<any>(
       `/api/v1/ai/incidents/${incidentId}/close`,
       { method: "POST" },
@@ -2362,7 +2337,6 @@ export class ZoikoShieldApiClient {
 
   // --- Step 12: Model Drift & PSI Monitoring (§21) ---
   static async getModelDriftMetrics(): Promise<ModelDriftReport[]> {
-    return this.safeFetch<ModelDriftReport[]>(
     const res = await this.safeFetch<any>(
       "/api/v1/ai/drift",
       { method: "GET" },
@@ -2398,7 +2372,6 @@ export class ZoikoShieldApiClient {
 
   // --- Step 13: AI Supply Chain Concentration Risk (§24) ---
   static async getAiSupplyChainRisk(): Promise<AiSupplyChainReport> {
-    return this.safeFetch<AiSupplyChainReport>(
     const res = await this.safeFetch<any>(
       "/api/v1/ai/supply-chain",
       { method: "GET" },
@@ -2446,8 +2419,6 @@ export class ZoikoShieldApiClient {
 
   // --- Step 14: Continuous Compliance Drift & Real-Time SLA Alarms (§55) ---
   static async getComplianceDriftAssessment(): Promise<ComplianceDriftState> {
-    return this.safeFetch<ComplianceDriftState>(
-      "/api/v1/compliance/drift-assessment",
     const stateBefore = getState();
     const tenantQuery = stateBefore.tenant?.id
       ? `?tenantId=${encodeURIComponent(stateBefore.tenant.id)}`
@@ -2505,13 +2476,6 @@ export class ZoikoShieldApiClient {
     remediatedAlarmId: string;
     updatedScore: number;
   }> {
-    const result = await this.safeFetch<{
-      success: boolean;
-      remediatedAlarmId: string;
-      updatedScore: number;
-    }>(
-      `/api/v1/compliance/drift-assessment/alarms/${alarmId}/remediate`,
-      { method: "POST" },
     const stateBefore = getState();
     const tenantQuery = stateBefore.tenant?.id
       ? `?tenantId=${encodeURIComponent(stateBefore.tenant.id)}`
@@ -2540,14 +2504,12 @@ export class ZoikoShieldApiClient {
 
     const state = getState();
     state.complianceDrift.slaAlarms = (state.complianceDrift.slaAlarms || []).filter((a) => a.alarmId !== alarmId);
-    state.complianceDrift.score = result.updatedScore;
     const updatedScore =
       typeof raw?.updatedScore === "number"
         ? raw.updatedScore
         : Math.min(100, (state.complianceDrift.score || 95) + 4.5);
     state.complianceDrift.score = updatedScore;
     saveDemoState(state);
-    return result;
     return {
       success: raw?.success ?? raw?.status === "REMEDIATION_EXECUTED",
       remediatedAlarmId: String(raw?.remediatedAlarmId || raw?.findingId || alarmId),
@@ -4007,14 +3969,11 @@ export class ZoikoShieldApiClient {
     summary: string;
     envelope: AiReviewEnvelope;
   }> {
-    return this.safeFetch<{ summary: string; envelope: AiReviewEnvelope }>(
-      "/api/v1/copilot/query",
     const currentState = getState();
     const res = await this.safeFetch<any>(
       "/api/v1/ai/copilot/hunt",
       {
         method: "POST",
-        body: JSON.stringify(params),
         body: JSON.stringify({
           tenantId: params.tenantId || currentState.tenant.id,
           analystId: currentState.session.email || currentState.session.fullName || "soc-analyst",

@@ -20,7 +20,14 @@ import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { requireEnvironmentId, requireTenantId } from '../../tenant-context';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { BadRequestException } from '@nestjs/common';
 
 const MANUAL_SOURCE_ACCOUNT = 'manual';
@@ -95,7 +102,13 @@ export class ResolveIdentityRequestDto {
   externalType?: string;
 
   @IsOptional()
-  @IsIn(['HUMAN', 'SERVICE_ACCOUNT', 'WORKLOAD', 'APPLICATION', 'MANAGED_IDENTITY'])
+  @IsIn([
+    'HUMAN',
+    'SERVICE_ACCOUNT',
+    'WORKLOAD',
+    'APPLICATION',
+    'MANAGED_IDENTITY',
+  ])
   identityType?:
     | 'HUMAN'
     | 'SERVICE_ACCOUNT'

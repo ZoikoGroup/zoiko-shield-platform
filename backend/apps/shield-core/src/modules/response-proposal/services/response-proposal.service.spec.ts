@@ -64,7 +64,11 @@ describe('ResponseProposalService tenant PEP', () => {
     );
 
     await expect(
-      service.approve({ tenantId: 'tenant-a', proposalId: 'p1', approverId: 'analyst-1' }),
+      service.approve({
+        tenantId: 'tenant-a',
+        proposalId: 'p1',
+        approverId: 'analyst-1',
+      }),
     ).rejects.toThrow(ForbiddenException);
     expect(evaluate).not.toHaveBeenCalled();
   });

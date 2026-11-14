@@ -18,11 +18,58 @@ import {
 import type { PublicSource, SourceChunk } from './types';
 
 const STOPWORDS = new Set([
-  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'can', 'do', 'does', 'for',
-  'from', 'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on', 'or', 'our',
-  'the', 'to', 'we', 'what', 'when', 'where', 'which', 'who', 'why', 'with',
-  'you', 'your', 'about', 'tell', 'please', 'would', 'like', 'need', 'want',
-  'have', 'has', 'was', 'were', 'will', 'this', 'that', 'there', 'their',
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'by',
+  'can',
+  'do',
+  'does',
+  'for',
+  'from',
+  'how',
+  'i',
+  'in',
+  'is',
+  'it',
+  'me',
+  'my',
+  'of',
+  'on',
+  'or',
+  'our',
+  'the',
+  'to',
+  'we',
+  'what',
+  'when',
+  'where',
+  'which',
+  'who',
+  'why',
+  'with',
+  'you',
+  'your',
+  'about',
+  'tell',
+  'please',
+  'would',
+  'like',
+  'need',
+  'want',
+  'have',
+  'has',
+  'was',
+  'were',
+  'will',
+  'this',
+  'that',
+  'there',
+  'their',
 ]);
 
 const PRODUCT_TERMS = new Set(['zoikoshield', 'zoiko', 'shield']);
@@ -77,11 +124,20 @@ export class ContentService {
     return this.getSource(id);
   }
 
-  isEligible(source: PublicSource, market = 'undecided', locale = 'en-US'): boolean {
-    if (source.status !== 'PUBLISHED' || source.classification !== 'PUBLIC') return false;
+  isEligible(
+    source: PublicSource,
+    market = 'undecided',
+    locale = 'en-US',
+  ): boolean {
+    if (source.status !== 'PUBLISHED' || source.classification !== 'PUBLIC')
+      return false;
     if (primaryTag(source.locale) !== primaryTag(locale)) return false;
     const markets = source.markets.map((value) => value.toLowerCase());
-    if (!markets.includes(market.toLowerCase()) && !markets.includes('undecided')) return false;
+    if (
+      !markets.includes(market.toLowerCase()) &&
+      !markets.includes('undecided')
+    )
+      return false;
     const now = Date.now();
     if (Date.parse(source.effectiveFrom) > now) return false;
     if (source.expiresAt && Date.parse(source.expiresAt) < now) return false;
@@ -91,7 +147,12 @@ export class ContentService {
   search(
     query: string,
     options: { market?: string; locale?: string; limit?: number } = {},
-  ): Array<{ source: PublicSource; chunk: SourceChunk; score: number; snippet: string }> {
+  ): Array<{
+    source: PublicSource;
+    chunk: SourceChunk;
+    score: number;
+    snippet: string;
+  }> {
     const market = options.market ?? 'undecided';
     const locale = options.locale ?? 'en-US';
     const limit = Math.min(options.limit ?? 5, 8);
@@ -102,18 +163,26 @@ export class ContentService {
     const terms = (distinctive.length > 0 ? distinctive : allTerms).map(stem);
     if (terms.length === 0) return [];
 
-    const scored: Array<{ source: PublicSource; chunk: SourceChunk; score: number; snippet: string }> = [];
+    const scored: Array<{
+      source: PublicSource;
+      chunk: SourceChunk;
+      score: number;
+      snippet: string;
+    }> = [];
 
     for (const source of this.sources.values()) {
       if (!this.isEligible(source, market, locale)) continue;
       const sourceChunks = this.chunkIndex.get(source.id) ?? [];
-      const titleTerms = new Set(tokenize(`${source.title} ${source.tags.join(' ')}`).map(stem));
+      const titleTerms = new Set(
+        tokenize(`${source.title} ${source.tags.join(' ')}`).map(stem),
+      );
       const summaryTerms = new Set(tokenize(source.summary).map(stem));
 
       for (const chunk of sourceChunks) {
         const chunkTerms = tokenize(chunk.text).map(stem);
         const counts = new Map<string, number>();
-        for (const term of chunkTerms) counts.set(term, (counts.get(term) ?? 0) + 1);
+        for (const term of chunkTerms)
+          counts.set(term, (counts.get(term) ?? 0) + 1);
 
         let score = 0;
         for (const term of terms) {
@@ -123,7 +192,11 @@ export class ContentService {
           if (inChunk) score += 1 + Math.min(inChunk, 3) * 0.5;
         }
         // Phrase bonus keeps exact product phrases ahead of incidental token hits.
-        if (score > 0 && chunk.text.toLowerCase().includes(query.toLowerCase().trim())) score += 4;
+        if (
+          score > 0 &&
+          chunk.text.toLowerCase().includes(query.toLowerCase().trim())
+        )
+          score += 4;
         if (score <= 0) continue;
 
         scored.push({
@@ -135,7 +208,9 @@ export class ContentService {
       }
     }
 
-    scored.sort((a, b) => b.score - a.score || a.chunk.ordinal - b.chunk.ordinal);
+    scored.sort(
+      (a, b) => b.score - a.score || a.chunk.ordinal - b.chunk.ordinal,
+    );
 
     // Keep at most two chunks per source so one article cannot fill the context.
     const perSource = new Map<string, number>();
@@ -165,7 +240,9 @@ export class ContentService {
   }
 
   helpArticle(id: string) {
-    const article = HELP_ARTICLES.find((item) => item.id === id || item.sourceId === id);
+    const article = HELP_ARTICLES.find(
+      (item) => item.id === id || item.sourceId === id,
+    );
     if (!article) return undefined;
     const source = this.getSource(article.sourceId);
     if (!source) return undefined;
@@ -197,7 +274,9 @@ export class ContentService {
     return CONNECTORS.filter((connector) => {
       const source = this.getSource(connector.sourceId);
       if (!source || !this.isEligible(source, market)) return false;
-      return !category || connector.category.toLowerCase() === category.toLowerCase();
+      return (
+        !category || connector.category.toLowerCase() === category.toLowerCase()
+      );
     });
   }
 

@@ -49,7 +49,11 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
 
       authService = new AuthService(
         {} as any, // principalService
-        { createSession: jest.fn().mockResolvedValue({ token: 'test-token', id: 'sess-01' }) } as any, // sessionService
+        {
+          createSession: jest
+            .fn()
+            .mockResolvedValue({ token: 'test-token', id: 'sess-01' }),
+        } as any, // sessionService
         mockChallengeService,
         {} as any, // recoveryGrantService
         { record: jest.fn() } as any, // eventService
@@ -75,7 +79,10 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
         name: 'Cyber Defense Corp',
         slug: 'cyberdefense',
       });
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'role-owner-01', code: 'TENANT_OWNER' });
+      mockPrisma.role.findFirst.mockResolvedValue({
+        id: 'role-owner-01',
+        code: 'TENANT_OWNER',
+      });
       mockPrisma.tenantMembership.create.mockResolvedValue({ id: 'tm-01' });
 
       const result = await authService.register(
@@ -96,7 +103,9 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
         '123456',
         'EMAIL_VERIFICATION',
       );
-      expect(mockMailService.sendTenantProvisionedConfirmation).toHaveBeenCalledWith({
+      expect(
+        mockMailService.sendTenantProvisionedConfirmation,
+      ).toHaveBeenCalledWith({
         email: 'founder@cyberdefense.corp',
         tenantName: 'Cyber Defense Corp',
         tenantId: 'tnt-cyberdefense',
@@ -211,13 +220,19 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
       idempotencyService = new IdempotencyService({
         idempotencyRecord: {
           findUnique: jest.fn().mockResolvedValue(null),
-          create: jest.fn().mockImplementation((args) => Promise.resolve({ id: 'idemp-01', ...args.data })),
+          create: jest
+            .fn()
+            .mockImplementation((args) =>
+              Promise.resolve({ id: 'idemp-01', ...args.data }),
+            ),
           update: jest.fn(),
         },
       } as any);
 
       mockEmailService = {
-        dispatchTransactionalEmail: jest.fn().mockResolvedValue({ success: true, messageId: 'msg-01' }),
+        dispatchTransactionalEmail: jest
+          .fn()
+          .mockResolvedValue({ success: true, messageId: 'msg-01' }),
       };
 
       paymentService = new PaymentService(
@@ -269,7 +284,10 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
     it('P-02: Rejects Stripe webhook with invalid signature (HTTP 409 Conflict)', async () => {
       await expect(
         paymentService.handleStripeWebhook(
-          JSON.stringify({ id: 'evt_fake_01', type: 'checkout.session.completed' }),
+          JSON.stringify({
+            id: 'evt_fake_01',
+            type: 'checkout.session.completed',
+          }),
           '', // missing signature
         ),
       ).rejects.toThrow(ConflictException);
@@ -301,7 +319,10 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
       const rawPayload = JSON.stringify(eventPayload);
       const signature = 'sig_test_valid_hash';
 
-      const result = await paymentService.handleStripeWebhook(rawPayload, signature);
+      const result = await paymentService.handleStripeWebhook(
+        rawPayload,
+        signature,
+      );
 
       expect(result).toBeDefined();
       // Verify commercial subscription activation event was persisted
@@ -320,7 +341,9 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
         expect.objectContaining({
           tenantId: 'tenant-sovereign-01',
           templateKey: 'ZS-EML-BILL-001',
-          recipients: [{ email: 'ciso@sovereign.corp', name: 'Chief Security Officer' }],
+          recipients: [
+            { email: 'ciso@sovereign.corp', name: 'Chief Security Officer' },
+          ],
         }),
       );
 
@@ -329,7 +352,9 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
         expect.objectContaining({
           tenantId: 'tenant-sovereign-01',
           templateKey: 'ZS-EML-BILL-006',
-          recipients: [{ email: 'ciso@sovereign.corp', name: 'Chief Security Officer' }],
+          recipients: [
+            { email: 'ciso@sovereign.corp', name: 'Chief Security Officer' },
+          ],
         }),
       );
     });
@@ -345,7 +370,10 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
             amount_total: 125000,
             currency: 'usd',
             customer_details: { email: 'ciso@sovereign.corp', name: 'CSO' },
-            metadata: { tenantId: 'tenant-sovereign-01', planTier: 'SHIELD_PROFESSIONAL' },
+            metadata: {
+              tenantId: 'tenant-sovereign-01',
+              planTier: 'SHIELD_PROFESSIONAL',
+            },
           },
         },
       };
@@ -355,7 +383,8 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
 
       // First execution
       await paymentService.handleStripeWebhook(raw, sig);
-      const firstCallCount = mockPrisma.commercialEvent.create.mock.calls.length;
+      const firstCallCount =
+        mockPrisma.commercialEvent.create.mock.calls.length;
 
       // Mock idempotency service returning cached result on replay
       jest.spyOn(idempotencyService, 'run').mockResolvedValueOnce({
@@ -368,7 +397,9 @@ describe('Auth Registration & Payment E2E Audit Specifications', () => {
       await paymentService.handleStripeWebhook(raw, sig);
 
       // Database entitlement was not duplicated
-      expect(mockPrisma.commercialEvent.create.mock.calls.length).toBe(firstCallCount);
+      expect(mockPrisma.commercialEvent.create.mock.calls.length).toBe(
+        firstCallCount,
+      );
     });
   });
 });

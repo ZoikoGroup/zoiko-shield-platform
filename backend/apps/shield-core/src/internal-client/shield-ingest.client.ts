@@ -31,7 +31,11 @@ export function ingestError(status: number, bodyText: string): HttpException {
       // Not JSON: use the text as is.
     }
     return new HttpException(
-      { statusCode: status, error: 'INGEST_REJECTED', message: message || `shield-ingest returned ${status}` },
+      {
+        statusCode: status,
+        error: 'INGEST_REJECTED',
+        message: message || `shield-ingest returned ${status}`,
+      },
       status,
     );
   }
@@ -148,7 +152,11 @@ export class ShieldIngestClient {
 
   async triggerDlqAutoRetry(tenantId: string, limit?: string): Promise<any> {
     const q = limit ? `?limit=${encodeURIComponent(limit)}` : '';
-    return this.post(`/api/v1/dlq/auto-retry${q}`, {}, { 'x-tenant-id': tenantId });
+    return this.post(
+      `/api/v1/dlq/auto-retry${q}`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
   }
 
   async getDlqMetrics(tenantId: string): Promise<any> {

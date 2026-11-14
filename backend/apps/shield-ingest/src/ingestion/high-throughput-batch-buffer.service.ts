@@ -215,12 +215,20 @@ export class HighThroughputBatchBufferService implements OnModuleDestroy {
     // caught here, or it escapes this timer callback as an unhandled
     // rejection and takes the whole service down.
     if (this.meteringService) {
-      const groups = new Map<string, { tenantId: string; environmentId: string; count: number }>();
+      const groups = new Map<
+        string,
+        { tenantId: string; environmentId: string; count: number }
+      >();
       for (const evt of batchEvents) {
         const key = `${evt.tenantId}\u0000${evt.environmentId}`;
         const group = groups.get(key);
         if (group) group.count += 1;
-        else groups.set(key, { tenantId: evt.tenantId, environmentId: evt.environmentId, count: 1 });
+        else
+          groups.set(key, {
+            tenantId: evt.tenantId,
+            environmentId: evt.environmentId,
+            count: 1,
+          });
       }
       for (const group of groups.values()) {
         const warn = (err: any) =>

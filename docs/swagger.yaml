@@ -41572,6 +41572,15 @@ paths:
       summary: List notifications delivered to the current actor
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Maximum number of notification delivery records to return.
       responses:
         '200':
           description: List notifications delivered to the current actor successful.
@@ -41593,6 +41602,15 @@ paths:
       summary: List notification deliveries for the current tenant
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Maximum number of notification delivery records to return.
       responses:
         '200':
           description: List notification deliveries successful.
@@ -44604,6 +44622,14 @@ paths:
             nullable: true
             format: uuid
           description: Optional tenant ID filter.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+          description: Maximum number of evidence records to return.
   /api/v1/detections:
     post:
       tags:

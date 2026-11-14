@@ -61,7 +61,10 @@ export class ConversationService {
     private readonly llm: LlmService,
   ) {}
 
-  async createMessage(session: GuestSession, input: CreateMessageInput): Promise<MessageRecord> {
+  async createMessage(
+    session: GuestSession,
+    input: CreateMessageInput,
+  ): Promise<MessageRecord> {
     const idempotencyKey = `${session.id}:${input.client_message_id}`;
     const existingId = this.byClientId.get(idempotencyKey);
     if (existingId) {
@@ -72,7 +75,9 @@ export class ConversationService {
     const running = this.inflight.get(idempotencyKey);
     if (running) return running;
 
-    const work = this.build(session, input, idempotencyKey).finally(() => this.inflight.delete(idempotencyKey));
+    const work = this.build(session, input, idempotencyKey).finally(() =>
+      this.inflight.delete(idempotencyKey),
+    );
     this.inflight.set(idempotencyKey, work);
     return work;
   }
@@ -111,7 +116,8 @@ export class ConversationService {
     if (!record || record.sessionId !== session.id) {
       throw new NotFoundException({
         error_code: 'MESSAGE_NOT_FOUND',
-        user_safe_message: 'That message is not available in this conversation.',
+        user_safe_message:
+          'That message is not available in this conversation.',
       });
     }
     return record;
@@ -123,7 +129,10 @@ export class ConversationService {
     return true;
   }
 
-  private async answer(classification: Classification, input: CreateMessageInput): Promise<AnswerPayload> {
+  private async answer(
+    classification: Classification,
+    input: CreateMessageInput,
+  ): Promise<AnswerPayload> {
     const flags = this.config.flags();
     const market = input.market ?? 'undecided';
     const locale = input.locale ?? 'en-US';
@@ -259,7 +268,11 @@ export class ConversationService {
         follow_up_chips: chips,
         action: enabled
           ? { type: 'flow', flow: 'demo', label: 'Start demo request' }
-          : { type: 'link', href: this.content.routes().WEB_DEMO.href, label: 'Open demo route' },
+          : {
+              type: 'link',
+              href: this.content.routes().WEB_DEMO.href,
+              label: 'Open demo route',
+            },
       };
     }
 
@@ -283,7 +296,11 @@ export class ConversationService {
         follow_up_chips: chips,
         action: enabled
           ? { type: 'flow', flow: 'support', label: 'Start support request' }
-          : { type: 'link', href: this.content.routes().WEB_SUPPORT.href, label: 'Open support route' },
+          : {
+              type: 'link',
+              href: this.content.routes().WEB_SUPPORT.href,
+              label: 'Open support route',
+            },
       };
     }
 
@@ -303,13 +320,21 @@ export class ConversationService {
         follow_up_chips: chips,
         action: enabled
           ? { type: 'flow', flow: 'quote', label: 'Start quote inquiry' }
-          : { type: 'link', href: this.content.routes().WEB_PRICING.href, label: 'See plans and pricing' },
+          : {
+              type: 'link',
+              href: this.content.routes().WEB_PRICING.href,
+              label: 'See plans and pricing',
+            },
       };
     }
 
     // Head-to-head comparisons with another vendor are not in approved content, and a retrieval
     // match on the vendor's name would only surface an unrelated article.
-    if (/\b(?:better|worse|superior|inferior|cheaper|faster|stronger)\s+than\b|\bvs\.?\s+\w+|\bversus\b|\bcompared?\s+(?:to|with)\s+\w+/i.test(input.content)) {
+    if (
+      /\b(?:better|worse|superior|inferior|cheaper|faster|stronger)\s+than\b|\bvs\.?\s+\w+|\bversus\b|\bcompared?\s+(?:to|with)\s+\w+/i.test(
+        input.content,
+      )
+    ) {
       return {
         outcome: 'LIMITED',
         blocks: [
@@ -320,22 +345,32 @@ export class ConversationService {
         ],
         citations: [],
         follow_up_chips: chips,
-        action: flags.assistant_lead_submit && !flags.assistant_kill
-          ? { type: 'flow', flow: 'demo', label: 'Start demo request' }
-          : { type: 'link', href: this.content.routes().WEB_DEMO.href, label: 'Open demo route' },
+        action:
+          flags.assistant_lead_submit && !flags.assistant_kill
+            ? { type: 'flow', flow: 'demo', label: 'Start demo request' }
+            : {
+                type: 'link',
+                href: this.content.routes().WEB_DEMO.href,
+                label: 'Open demo route',
+              },
       };
     }
 
     // Information / discovery: deterministic retrieval over the public corpus.
     const earlier = this.earlierQuestions(input);
     const isFollowUp = earlier.length > 0 && tokenize(input.content).length < 5;
-    const searchText = isFollowUp ? `${earlier[earlier.length - 1]} ${input.content}` : input.content;
+    const searchText = isFollowUp
+      ? `${earlier[earlier.length - 1]} ${input.content}`
+      : input.content;
     const hits = this.content.search(searchText, { market, locale, limit: 4 });
     if (hits.length === 0) {
       // No keyword match (for example a named third-party product). Let the model
       // try with broad platform sources; it abstains when they do not cover it.
       const broad = this.content
-        .search('ZoikoShield platform overview integrations connectors telemetry', { market, locale, limit: 3 })
+        .search(
+          'ZoikoShield platform overview integrations connectors telemetry',
+          { market, locale, limit: 3 },
+        )
         .map((hit) => hit.source);
       const broadAnswer = await this.generate(input, broad, market, locale);
       if (broadAnswer && broadAnswer !== 'ABSTAIN') {
@@ -349,10 +384,16 @@ export class ConversationService {
       return this.abstainPayload(chips);
     }
 
-    const generated = await this.generate(input, hits.map((hit) => hit.source), market, locale);
+    const generated = await this.generate(
+      input,
+      hits.map((hit) => hit.source),
+      market,
+      locale,
+    );
     // A weak match (no title or tag hit) plus a model abstain means the sources do not cover
     // this. Say so rather than substituting an unrelated canned paragraph.
-    if (generated === 'ABSTAIN' && hits[0].score < 6) return this.abstainPayload(chips);
+    if (generated === 'ABSTAIN' && hits[0].score < 6)
+      return this.abstainPayload(chips);
     if (generated && generated !== 'ABSTAIN') {
       const modelAction = this.actionForQuery(input.content, flags);
       return {
@@ -380,7 +421,9 @@ export class ConversationService {
     if (related.length > 0) {
       blocks.push({
         type: 'bullets',
-        items: related.slice(0, 2).map((source) => `${source.title} — ${source.summary}`),
+        items: related
+          .slice(0, 2)
+          .map((source) => `${source.title} — ${source.summary}`),
       });
     }
     blocks.push({
@@ -433,14 +476,21 @@ export class ConversationService {
     hitSources: PublicSource[],
     market: string,
     locale: string,
-  ): Promise<{ blocks: AnswerBlock[]; citations: Citation[] } | 'ABSTAIN' | null> {
+  ): Promise<
+    { blocks: AnswerBlock[]; citations: Citation[] } | 'ABSTAIN' | null
+  > {
     if (!this.config.aiAnswersEnabled() || !this.llm.enabled()) return null;
 
     const context = this.uniqueSources(hitSources).slice(0, 4);
     const disclosure = this.content.getSource('help-ai-disclosure');
-    if (disclosure && !context.some((source) => source.id === disclosure.id)) context.push(disclosure);
+    if (disclosure && !context.some((source) => source.id === disclosure.id))
+      context.push(disclosure);
 
-    const result: LlmAnswer | null = await this.llm.answer(redact(input.content), context, this.earlierQuestions(input));
+    const result: LlmAnswer | null = await this.llm.answer(
+      redact(input.content),
+      context,
+      this.earlierQuestions(input),
+    );
     if (!result) return null;
     if (result.kind === 'abstain') return 'ABSTAIN';
 
@@ -459,8 +509,12 @@ export class ConversationService {
       return null;
     }
 
-    const blocks: AnswerBlock[] = result.paragraphs.map((text) => ({ type: 'paragraph', text }));
-    if (result.bullets.length > 0) blocks.push({ type: 'bullets', items: result.bullets });
+    const blocks: AnswerBlock[] = result.paragraphs.map((text) => ({
+      type: 'paragraph',
+      text,
+    }));
+    if (result.bullets.length > 0)
+      blocks.push({ type: 'bullets', items: result.bullets });
     blocks.push({
       type: 'note',
       text: 'AI-generated from approved public content. Price, certification and service levels are confirmed by the team.',
@@ -487,13 +541,22 @@ export class ConversationService {
   ];
 
   /** Follow-ups that differ from what was just asked and from the topic just answered. */
-  private chipsFor(question: string, primary: PublicSource | undefined): string[] {
+  private chipsFor(
+    question: string,
+    primary: PublicSource | undefined,
+  ): string[] {
     const stem = (token: string) => token.slice(0, 4);
     const asked = new Set(
-      [...tokenize(question), ...(primary ? tokenize(`${primary.title} ${primary.tags.join(' ')}`) : [])].map(stem),
+      [
+        ...tokenize(question),
+        ...(primary
+          ? tokenize(`${primary.title} ${primary.tags.join(' ')}`)
+          : []),
+      ].map(stem),
     );
     const fresh = ConversationService.CHIP_POOL.filter(
-      (chip) => tokenize(chip).filter((token) => asked.has(stem(token))).length < 1,
+      (chip) =>
+        tokenize(chip).filter((token) => asked.has(stem(token))).length < 1,
     );
     return fresh.slice(0, 3);
   }
@@ -504,22 +567,45 @@ export class ConversationService {
     return sentence.length > 0 ? sentence : source.summary;
   }
 
-  private actionForQuery(query: string, flags: Record<string, boolean>): AnswerPayload['action'] {
+  private actionForQuery(
+    query: string,
+    flags: Record<string, boolean>,
+  ): AnswerPayload['action'] {
     const text = query.toLowerCase();
     const routes = this.content.routes();
     if (/\b(price|pricing|plan|plans|cost|quote)\b/.test(text)) {
       return flags.assistant_lead_submit && !flags.assistant_kill
         ? { type: 'flow', flow: 'quote', label: 'Ask for a quote' }
-        : { type: 'link', href: routes.WEB_PRICING.href, label: routes.WEB_PRICING.label };
+        : {
+            type: 'link',
+            href: routes.WEB_PRICING.href,
+            label: routes.WEB_PRICING.label,
+          };
     }
     if (/\b(onboard|onboarding|getting started|implementation)\b/.test(text)) {
-      return { type: 'flow', flow: 'onboarding', label: 'Open onboarding checklist' };
+      return {
+        type: 'flow',
+        flow: 'onboarding',
+        label: 'Open onboarding checklist',
+      };
     }
-    if (/\b(trust|compliance|certif|soc 2|iso|gdpr|security programme)\b/.test(text)) {
-      return { type: 'link', href: routes.WEB_TRUST.href, label: routes.WEB_TRUST.label };
+    if (
+      /\b(trust|compliance|certif|soc 2|iso|gdpr|security programme)\b/.test(
+        text,
+      )
+    ) {
+      return {
+        type: 'link',
+        href: routes.WEB_TRUST.href,
+        label: routes.WEB_TRUST.label,
+      };
     }
     if (/\b(integrations?|connectors?|siem|telemetry sources?)\b/.test(text)) {
-      return { type: 'link', href: routes.WEB_INTEGRATIONS.href, label: routes.WEB_INTEGRATIONS.label };
+      return {
+        type: 'link',
+        href: routes.WEB_INTEGRATIONS.href,
+        label: routes.WEB_INTEGRATIONS.label,
+      };
     }
     return undefined;
   }
@@ -554,7 +640,11 @@ export class ConversationService {
       {
         seq: 1,
         type: 'acknowledged',
-        data: { message_id: record.id, session_id: record.sessionId, epoch: record.epoch },
+        data: {
+          message_id: record.id,
+          session_id: record.sessionId,
+          epoch: record.epoch,
+        },
       },
       { seq: 2, type: 'progress', data: { stage: 'retrieving' } },
       { seq: 3, type: 'progress', data: { stage: 'validating' } },
@@ -587,7 +677,9 @@ export class ConversationService {
         blocks: record.payload.blocks,
         citations: record.payload.citations,
         follow_up_chips: record.payload.follow_up_chips,
-        ...(record.payload.route_key ? { route_key: record.payload.route_key } : {}),
+        ...(record.payload.route_key
+          ? { route_key: record.payload.route_key }
+          : {}),
         ...(record.payload.action ? { action: record.payload.action } : {}),
       },
     });

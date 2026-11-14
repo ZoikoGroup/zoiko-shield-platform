@@ -74,7 +74,8 @@ export class PlanTierService {
    */
   recommendPlan(req: PlanRecommendationRequest): PlanRecommendation {
     const protectedAssetCount = req.protectedAssetCount || 0;
-    const estimatedDailyTelemetryGb = req.estimatedDailyTelemetryGb ?? req.estimatedDailyGb ?? 0;
+    const estimatedDailyTelemetryGb =
+      req.estimatedDailyTelemetryGb ?? req.estimatedDailyGb ?? 0;
     const requiresAiSecurity = req.requiresAiSecurity;
     const requiresManagedDefense = req.requiresManagedDefense;
 

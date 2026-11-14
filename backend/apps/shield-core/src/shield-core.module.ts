@@ -94,7 +94,10 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
       // the old 60/min locked out ordinary use; sensitive routes (login,
       // password reset, SSO) keep their own much lower @Throttle limits.
       throttlers: [
-        { ttl: 60_000, limit: Number(process.env.THROTTLE_LIMIT_PER_MINUTE) || 300 },
+        {
+          ttl: 60_000,
+          limit: Number(process.env.THROTTLE_LIMIT_PER_MINUTE) || 300,
+        },
       ],
     }),
     TenantModule,

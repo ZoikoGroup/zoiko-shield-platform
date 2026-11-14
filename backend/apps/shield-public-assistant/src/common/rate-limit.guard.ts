@@ -26,9 +26,12 @@ export class RateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     const method = request.method.toUpperCase();
-    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return true;
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS')
+      return true;
 
-    const windowMs = Number(process.env.PUBLIC_ASSISTANT_RATE_WINDOW_MS ?? 60_000);
+    const windowMs = Number(
+      process.env.PUBLIC_ASSISTANT_RATE_WINDOW_MS ?? 60_000,
+    );
     const limit = Number(process.env.PUBLIC_ASSISTANT_RATE_LIMIT ?? 60);
     const forwarded = request.header('x-forwarded-for')?.split(',')[0]?.trim();
     const ip = forwarded || request.ip || 'unknown';
@@ -47,7 +50,8 @@ export class RateLimitGuard implements CanActivate {
       throw new HttpException(
         {
           error_code: 'RATE_LIMITED',
-          user_safe_message: 'Too many requests. Please wait a moment and try again.',
+          user_safe_message:
+            'Too many requests. Please wait a moment and try again.',
           retry_after: retryAfter,
         },
         HttpStatus.TOO_MANY_REQUESTS,

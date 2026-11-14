@@ -14,14 +14,18 @@ export interface GuestSession {
   uaClass: string;
 }
 
-const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const hash = (value: string) =>
+  createHash('sha256').update(value).digest('hex');
 
 @Injectable()
 export class SessionService {
   private readonly sessions = new Map<string, GuestSession>();
   private readonly byToken = new Map<string, string>();
 
-  create(ip: string, userAgent: string): { session: GuestSession; token: string } {
+  create(
+    ip: string,
+    userAgent: string,
+  ): { session: GuestSession; token: string } {
     const token = randomBytes(32).toString('base64url');
     const now = Date.now();
     const session: GuestSession = {

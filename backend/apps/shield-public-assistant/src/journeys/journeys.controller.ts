@@ -7,7 +7,13 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { IsArray, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsArray,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { PublicEndpoint } from '../common/public-endpoint.decorator';
 import { ContentService } from '../content/content.service';
 
@@ -101,7 +107,11 @@ export class JourneysController {
     const matches = ruleset.rules
       .filter((rule) => {
         if (body.priority && rule.priority !== body.priority) return false;
-        if (body.environment && rule.environment !== 'any' && rule.environment !== body.environment) {
+        if (
+          body.environment &&
+          rule.environment !== 'any' &&
+          rule.environment !== body.environment
+        ) {
           return false;
         }
         return true;
@@ -225,7 +235,11 @@ export class JourneysController {
     return {
       market: selected,
       category: category ?? null,
-      categories: [...new Set(this.content.connectors(selected).map((item) => item.category))],
+      categories: [
+        ...new Set(
+          this.content.connectors(selected).map((item) => item.category),
+        ),
+      ],
       connectors,
       availability_note:
         'Availability is projected from public content. NOT_VERIFIED means the public catalogue does not confirm the integration for your version or deployment model. Confirm with Solutions Engineering.',
@@ -267,7 +281,10 @@ export class JourneysController {
   @Post('onboarding/checklists')
   onboardingChecklist(@Body() body: OnboardingChecklistDto) {
     const onboarding = this.content.onboarding();
-    const topics = body.topic_ids && body.topic_ids.length > 0 ? new Set(body.topic_ids) : undefined;
+    const topics =
+      body.topic_ids && body.topic_ids.length > 0
+        ? new Set(body.topic_ids)
+        : undefined;
     const steps = onboarding.checklist
       .filter((step) => !topics || topics.has(step.topic))
       .map((step) => {

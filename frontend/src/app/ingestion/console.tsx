@@ -32,7 +32,6 @@ export default function IngestionPage() {
     state?.connectors || []
   );
   const [selectedConnectorId, setSelectedConnectorId] = useState(
-    state?.connectors?.[0]?.id ?? "conn-webhook-gateway-01"
     state?.connectors?.[0]?.id ?? ""
   );
   const [rawJson, setRawJson] = useState(`{
@@ -83,8 +82,6 @@ export default function IngestionPage() {
   };
 
   useEffect(() => {
-    fetchLiveEvents();
-  }, []);
     void fetchConnectors();
     void fetchLiveEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,7 +106,6 @@ export default function IngestionPage() {
       setAlertTriggered(res.alertTriggered);
       fetchLiveEvents();
     } catch (err: any) {
-      alert("Invalid JSON payload or Ingestion error: " + err.message);
       const message = err?.message || "Invalid JSON payload or Ingestion error";
       setIngestionError(message);
     } finally {
@@ -289,7 +285,6 @@ export default function IngestionPage() {
         </div>
         <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Connectors Configured</div>
-          <div className="text-2xl font-bold font-mono text-white mt-1">{state?.connectors?.length ?? 0} Connectors</div>
           <div className="text-2xl font-bold font-mono text-white mt-1">{connectors.length} Connectors</div>
           <div className="text-[11px] text-cyan-400 mt-0.5">Multi-vendor telemetry</div>
         </div>
@@ -335,11 +330,6 @@ export default function IngestionPage() {
               onChange={(e) => setSelectedConnectorId(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-mono"
             >
-              {(state?.connectors || []).map((c, idx) => (
-                <option key={c.id || idx} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
               {connectors.length === 0 ? (
                 <option value="">No connectors in workspace</option>
               ) : (

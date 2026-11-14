@@ -44,7 +44,8 @@ export class ErrorEnvelopeFilter implements ExceptionFilter {
         userSafeMessage = SAFE_MESSAGES[status] ?? userSafeMessage;
       } else if (body && typeof body === 'object') {
         const record = body as Record<string, unknown>;
-        if (typeof record.error_code === 'string') errorCode = record.error_code;
+        if (typeof record.error_code === 'string')
+          errorCode = record.error_code;
         if (typeof record.user_safe_message === 'string') {
           userSafeMessage = record.user_safe_message;
         } else if (typeof record.message === 'string' && status < 500) {
@@ -55,7 +56,8 @@ export class ErrorEnvelopeFilter implements ExceptionFilter {
         if (record.field_errors && typeof record.field_errors === 'object') {
           fieldErrors = record.field_errors as Record<string, string[]>;
         }
-        if (typeof record.retry_after === 'number') retryAfter = record.retry_after;
+        if (typeof record.retry_after === 'number')
+          retryAfter = record.retry_after;
       }
     } else {
       this.logger.error(

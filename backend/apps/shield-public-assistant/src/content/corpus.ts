@@ -44,7 +44,15 @@ Detection normalises telemetry from connected sources so analysts can investigat
 Controlled response routes proposed actions through policy, approval and an auditable record. Verifiable evidence produces a tamper-evident audit package that can be checked offline.
 
 Public descriptions are capability statements, not a warranty of coverage for a specific environment. Contracted scope, regional availability and service levels are confirmed in an order form or statement of work.`,
-    tags: ['platform', 'overview', 'what is zoikoshield', 'capabilities', 'detection', 'response', 'evidence'],
+    tags: [
+      'platform',
+      'overview',
+      'what is zoikoshield',
+      'capabilities',
+      'detection',
+      'response',
+      'evidence',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 3,
@@ -73,7 +81,15 @@ Rules and behavioural detections evaluate that telemetry and raise alerts with t
 Detection quality depends on which sources are connected, how they are configured and the retention available in the contract. The platform does not claim to see telemetry that has not been ingested, and it does not monitor an organisation's environment before onboarding and authorisation are complete.
 
 A public chat cannot inspect alerts, cases or telemetry. Existing customers should use their authenticated ZoikoShield workspace or their contracted support channel.`,
-    tags: ['detection', 'threat detection', 'alerts', 'telemetry', 'endpoint', 'identity', 'cloud'],
+    tags: [
+      'detection',
+      'threat detection',
+      'alerts',
+      'telemetry',
+      'endpoint',
+      'identity',
+      'cloud',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -102,7 +118,14 @@ Cases keep the timeline in order and link the evidence that supported each concl
 AI assistance can summarise a case or propose next questions, but it does not close a case, change a severity or authorise a response on its own.
 
 Case data belongs to the authenticated tenant workspace. The public assistant has no route to it.`,
-    tags: ['investigation', 'case management', 'cases', 'timeline', 'evidence', 'analyst'],
+    tags: [
+      'investigation',
+      'case management',
+      'cases',
+      'timeline',
+      'evidence',
+      'analyst',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -131,7 +154,15 @@ AI output is labelled, source-linked where public content is used, and treated a
 AI use is governed by a use-case registry, prompt and output controls, redaction, retention policy and a kill switch. Model providers and regions are selected through a separate risk and legal review.
 
 The public assistant on this website is a different surface from the authenticated AI copilot. It uses approved public content only and cannot read tenant data.`,
-    tags: ['ai', 'governed ai', 'human approval', 'copilot', 'governance', 'model', 'advisory'],
+    tags: [
+      'ai',
+      'governed ai',
+      'human approval',
+      'copilot',
+      'governance',
+      'model',
+      'advisory',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 3,
@@ -158,7 +189,14 @@ The public assistant on this website is a different surface from the authenticat
 Verification is about whether the package is intact and internally consistent. It is not, by itself, a certification that an organisation meets a framework. Compliance conclusions depend on the organisation's controls, scope and auditor assessment.
 
 Public pages describe the capability. A specific audit scope or report should be requested through the trust access process and reviewed by the trust team.`,
-    tags: ['audit', 'evidence', 'verification', 'compliance', 'audit package', 'merkle'],
+    tags: [
+      'audit',
+      'evidence',
+      'verification',
+      'compliance',
+      'audit package',
+      'merkle',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -191,7 +229,14 @@ Public pages describe the capability. A specific audit scope or report should be
 7. Only then expand source coverage and automation.
 
 The onboarding checklist in this assistant is a planning aid. It is not a substitute for the contracted implementation plan.`,
-    tags: ['onboarding', 'getting started', 'setup', 'implementation', 'first steps', 'deployment'],
+    tags: [
+      'onboarding',
+      'getting started',
+      'setup',
+      'implementation',
+      'first steps',
+      'deployment',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -224,7 +269,26 @@ The public connector catalogue shows documented integrations, not a guarantee th
 Documented integrations in the public catalogue: Microsoft Sentinel (cloud SIEM), Splunk (SIEM), CrowdStrike Falcon (endpoint), AWS GuardDuty (cloud), Okta (identity) and Slack (notifications). Confirm region, version, module and permissions for each with Solutions Engineering.
 
 Not verified in public content: ServiceNow (ITSM) and Jira (ticketing). Public content does not confirm that these work for your version, module or deployment model, so the assistant cannot confirm them. Ask Solutions Engineering.`,
-    tags: ['connectors', 'integrations', 'integration', 'telemetry', 'ingestion', 'sources', 'normalisation', 'ocsf', 'splunk', 'crowdstrike', 'falcon', 'sentinel', 'okta', 'guardduty', 'slack', 'servicenow', 'jira', 'siem'],
+    tags: [
+      'connectors',
+      'integrations',
+      'integration',
+      'telemetry',
+      'ingestion',
+      'sources',
+      'normalisation',
+      'ocsf',
+      'splunk',
+      'crowdstrike',
+      'falcon',
+      'sentinel',
+      'okta',
+      'guardduty',
+      'slack',
+      'servicenow',
+      'jira',
+      'siem',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -253,7 +317,15 @@ Policy decides whether a proposal is allowed, needs approval or is prohibited. A
 An emergency freeze can stop response execution while detection and investigation continue. Freeze state is visible to operators and is itself audited.
 
 Public chat cannot execute, approve or unfreeze anything. Those controls exist only in the authenticated workspace.`,
-    tags: ['response', 'soar', 'approval', 'playbook', 'freeze', 'isolation', 'action'],
+    tags: [
+      'response',
+      'soar',
+      'approval',
+      'playbook',
+      'freeze',
+      'isolation',
+      'action',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -286,7 +358,24 @@ The public plan families are Essential (a single security operations team), Adva
 Service levels, uptime commitments and SLAs are contractual. They are confirmed in writing in the order form and are not promised in public chat.
 
 The public assistant will not invent a price, a discount, a booking or a service-level commitment. If you need a number, request a quote and the team will confirm scope first.`,
-    tags: ['pricing', 'plans', 'cost', 'quote', 'commercial', 'sizing', 'contract', 'sla', 'uptime', 'guarantee', 'discount', 'trial', 'essential', 'advanced', 'enterprise', 'mssp'],
+    tags: [
+      'pricing',
+      'plans',
+      'cost',
+      'quote',
+      'commercial',
+      'sizing',
+      'contract',
+      'sla',
+      'uptime',
+      'guarantee',
+      'discount',
+      'trial',
+      'essential',
+      'advanced',
+      'enterprise',
+      'mssp',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -319,7 +408,24 @@ Encryption: ZoikoShield describes encryption in transit and at rest, with key ma
 Certifications such as SOC 2, ISO 27001 or HIPAA: public content does not state a current certification, so the assistant cannot confirm one. The trust team can confirm the current status for a given scope and date.
 
 Requests for reports, questionnaires or evidence go through the trust access process so the right owner can review the scope and any confidentiality terms.`,
-    tags: ['trust', 'compliance', 'certification', 'certified', 'soc 2', 'iso 27001', 'hipaa', 'gdpr', 'security', 'questionnaire', 'encryption', 'encrypted', 'encrypt', 'key management', 'at rest', 'in transit'],
+    tags: [
+      'trust',
+      'compliance',
+      'certification',
+      'certified',
+      'soc 2',
+      'iso 27001',
+      'hipaa',
+      'gdpr',
+      'security',
+      'questionnaire',
+      'encryption',
+      'encrypted',
+      'encrypt',
+      'key management',
+      'at rest',
+      'in transit',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 3,
@@ -348,7 +454,15 @@ The public assistant can take a general support request, but it cannot open a li
 When submitting a public request, do not include passwords, tokens, customer data, live incident details or anything you would not put in an email to a new contact. The assistant screens input and will reject obvious secrets.
 
 If a request is urgent and you are an existing customer, stop and use your contracted incident channel.`,
-    tags: ['support', 'contact', 'help', 'incident', 'urgent', 'ticket', 'human'],
+    tags: [
+      'support',
+      'contact',
+      'help',
+      'incident',
+      'urgent',
+      'ticket',
+      'human',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -377,7 +491,15 @@ Message content is processed to answer the question and is not sent to product a
 For a data-subject request or a privacy question, use the privacy contact route published in the privacy notice. In this build the assistant links to that route rather than collecting a request itself, until the DPO-approved intake process is enabled.
 
 Marketing consent is separate from a support or sales request and is never pre-selected.`,
-    tags: ['privacy', 'gdpr', 'data protection', 'data subject', 'delete my data', 'retention', 'consent'],
+    tags: [
+      'privacy',
+      'gdpr',
+      'data protection',
+      'data subject',
+      'delete my data',
+      'retention',
+      'consent',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -406,7 +528,14 @@ It cannot access an account, tenant, alert, case, evidence ledger, playbook or r
 It can take a demo, general support, quote, trust access, technical evaluation or onboarding request as a durable intake. A receipt means the request was accepted for the team, not that a meeting is booked or a ticket is open.
 
 You can clear the conversation at any time. Do not share passwords, tokens or live incident information.`,
-    tags: ['assistant', 'ai disclosure', 'what can you do', 'limitations', 'public information', 'capabilities'],
+    tags: [
+      'assistant',
+      'ai disclosure',
+      'what can you do',
+      'limitations',
+      'public information',
+      'capabilities',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -435,7 +564,20 @@ Regional availability, data residency commitments and any dedicated deployment o
 A technical evaluation can cover the deployment model, identity integration, network path, telemetry sources and data handling. Use the technical evaluation request if you need those topics confirmed in writing.
 
 Public content describes a hosted, cloud-delivered service (SaaS). It does not describe an on-premises product; any dedicated or sovereign deployment requirement is agreed during commercial and technical review.`,
-    tags: ['deployment', 'region', 'residency', 'sovereign', 'cloud', 'hosting', 'architecture', 'saas', 'hosted', 'on-premises', 'on-prem', 'premises'],
+    tags: [
+      'deployment',
+      'region',
+      'residency',
+      'sovereign',
+      'cloud',
+      'hosting',
+      'architecture',
+      'saas',
+      'hosted',
+      'on-premises',
+      'on-prem',
+      'premises',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -470,7 +612,15 @@ Compliance evidence: assemble period evidence and verify package integrity offli
 Managed security delivery: give an MSSP a repeatable operating model across customer tenants, with isolation and approval controls.
 
 These are descriptions of intended use. Fit for a specific environment is confirmed in a discovery or technical evaluation.`,
-    tags: ['use cases', 'use case', 'soc', 'mssp', 'compliance', 'automation', 'investigation'],
+    tags: [
+      'use cases',
+      'use case',
+      'soc',
+      'mssp',
+      'compliance',
+      'automation',
+      'investigation',
+    ],
     effectiveFrom: '2026-10-01',
     reviewAt: '2027-01-31',
     revision: 2,
@@ -490,7 +640,8 @@ These are descriptions of intended use. Fit for a specific environment is confir
     audience: 'customer',
     owner: 'Customer Education',
     reviewer: 'Support',
-    summary: 'A deterministic checklist for the first month after contract signature.',
+    summary:
+      'A deterministic checklist for the first month after contract signature.',
     body: 'A guided checklist covering access, sources, detections, response policy and the first investigation.',
     tags: ['onboarding', 'guide', 'checklist', '30 days'],
     effectiveFrom: '2026-10-01',
@@ -606,20 +757,19 @@ export const HELP_ARTICLES: HelpArticle[] = SOURCES.filter(
 ).map((source) => ({
   id: source.id,
   title: source.title,
-  category:
-    source.tags.includes('onboarding')
-      ? 'Getting started'
-      : source.tags.includes('integrations')
-        ? 'Integrations'
-        : source.tags.includes('support')
-          ? 'Support'
-          : source.tags.includes('privacy')
-            ? 'Privacy'
-            : source.tags.includes('pricing')
-              ? 'Commercial'
-              : source.tags.includes('response')
-                ? 'Response'
-                : 'Platform',
+  category: source.tags.includes('onboarding')
+    ? 'Getting started'
+    : source.tags.includes('integrations')
+      ? 'Integrations'
+      : source.tags.includes('support')
+        ? 'Support'
+        : source.tags.includes('privacy')
+          ? 'Privacy'
+          : source.tags.includes('pricing')
+            ? 'Commercial'
+            : source.tags.includes('response')
+              ? 'Response'
+              : 'Platform',
   summary: source.summary,
   body: source.body,
   sourceId: source.id,
@@ -635,11 +785,36 @@ export const PLANS: PublicPlan[] = [
     priceNote: 'Quote-based. Confirmed after scope and sizing review.',
     sourceId: 'plan-essential',
     features: [
-      { key: 'detection', label: 'Continuous detection', state: 'INCLUDED', sourceId: 'plan-essential' },
-      { key: 'cases', label: 'Case investigation', state: 'INCLUDED', sourceId: 'plan-essential' },
-      { key: 'evidence', label: 'Audit evidence basics', state: 'INCLUDED', sourceId: 'plan-essential' },
-      { key: 'response', label: 'Governed response automation', state: 'OPTIONAL', sourceId: 'plan-essential' },
-      { key: 'ai', label: 'Governed AI assistance', state: 'OPTIONAL', sourceId: 'plan-essential' },
+      {
+        key: 'detection',
+        label: 'Continuous detection',
+        state: 'INCLUDED',
+        sourceId: 'plan-essential',
+      },
+      {
+        key: 'cases',
+        label: 'Case investigation',
+        state: 'INCLUDED',
+        sourceId: 'plan-essential',
+      },
+      {
+        key: 'evidence',
+        label: 'Audit evidence basics',
+        state: 'INCLUDED',
+        sourceId: 'plan-essential',
+      },
+      {
+        key: 'response',
+        label: 'Governed response automation',
+        state: 'OPTIONAL',
+        sourceId: 'plan-essential',
+      },
+      {
+        key: 'ai',
+        label: 'Governed AI assistance',
+        state: 'OPTIONAL',
+        sourceId: 'plan-essential',
+      },
     ],
   },
   {
@@ -651,11 +826,36 @@ export const PLANS: PublicPlan[] = [
     priceNote: 'Quote-based. Confirmed after scope and sizing review.',
     sourceId: 'plan-advanced',
     features: [
-      { key: 'detection', label: 'Continuous detection', state: 'INCLUDED', sourceId: 'plan-advanced' },
-      { key: 'cases', label: 'Case investigation', state: 'INCLUDED', sourceId: 'plan-advanced' },
-      { key: 'evidence', label: 'Audit evidence', state: 'INCLUDED', sourceId: 'plan-advanced' },
-      { key: 'response', label: 'Governed response automation', state: 'INCLUDED', sourceId: 'plan-advanced' },
-      { key: 'retention', label: 'Extended retention options', state: 'OPTIONAL', sourceId: 'plan-advanced' },
+      {
+        key: 'detection',
+        label: 'Continuous detection',
+        state: 'INCLUDED',
+        sourceId: 'plan-advanced',
+      },
+      {
+        key: 'cases',
+        label: 'Case investigation',
+        state: 'INCLUDED',
+        sourceId: 'plan-advanced',
+      },
+      {
+        key: 'evidence',
+        label: 'Audit evidence',
+        state: 'INCLUDED',
+        sourceId: 'plan-advanced',
+      },
+      {
+        key: 'response',
+        label: 'Governed response automation',
+        state: 'INCLUDED',
+        sourceId: 'plan-advanced',
+      },
+      {
+        key: 'retention',
+        label: 'Extended retention options',
+        state: 'OPTIONAL',
+        sourceId: 'plan-advanced',
+      },
     ],
   },
   {
@@ -667,11 +867,36 @@ export const PLANS: PublicPlan[] = [
     priceNote: 'Quote-based. Contractual SLAs and scope confirmed in writing.',
     sourceId: 'plan-enterprise',
     features: [
-      { key: 'detection', label: 'Continuous detection', state: 'INCLUDED', sourceId: 'plan-enterprise' },
-      { key: 'cases', label: 'Case investigation', state: 'INCLUDED', sourceId: 'plan-enterprise' },
-      { key: 'evidence', label: 'Audit evidence', state: 'INCLUDED', sourceId: 'plan-enterprise' },
-      { key: 'response', label: 'Advanced approval models', state: 'OPTIONAL', sourceId: 'plan-enterprise' },
-      { key: 'sla', label: 'Contractual service levels', state: 'OPTIONAL', sourceId: 'plan-enterprise' },
+      {
+        key: 'detection',
+        label: 'Continuous detection',
+        state: 'INCLUDED',
+        sourceId: 'plan-enterprise',
+      },
+      {
+        key: 'cases',
+        label: 'Case investigation',
+        state: 'INCLUDED',
+        sourceId: 'plan-enterprise',
+      },
+      {
+        key: 'evidence',
+        label: 'Audit evidence',
+        state: 'INCLUDED',
+        sourceId: 'plan-enterprise',
+      },
+      {
+        key: 'response',
+        label: 'Advanced approval models',
+        state: 'OPTIONAL',
+        sourceId: 'plan-enterprise',
+      },
+      {
+        key: 'sla',
+        label: 'Contractual service levels',
+        state: 'OPTIONAL',
+        sourceId: 'plan-enterprise',
+      },
     ],
   },
   {
@@ -683,23 +908,99 @@ export const PLANS: PublicPlan[] = [
     priceNote: 'Quote-based. Per-tenant terms agreed with the partner team.',
     sourceId: 'plan-mssp',
     features: [
-      { key: 'isolation', label: 'Tenant isolation', state: 'INCLUDED', sourceId: 'plan-mssp' },
-      { key: 'admin', label: 'Delegated administration', state: 'INCLUDED', sourceId: 'plan-mssp' },
-      { key: 'approvals', label: 'Approval controls', state: 'INCLUDED', sourceId: 'plan-mssp' },
-      { key: 'reporting', label: 'Evidence and reporting', state: 'INCLUDED', sourceId: 'plan-mssp' },
+      {
+        key: 'isolation',
+        label: 'Tenant isolation',
+        state: 'INCLUDED',
+        sourceId: 'plan-mssp',
+      },
+      {
+        key: 'admin',
+        label: 'Delegated administration',
+        state: 'INCLUDED',
+        sourceId: 'plan-mssp',
+      },
+      {
+        key: 'approvals',
+        label: 'Approval controls',
+        state: 'INCLUDED',
+        sourceId: 'plan-mssp',
+      },
+      {
+        key: 'reporting',
+        label: 'Evidence and reporting',
+        state: 'INCLUDED',
+        sourceId: 'plan-mssp',
+      },
     ],
   },
 ];
 
 export const CONNECTORS: Connector[] = [
-  { id: 'microsoft-sentinel', name: 'Microsoft Sentinel', category: 'Cloud SIEM', availability: 'VERIFIED', note: 'Documented integration. Confirm workspace region and export scope with Solutions.', sourceId: 'help-connectors' },
-  { id: 'splunk', name: 'Splunk', category: 'SIEM', availability: 'VERIFIED', note: 'Documented integration. Confirm version and index permissions with Solutions.', sourceId: 'help-connectors' },
-  { id: 'crowdstrike-falcon', name: 'CrowdStrike Falcon', category: 'Endpoint', availability: 'VERIFIED', note: 'Documented integration. Confirm module and API scope with Solutions.', sourceId: 'help-connectors' },
-  { id: 'aws-guardduty', name: 'AWS GuardDuty', category: 'Cloud', availability: 'VERIFIED', note: 'Documented integration. Confirm account and region coverage with Solutions.', sourceId: 'help-connectors' },
-  { id: 'okta', name: 'Okta', category: 'Identity', availability: 'VERIFIED', note: 'Documented integration. Confirm tenant and log export scope with Solutions.', sourceId: 'help-connectors' },
-  { id: 'servicenow', name: 'ServiceNow', category: 'ITSM', availability: 'NOT_VERIFIED', note: 'Availability for your version and module is not verified in public content. Confirm with Solutions.', sourceId: 'help-connectors' },
-  { id: 'jira', name: 'Jira', category: 'Ticketing', availability: 'NOT_VERIFIED', note: 'Availability for your deployment model is not verified in public content. Confirm with Solutions.', sourceId: 'help-connectors' },
-  { id: 'slack', name: 'Slack', category: 'Collaboration', availability: 'VERIFIED', note: 'Documented notification integration. Confirm workspace governance with Solutions.', sourceId: 'help-connectors' },
+  {
+    id: 'microsoft-sentinel',
+    name: 'Microsoft Sentinel',
+    category: 'Cloud SIEM',
+    availability: 'VERIFIED',
+    note: 'Documented integration. Confirm workspace region and export scope with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'splunk',
+    name: 'Splunk',
+    category: 'SIEM',
+    availability: 'VERIFIED',
+    note: 'Documented integration. Confirm version and index permissions with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'crowdstrike-falcon',
+    name: 'CrowdStrike Falcon',
+    category: 'Endpoint',
+    availability: 'VERIFIED',
+    note: 'Documented integration. Confirm module and API scope with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'aws-guardduty',
+    name: 'AWS GuardDuty',
+    category: 'Cloud',
+    availability: 'VERIFIED',
+    note: 'Documented integration. Confirm account and region coverage with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'okta',
+    name: 'Okta',
+    category: 'Identity',
+    availability: 'VERIFIED',
+    note: 'Documented integration. Confirm tenant and log export scope with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'servicenow',
+    name: 'ServiceNow',
+    category: 'ITSM',
+    availability: 'NOT_VERIFIED',
+    note: 'Availability for your version and module is not verified in public content. Confirm with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'jira',
+    name: 'Jira',
+    category: 'Ticketing',
+    availability: 'NOT_VERIFIED',
+    note: 'Availability for your deployment model is not verified in public content. Confirm with Solutions.',
+    sourceId: 'help-connectors',
+  },
+  {
+    id: 'slack',
+    name: 'Slack',
+    category: 'Collaboration',
+    availability: 'VERIFIED',
+    note: 'Documented notification integration. Confirm workspace governance with Solutions.',
+    sourceId: 'help-connectors',
+  },
 ];
 
 export const TRUST_TOPICS: TrustTopic[] = [
@@ -906,36 +1207,159 @@ export const ONBOARDING = {
     { id: 'mssp', label: 'MSSP delivery' },
   ],
   questions: [
-    { id: 'scope', persona: 'ciso', question: 'Which environments and regions are in the first phase?', topic: 'scope' },
-    { id: 'owners', persona: 'ciso', question: 'Who owns risk acceptance and response approval?', topic: 'governance' },
-    { id: 'identity', persona: 'soc', question: 'Which identity provider and administrator roles will be used?', topic: 'identity' },
-    { id: 'sources', persona: 'soc', question: 'Which three telemetry sources matter most in the first 30 days?', topic: 'sources' },
-    { id: 'detections', persona: 'soc', question: 'Which known-benign activity should be tuned before go-live?', topic: 'detections' },
-    { id: 'network', persona: 'it', question: 'What network path and egress rules are required?', topic: 'network' },
-    { id: 'retention', persona: 'it', question: 'What retention period is required for investigations and evidence?', topic: 'retention' },
-    { id: 'tenants', persona: 'mssp', question: 'How are customer tenants and delegated administrators structured?', topic: 'tenancy' },
-    { id: 'reporting', persona: 'mssp', question: 'Which customer reports and evidence exports are required?', topic: 'reporting' },
+    {
+      id: 'scope',
+      persona: 'ciso',
+      question: 'Which environments and regions are in the first phase?',
+      topic: 'scope',
+    },
+    {
+      id: 'owners',
+      persona: 'ciso',
+      question: 'Who owns risk acceptance and response approval?',
+      topic: 'governance',
+    },
+    {
+      id: 'identity',
+      persona: 'soc',
+      question: 'Which identity provider and administrator roles will be used?',
+      topic: 'identity',
+    },
+    {
+      id: 'sources',
+      persona: 'soc',
+      question:
+        'Which three telemetry sources matter most in the first 30 days?',
+      topic: 'sources',
+    },
+    {
+      id: 'detections',
+      persona: 'soc',
+      question: 'Which known-benign activity should be tuned before go-live?',
+      topic: 'detections',
+    },
+    {
+      id: 'network',
+      persona: 'it',
+      question: 'What network path and egress rules are required?',
+      topic: 'network',
+    },
+    {
+      id: 'retention',
+      persona: 'it',
+      question:
+        'What retention period is required for investigations and evidence?',
+      topic: 'retention',
+    },
+    {
+      id: 'tenants',
+      persona: 'mssp',
+      question:
+        'How are customer tenants and delegated administrators structured?',
+      topic: 'tenancy',
+    },
+    {
+      id: 'reporting',
+      persona: 'mssp',
+      question: 'Which customer reports and evidence exports are required?',
+      topic: 'reporting',
+    },
   ],
   checklist: [
-    { id: 'scope', topic: 'scope', title: 'Confirm phase-one scope and data region', sourceId: 'help-getting-started' },
-    { id: 'identity', topic: 'identity', title: 'Set up administrators and least-privilege roles', sourceId: 'help-getting-started' },
-    { id: 'sources', topic: 'sources', title: 'Connect and validate the first telemetry sources', sourceId: 'help-connectors' },
-    { id: 'detections', topic: 'detections', title: 'Review detection coverage and tune known-benign activity', sourceId: 'cap-detection' },
-    { id: 'response', topic: 'governance', title: 'Agree response approval policy and prohibited actions', sourceId: 'help-response' },
-    { id: 'evidence', topic: 'retention', title: 'Confirm retention and evidence review process', sourceId: 'cap-evidence' },
-    { id: 'first-case', topic: 'scope', title: 'Run one investigation end to end', sourceId: 'cap-investigation' },
+    {
+      id: 'scope',
+      topic: 'scope',
+      title: 'Confirm phase-one scope and data region',
+      sourceId: 'help-getting-started',
+    },
+    {
+      id: 'identity',
+      topic: 'identity',
+      title: 'Set up administrators and least-privilege roles',
+      sourceId: 'help-getting-started',
+    },
+    {
+      id: 'sources',
+      topic: 'sources',
+      title: 'Connect and validate the first telemetry sources',
+      sourceId: 'help-connectors',
+    },
+    {
+      id: 'detections',
+      topic: 'detections',
+      title: 'Review detection coverage and tune known-benign activity',
+      sourceId: 'cap-detection',
+    },
+    {
+      id: 'response',
+      topic: 'governance',
+      title: 'Agree response approval policy and prohibited actions',
+      sourceId: 'help-response',
+    },
+    {
+      id: 'evidence',
+      topic: 'retention',
+      title: 'Confirm retention and evidence review process',
+      sourceId: 'cap-evidence',
+    },
+    {
+      id: 'first-case',
+      topic: 'scope',
+      title: 'Run one investigation end to end',
+      sourceId: 'cap-investigation',
+    },
   ],
 };
 
 export const ROUTES = {
-  WEB_CAPABILITIES: { label: 'Explore capabilities', href: '/help', owner: 'Web', status: 'PUBLISHED' },
-  WEB_PRICING: { label: 'Plans and pricing', href: '/pricing', owner: 'Commercial', status: 'PUBLISHED' },
-  WEB_DEMO: { label: 'Book a demo', href: '/assistant?flow=demo', owner: 'Revenue', status: 'PUBLISHED' },
-  WEB_SUPPORT: { label: 'Contact support', href: '/assistant?flow=support', owner: 'Support', status: 'PUBLISHED' },
-  WEB_TRUST: { label: 'Trust centre', href: '/trust', owner: 'Trust', status: 'PUBLISHED' },
-  WEB_INTEGRATIONS: { label: 'Integrations', href: '/connectors', owner: 'Solutions', status: 'PUBLISHED' },
-  WEB_ONBOARDING: { label: 'Onboarding', href: '/onboarding', owner: 'Delivery', status: 'PUBLISHED' },
-  WEB_PRIVACY: { label: 'Privacy notice', href: '/trust', owner: 'Privacy', status: 'PUBLISHED' },
+  WEB_CAPABILITIES: {
+    label: 'Explore capabilities',
+    href: '/help',
+    owner: 'Web',
+    status: 'PUBLISHED',
+  },
+  WEB_PRICING: {
+    label: 'Plans and pricing',
+    href: '/pricing',
+    owner: 'Commercial',
+    status: 'PUBLISHED',
+  },
+  WEB_DEMO: {
+    label: 'Book a demo',
+    href: '/assistant?flow=demo',
+    owner: 'Revenue',
+    status: 'PUBLISHED',
+  },
+  WEB_SUPPORT: {
+    label: 'Contact support',
+    href: '/assistant?flow=support',
+    owner: 'Support',
+    status: 'PUBLISHED',
+  },
+  WEB_TRUST: {
+    label: 'Trust centre',
+    href: '/trust',
+    owner: 'Trust',
+    status: 'PUBLISHED',
+  },
+  WEB_INTEGRATIONS: {
+    label: 'Integrations',
+    href: '/connectors',
+    owner: 'Solutions',
+    status: 'PUBLISHED',
+  },
+  WEB_ONBOARDING: {
+    label: 'Onboarding',
+    href: '/onboarding',
+    owner: 'Delivery',
+    status: 'PUBLISHED',
+  },
+  WEB_PRIVACY: {
+    label: 'Privacy notice',
+    href: '/trust',
+    owner: 'Privacy',
+    status: 'PUBLISHED',
+  },
   INCIDENT_ROUTE: {
     label: 'Contracted incident channel',
     href: '/help',
@@ -999,11 +1423,24 @@ export const SUGGESTED_QUESTIONS = [
 ];
 
 export const FOLLOW_UP_CHIPS: Record<string, string[]> = {
-  INFO: ['Explore plans and pricing', 'How does detection work?', 'Which integrations are available?'],
+  INFO: [
+    'Explore plans and pricing',
+    'How does detection work?',
+    'Which integrations are available?',
+  ],
   WRITE_DEMO: ['What happens after I submit?', 'Which plan fits a small team?'],
-  WRITE_SUPPORT: ['What should I include in a request?', 'How do I contact support urgently?'],
-  PRIVACY: ['What data does this assistant keep?', 'How do I contact the privacy team?'],
-  INCIDENT: ['What is the support route?', 'How does incident investigation work?'],
+  WRITE_SUPPORT: [
+    'What should I include in a request?',
+    'How do I contact support urgently?',
+  ],
+  PRIVACY: [
+    'What data does this assistant keep?',
+    'How do I contact the privacy team?',
+  ],
+  INCIDENT: [
+    'What is the support route?',
+    'How does incident investigation work?',
+  ],
 };
 
 export const ASSISTANT_COPY = {
@@ -1013,8 +1450,7 @@ export const ASSISTANT_COPY = {
   welcomeSupport:
     'I can help you learn about ZoikoShield’s cybersecurity platform, use cases, integrations, compliance, and more. Ask me anything or choose a topic below.',
   composerPlaceholder: 'Ask a question about ZoikoShield…',
-  safetyNotice:
-    'Do not share passwords, tokens, or live incident information.',
+  safetyNotice: 'Do not share passwords, tokens, or live incident information.',
   footerNotice:
     'The ZoikoShield AI Assistant provides general information about our products and services. It does not have access to your organisation’s data or any customer environments.',
   unavailable:

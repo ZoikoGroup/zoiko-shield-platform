@@ -134,9 +134,15 @@ describe('CaseController DTOs survive the global whitelist ValidationPipe', () =
   });
 
   it('CaseController.listDecisions delegates to decisionService.listForCase', async () => {
-    const mockDecisions = [{ id: 'dec-1', decisionType: 'CONTAIN', decision: 'Isolate host' }];
-    const caseService = { assertTenantOwnership: jest.fn().mockResolvedValue(undefined) };
-    const decisionService = { listForCase: jest.fn().mockResolvedValue(mockDecisions) };
+    const mockDecisions = [
+      { id: 'dec-1', decisionType: 'CONTAIN', decision: 'Isolate host' },
+    ];
+    const caseService = {
+      assertTenantOwnership: jest.fn().mockResolvedValue(undefined),
+    };
+    const decisionService = {
+      listForCase: jest.fn().mockResolvedValue(mockDecisions),
+    };
     const controller = new CaseController(
       caseService as any,
       {} as any,
@@ -146,14 +152,22 @@ describe('CaseController DTOs survive the global whitelist ValidationPipe', () =
     );
 
     const res = await controller.listDecisions('tenant-a', 'case-1');
-    expect(caseService.assertTenantOwnership).toHaveBeenCalledWith('tenant-a', 'case-1');
-    expect(decisionService.listForCase).toHaveBeenCalledWith('tenant-a', 'case-1');
+    expect(caseService.assertTenantOwnership).toHaveBeenCalledWith(
+      'tenant-a',
+      'case-1',
+    );
+    expect(decisionService.listForCase).toHaveBeenCalledWith(
+      'tenant-a',
+      'case-1',
+    );
     expect(res).toEqual({ statusCode: 200, data: mockDecisions });
   });
 
   it('CaseController.create defaults environmentId and region when standalone title is provided', async () => {
     const createdCase = { id: 'case-standalone-1', title: 'Manual incident' };
-    const caseService = { createStandalone: jest.fn().mockResolvedValue(createdCase) };
+    const caseService = {
+      createStandalone: jest.fn().mockResolvedValue(createdCase),
+    };
     const controller = new CaseController(
       caseService as any,
       {} as any,

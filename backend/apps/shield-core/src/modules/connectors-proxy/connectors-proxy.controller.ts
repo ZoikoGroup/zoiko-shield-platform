@@ -182,7 +182,8 @@ export class ConnectorsProxyController {
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
     const n = Number(limit);
-    const bounded = Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 500) : undefined;
+    const bounded =
+      Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), 500) : undefined;
     return this.shieldIngestClient.listEvents(
       tenantId,
       bounded ? { limit: String(bounded) } : undefined,

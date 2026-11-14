@@ -15,7 +15,11 @@ import type { Request, Response } from 'express';
 import { OriginCsrfGuard } from '../common/origin-csrf.guard';
 import { PublicEndpoint } from '../common/public-endpoint.decorator';
 import { RateLimitGuard } from '../common/rate-limit.guard';
-import { SESSION_COOKIE, SessionService, type GuestSession } from '../session/session.service';
+import {
+  SESSION_COOKIE,
+  SessionService,
+  type GuestSession,
+} from '../session/session.service';
 import { ConversationService } from './conversation.service';
 import { CreateMessageDto } from './create-message.dto';
 
@@ -45,11 +49,16 @@ export class ConversationController {
       throw new BadRequestException({
         error_code: 'MESSAGE_TOO_LONG',
         user_safe_message: 'Messages are limited to 2,000 characters.',
-        field_errors: { content: ['Messages are limited to 2,000 characters.'] },
+        field_errors: {
+          content: ['Messages are limited to 2,000 characters.'],
+        },
       });
     }
 
-    const record = await this.conversations.createMessage(session, { ...body, content });
+    const record = await this.conversations.createMessage(session, {
+      ...body,
+      content,
+    });
     return {
       message_id: record.id,
       status: 'PENDING',
@@ -70,8 +79,10 @@ export class ConversationController {
     if (record.epoch !== session.epoch) {
       response.status(409).json({
         error_code: 'STALE_EPOCH',
-        user_safe_message: 'This conversation was cleared. Start a new question.',
-        correlation_id: (request as Request & { correlationId?: string }).correlationId ?? '',
+        user_safe_message:
+          'This conversation was cleared. Start a new question.',
+        correlation_id:
+          (request as Request & { correlationId?: string }).correlationId ?? '',
         api_version: 'v1',
       });
       return;
@@ -110,7 +121,8 @@ export class ConversationController {
     if (!session) {
       throw new UnauthorizedException({
         error_code: 'SESSION_REQUIRED',
-        user_safe_message: 'Your session has expired. Start a new conversation.',
+        user_safe_message:
+          'Your session has expired. Start a new conversation.',
       });
     }
     return session;

@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AzureMonitorPollerService, AZURE_MONITOR_NOT_COLLECTING_MESSAGE } from './azure-monitor-poller.service';
+import {
+  AzureMonitorPollerService,
+  AZURE_MONITOR_NOT_COLLECTING_MESSAGE,
+} from './azure-monitor-poller.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorCheckpointService } from '../services/checkpoint.service';
 import { ConnectorHealthService } from '../services/health.service';

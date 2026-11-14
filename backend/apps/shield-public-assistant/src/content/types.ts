@@ -17,11 +17,7 @@ export type SourceKind =
   | 'PAGE';
 
 export type SourceStatus =
-  | 'DRAFT'
-  | 'REVIEW'
-  | 'PUBLISHED'
-  | 'WITHDRAWN'
-  | 'EXPIRED';
+  'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'WITHDRAWN' | 'EXPIRED';
 
 export type Classification = 'PUBLIC' | 'RESTRICTED' | 'TENANT' | 'INTERNAL';
 
@@ -65,12 +61,7 @@ export interface SourceChunk {
 }
 
 export type AnswerOutcome =
-  | 'ANSWERED'
-  | 'LIMITED'
-  | 'ABSTAINED'
-  | 'PENDING'
-  | 'REJECTED'
-  | 'ERROR';
+  'ANSWERED' | 'LIMITED' | 'ABSTAINED' | 'PENDING' | 'REJECTED' | 'ERROR';
 
 export type IntentKey =
   | 'INCIDENT'

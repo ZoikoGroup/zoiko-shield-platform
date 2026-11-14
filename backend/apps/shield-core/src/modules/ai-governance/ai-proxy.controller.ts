@@ -361,8 +361,10 @@ export class AiProxyController {
           mitreTechnique: 'T1078.004',
           techniqueName: 'Valid Accounts: Cloud Accounts',
           targetEntity: 'usr-analyst-session',
-          evidenceDigest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-          description: 'Compromised session token detected across authentication telemetry.',
+          evidenceDigest:
+            'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          description:
+            'Compromised session token detected across authentication telemetry.',
           severity: 'HIGH',
           riskScore: 89,
           status: 'DETECTED',
@@ -375,7 +377,8 @@ export class AiProxyController {
           mitreTechnique: 'T1021.002',
           techniqueName: 'Remote Services: SMB/Windows Admin Shares',
           targetEntity: 'ec2-jump-01',
-          evidenceDigest: 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb',
+          evidenceDigest:
+            'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb',
           description: 'Lateral pivot across private VPC subnet.',
           severity: 'HIGH',
           riskScore: 78,
@@ -389,8 +392,10 @@ export class AiProxyController {
           mitreTechnique: 'T1098.004',
           techniqueName: 'Account Manipulation: SSH Authorized Keys',
           targetEntity: 'srv-db-prod-01',
-          evidenceDigest: '185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969',
-          description: 'Unauthorized privilege escalation attempt against crown jewel database.',
+          evidenceDigest:
+            '185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969',
+          description:
+            'Unauthorized privilege escalation attempt against crown jewel database.',
           severity: 'HIGH',
           riskScore: 96,
           status: 'CORRELATED',

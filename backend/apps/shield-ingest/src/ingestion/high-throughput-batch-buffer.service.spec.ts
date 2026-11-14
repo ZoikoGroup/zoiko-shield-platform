@@ -114,12 +114,22 @@ describe('HighThroughputBatchBufferService', () => {
     service.flushBufferSync();
     await new Promise((resolve) => setImmediate(resolve));
 
-    const calls = mockMetering.recordUsageObservation.mock.calls.map((c) => c[0]);
+    const calls = mockMetering.recordUsageObservation.mock.calls.map(
+      (c) => c[0],
+    );
     expect(calls).toHaveLength(2);
     expect(calls).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ tenantId: 'tenant-a', environmentId: 'env-a', acceptedQuantity: 2 }),
-        expect.objectContaining({ tenantId: 'tenant-b', environmentId: 'env-b', acceptedQuantity: 1 }),
+        expect.objectContaining({
+          tenantId: 'tenant-a',
+          environmentId: 'env-a',
+          acceptedQuantity: 2,
+        }),
+        expect.objectContaining({
+          tenantId: 'tenant-b',
+          environmentId: 'env-b',
+          acceptedQuantity: 1,
+        }),
       ]),
     );
   });

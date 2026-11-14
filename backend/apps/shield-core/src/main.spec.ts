@@ -4,7 +4,9 @@ import { parseTrustProxy, gzipCompressionMiddleware } from './main';
 describe('shield-core main bootstrap helpers', () => {
   describe('parseTrustProxy', () => {
     it('returns default private subnet list when unset or blank', () => {
-      expect(parseTrustProxy(undefined)).toBe('loopback, linklocal, uniquelocal');
+      expect(parseTrustProxy(undefined)).toBe(
+        'loopback, linklocal, uniquelocal',
+      );
       expect(parseTrustProxy('   ')).toBe('loopback, linklocal, uniquelocal');
     });
 
@@ -20,13 +22,17 @@ describe('shield-core main bootstrap helpers', () => {
     });
 
     it('preserves explicit subnet/IP expressions', () => {
-      expect(parseTrustProxy('loopback, 10.0.0.0/8')).toBe('loopback, 10.0.0.0/8');
+      expect(parseTrustProxy('loopback, 10.0.0.0/8')).toBe(
+        'loopback, 10.0.0.0/8',
+      );
     });
   });
 
   describe('gzipCompressionMiddleware', () => {
     it('compresses JSON responses when Accept-Encoding includes gzip', () => {
-      const headers: Record<string, string> = { 'content-type': 'application/json' };
+      const headers: Record<string, string> = {
+        'content-type': 'application/json',
+      };
       let sentBody: any;
       const req: any = { headers: { 'accept-encoding': 'gzip, deflate, br' } };
       const res: any = {
@@ -57,4 +63,3 @@ describe('shield-core main bootstrap helpers', () => {
     });
   });
 });
-

@@ -185,6 +185,8 @@ describe('RawIngestService', () => {
       3,
       expect.objectContaining({ kind: 'WEBHOOK', connectorId: 'conn-123' }),
     );
-    expect(dlqMock.setReingestHandler).toHaveBeenCalledWith(expect.any(Function));
+    expect(dlqMock.setReingestHandler).toHaveBeenCalledWith(
+      expect.any(Function),
+    );
   });
 });

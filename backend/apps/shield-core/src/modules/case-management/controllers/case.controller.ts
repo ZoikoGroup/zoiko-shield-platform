@@ -238,7 +238,7 @@ export class CaseController {
     private readonly noteService: CaseNoteService,
     private readonly decisionService: CaseDecisionService,
     private readonly qualityReviewService: CaseQualityReviewService,
-  ) { }
+  ) {}
 
   private resolveTenantId(headerTenantId: string): string {
     return requireTenantId(headerTenantId);
@@ -429,20 +429,20 @@ export class CaseController {
     const tenantId = this.resolveTenantId(headerTenantId);
     const note = dto.supersedesId
       ? await this.noteService.correct({
-        tenantId,
-        caseId,
-        authorId: user.id,
-        content: dto.content,
-        supersedesId: dto.supersedesId,
-        classification: dto.classification,
-      })
+          tenantId,
+          caseId,
+          authorId: user.id,
+          content: dto.content,
+          supersedesId: dto.supersedesId,
+          classification: dto.classification,
+        })
       : await this.noteService.add({
-        tenantId,
-        caseId,
-        authorId: user.id,
-        content: dto.content,
-        classification: dto.classification,
-      });
+          tenantId,
+          caseId,
+          authorId: user.id,
+          content: dto.content,
+          classification: dto.classification,
+        });
     return { statusCode: HttpStatus.CREATED, data: note };
   }
 

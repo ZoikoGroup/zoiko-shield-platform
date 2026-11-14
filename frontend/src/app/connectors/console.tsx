@@ -93,14 +93,12 @@ export default function ConnectorsPage() {
   const defaultResidencyRegion = state?.tenant?.dataResidencyRegion || state?.session?.region || "us-east-1";
   const [name, setName] = useState("Custom AWS GuardDuty Telemetry");
   const [provider, setProvider] = useState<ConnectorProviderType>("generic-webhook");
-  const [region, setRegion] = useState("us-east-1");
   const [region, setRegion] = useState(defaultResidencyRegion);
   const [isLoading, setIsLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleSaveConfiguredConnector = (config: {
   useEffect(() => {
     const committedRegion = state?.tenant?.dataResidencyRegion || state?.session?.region;
     if (committedRegion) {
@@ -114,22 +112,6 @@ export default function ConnectorsPage() {
     region: string;
     authConfig: Record<string, string>;
   }) => {
-    const tier = getProviderTier(config.provider);
-    const newConn: Connector = {
-      id: `conn-${Date.now().toString(36)}`,
-      tenantId: state?.tenant?.id || "demo-tenant",
-      name: config.name,
-      provider: config.provider,
-      sourceRegion: config.region,
-      tier,
-      status: "ACTIVE",
-      healthStatus: "HEALTHY",
-      hmacSecret: "hmac_sec_" + Math.random().toString(36).substring(2, 10),
-      webhookUrl: `https://ingest.zoikoshield.corp/api/v1/telemetry/webhook/${config.provider}`,
-      eventsIngestedCount: 142,
-    };
-    setConnectors((prev) => [newConn, ...prev]);
-    setActionMessage(`Successfully activated ${config.name} (${tier}) with verified TLS 1.3 mutual handshake.`);
     setIsLoading(true);
     setActionMessage(null);
     try {
@@ -224,7 +206,6 @@ export default function ConnectorsPage() {
     setActionMessage(null);
     try {
       const calculatedTier = getProviderTier(provider);
-      const created = await ZoikoShieldApiClient.createConnector({
       const createdRaw = await ZoikoShieldApiClient.createConnector({
         tenantId: state?.tenant?.id || "demo-tenant",
         environmentId: state?.session?.environmentId || state?.session?.environment,
@@ -248,13 +229,11 @@ export default function ConnectorsPage() {
 
       setIsAddModalOpen(false);
       setActionMessage(`✅ Connector created successfully with tier ${calculatedTier}`);
-    } catch (err) {
     } catch (err: any) {
       console.error("Connector Creation Error:", err);
       setActionMessage(`❌ Failed to create connector: ${err?.message || "Bad request"}`);
     } finally {
       setIsLoading(false);
-      setTimeout(() => setActionMessage(null), 4000);
       setTimeout(() => setActionMessage(null), 5000);
     }
   };
@@ -263,8 +242,6 @@ export default function ConnectorsPage() {
     setActionLoadingId(connectorId);
     setActionMessage(null);
     try {
-      const res = await ZoikoShieldApiClient.testConnector(connectorId);
-      setActionMessage(`✅ Test passed (${res.latencyMs || 24}ms latency, HMAC signature verified)`);
       const raw = await ZoikoShieldApiClient.testConnector(connectorId);
       const res = (raw as any)?.data ?? raw;
       if (res?.status === "UNVERIFIED") {
@@ -276,7 +253,6 @@ export default function ConnectorsPage() {
       setActionMessage(`❌ Test failed: ${err.message}`);
     } finally {
       setActionLoadingId(null);
-      setTimeout(() => setActionMessage(null), 4000);
       setTimeout(() => setActionMessage(null), 5000);
     }
   };
