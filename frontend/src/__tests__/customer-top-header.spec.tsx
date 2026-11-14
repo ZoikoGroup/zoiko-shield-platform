@@ -85,4 +85,34 @@ describe('CustomerTopHeader', () => {
     fireEvent.click(await screen.findByLabelText('Notifications'));
     expect(await screen.findByText('notification store unavailable')).toBeInTheDocument();
   });
+
+  it('renders Super Admin Dashboard and Tenant Administrator Dashboard in workspace dropdown for Super Admin', async () => {
+    const SUPER_ADMIN_ME = {
+      id: 'p-admin',
+      email: 'admin@zoikoshield.io',
+      fullName: 'Super Admin',
+      tenantId: '00000000-0000-0000-0000-000000000000',
+      environmentId: null,
+      region: 'eu-west-1',
+    };
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/auth/me')) return json(SUPER_ADMIN_ME);
+      if (url.includes('/notifications')) return json([]);
+      return json({}, 404);
+    });
+
+    render(<CustomerTopHeader />);
+
+    expect(await screen.findByText('Super Admin')).toBeInTheDocument();
+
+    // Click Customer Workspace dropdown
+    fireEvent.click(screen.getByText('Customer Workspace'));
+
+    // Verify all 3 portals are rendered
+    expect(screen.getByText('Customer Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Tenant Administrator Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Super Admin Dashboard')).toBeInTheDocument();
+  });
 });

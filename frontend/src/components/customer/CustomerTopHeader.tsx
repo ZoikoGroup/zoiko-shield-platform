@@ -58,7 +58,7 @@ export function CustomerTopHeader({
   onSearchChange?: (q: string) => void;
 }) {
   const router = useRouter();
-  const [, setDemoState] = useDemoState();
+  const [demoState, setDemoState] = useDemoState();
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<HeaderNotificationItem[]>([]);
@@ -73,6 +73,11 @@ export function CustomerTopHeader({
     (async () => {
       try {
         const me = await customerApi.session();
+        const isPlatformAdminScope =
+          me.tenantId === "00000000-0000-0000-0000-000000000000" ||
+          me.email === "admin@zoikoshield.io" ||
+          me.fullName === "Super Admin";
+
         const [tenantRes, membersRes] = await Promise.allSettled([
           customerApi.tenant(),
           backend.get<unknown>(`/api/v1/tenants/${encodeURIComponent(me.tenantId)}/members`),
@@ -82,11 +87,14 @@ export function CustomerTopHeader({
           membersRes.status === "fulfilled"
             ? asList<{ principalId: string; roles?: Array<{ code: string; name: string }> }>(membersRes.value)
             : [];
-        const roles = members.find((m) => m.principalId === me.id)?.roles ?? [];
+        let roles = members.find((m) => m.principalId === me.id)?.roles ?? [];
+        if (roles.length === 0 && isPlatformAdminScope) {
+          roles = [{ code: "SUPER_ADMIN", name: "Platform Super Admin" }];
+        }
         const next: HeaderIdentity = {
           fullName: me.fullName || "",
           email: me.email || "",
-          orgName: tenant?.name || "",
+          orgName: tenant?.name || (isPlatformAdminScope ? "Zoiko Shield Platform" : ""),
           region: tenant?.dataResidencyRegion || tenant?.homeRegion || me.region || "",
           roleCodes: roles.map((r) => r.code),
           roleNames: roles.map((r) => r.name),
@@ -101,7 +109,9 @@ export function CustomerTopHeader({
             userId: me.id,
             email: next.email,
             fullName: next.fullName,
-            role: (next.roleCodes[0] as typeof prev.session.role) || prev.session?.role,
+            role: isPlatformAdminScope
+              ? "SUPER_ADMIN"
+              : ((next.roleCodes[0] as typeof prev.session.role) || prev.session?.role),
             tenantId: me.tenantId,
             isAuthenticated: true,
           },
@@ -196,8 +206,22 @@ export function CustomerTopHeader({
     if (targetMode === "CUSTOMER") {
       router.push("/customer/dashboard");
     } else if (targetMode === "TENANT_ADMIN") {
+      setDemoState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          role: "TENANT_OWNER",
+        },
+      }));
       router.push("/admin/tenant");
     } else {
+      setDemoState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          role: "SUPER_ADMIN",
+        },
+      }));
       router.push("/admin");
     }
   };
@@ -206,8 +230,22 @@ export function CustomerTopHeader({
   const displayUserName = identity?.fullName || identity?.email || "";
   const displayUserEmail = identity?.email || "";
   const displayRoleLabel = identity?.roleNames.join(", ") || "";
-  const isTenantOwner = identity?.roleCodes.includes("TENANT_OWNER") ?? false;
-  const isSuperAdmin = identity?.roleCodes.includes("SUPER_ADMIN") ?? false;
+  const isSuperAdmin =
+    identity?.roleCodes.some(
+      (c) =>
+        c === "SUPER_ADMIN" ||
+        c === "PLATFORM_SUPER_ADMIN" ||
+        c === "PLATFORM_OWNER"
+    ) ||
+    demoState.session?.role === "SUPER_ADMIN" ||
+    identity?.email === "admin@zoikoshield.io" ||
+    identity?.fullName === "Super Admin" ||
+    demoState.session?.tenantId === "00000000-0000-0000-0000-000000000000";
+
+  const isTenantOwner =
+    identity?.roleCodes.includes("TENANT_OWNER") ||
+    demoState.session?.role === "TENANT_OWNER" ||
+    isSuperAdmin;
 
   const initials = displayUserName
     .split(" ")

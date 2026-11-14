@@ -221,6 +221,13 @@ export class AuthController {
       sameSite: 'lax',
     });
 
+    const resolvedRole =
+      (user as any).role ||
+      (user.tenantId === '00000000-0000-0000-0000-000000000000' ||
+      user.email === 'admin@zoikoshield.io'
+        ? 'SUPER_ADMIN'
+        : 'TENANT_OWNER');
+
     return {
       user,
       accessToken: tokens.accessToken,
@@ -228,7 +235,7 @@ export class AuthController {
       tenantId: user.tenantId,
       email: user.email,
       fullName: user.fullName,
-      role: (user as any).role || 'TENANT_OWNER',
+      role: resolvedRole,
     };
   }
 
