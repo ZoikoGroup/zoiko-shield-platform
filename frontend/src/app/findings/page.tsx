@@ -71,6 +71,12 @@ export default function FindingsListPage() {
   const findings = sourceList<FindingRow>(evidence, "findings");
   const summary = sourceData<Summary>(evidence, "summary");
 
+  // Determine whether each source actually answered OK so we can distinguish
+  // "clean estate (0)" from "source failed (unknown)".
+  const findingsOk = evidence.sources.find((s) => s.key === "findings")?.ok ?? false;
+  const summaryOk = evidence.sources.find((s) => s.key === "summary")?.ok ?? false;
+  const anyOk = findingsOk || summaryOk;
+
   const filtered = useMemo(
     () =>
       severityFilter === "ALL"
@@ -94,12 +100,13 @@ export default function FindingsListPage() {
     </select>
   );
 
-  const openVal = summary?.metrics?.open ?? (findings.length > 0 ? findings.filter((f) => f.status === "OPEN").length : summary ? 0 : undefined);
-  const staleVal = summary?.metrics?.staleAssertions ?? (findings.length > 0 ? findings.filter((f) => f.assertion?.state === "STALE").length : summary ? 0 : undefined);
-  const ageingVal = summary?.metrics?.ageingAssertions ?? (findings.length > 0 ? findings.filter((f) => f.assertion?.state === "AGEING").length : summary ? 0 : undefined);
-  const unscoredVal = summary?.metrics?.unscored ?? (findings.length > 0 ? findings.filter((f) => !f.priorityIntegrity?.scored).length : summary ? 0 : undefined);
-  const scoredOverUnknownsVal = summary?.metrics?.scoredOverUnknowns ?? (findings.length > 0 ? findings.filter((f) => f.priorityIntegrity?.computedOverUnknowns).length : summary ? 0 : undefined);
-  const unresolvedAssetVal = summary?.metrics?.unresolvedAsset ?? (findings.length > 0 ? findings.filter((f) => !f.asset_id).length : summary ? 0 : undefined);
+  const openVal = summary?.metrics?.open ?? (findings.length > 0 ? findings.filter((f) => f.status === "OPEN").length : anyOk ? 0 : undefined);
+  const staleVal = summary?.metrics?.staleAssertions ?? (findings.length > 0 ? findings.filter((f) => f.assertion?.state === "STALE").length : anyOk ? 0 : undefined);
+  const ageingVal = summary?.metrics?.ageingAssertions ?? (findings.length > 0 ? findings.filter((f) => f.assertion?.state === "AGEING").length : anyOk ? 0 : undefined);
+  const unscoredVal = summary?.metrics?.unscored ?? (findings.length > 0 ? findings.filter((f) => !f.priorityIntegrity?.scored).length : anyOk ? 0 : undefined);
+  const scoredOverUnknownsVal = summary?.metrics?.scoredOverUnknowns ?? (findings.length > 0 ? findings.filter((f) => f.priorityIntegrity?.computedOverUnknowns).length : anyOk ? 0 : undefined);
+  const unresolvedAssetVal = summary?.metrics?.unresolvedAsset ?? (findings.length > 0 ? findings.filter((f) => !f.asset_id).length : anyOk ? 0 : undefined);
+
 
   const tiles = [
     { label: "Open", value: openVal, warn: false },
