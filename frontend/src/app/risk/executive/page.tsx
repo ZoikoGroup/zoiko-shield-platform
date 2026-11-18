@@ -173,8 +173,13 @@ export default function ExecutiveRiskPage() {
   const risks = sourceList<Risk>(evidence, "risks");
   const snapshots = sourceList<ReportSnapshot>(evidence, "snapshots");
 
+  // Per-source ok flags: distinguish "source answered OK with zero" from "source failed".
+  const securityOk = evidence.sources.find((s) => s.key === "security")?.ok ?? false;
+  const assuranceOk = evidence.sources.find((s) => s.key === "assurance")?.ok ?? false;
+
   const securityLimit = security?.limitations?.[0];
   const healthLimit = health?.limitations?.[0];
+
 
   // Residual risk is what is left after treatment — so the register minus
   // anything closed, weighted by what the factor breakdown actually supports.
@@ -220,14 +225,14 @@ export default function ExecutiveRiskPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Metric
               label="Open alerts"
-              value={security?.metrics?.openAlerts ?? security?.metrics?.open ?? (security ? 0 : undefined)}
+              value={security?.metrics?.openAlerts ?? security?.metrics?.open ?? (securityOk ? 0 : undefined)}
               definition={security?.definition}
               source="/api/v1/reporting/security"
               limitation={securityLimit}
             />
             <Metric
               label="Critical alerts"
-              value={security?.metrics?.criticalAlerts ?? security?.metrics?.critical ?? (security ? 0 : undefined)}
+              value={security?.metrics?.criticalAlerts ?? security?.metrics?.critical ?? (securityOk ? 0 : undefined)}
               definition={security?.definition}
               source="/api/v1/reporting/security"
               limitation={securityLimit}
@@ -235,14 +240,14 @@ export default function ExecutiveRiskPage() {
             />
             <Metric
               label="Open cases"
-              value={security?.metrics?.openCases ?? security?.metrics?.cases ?? (security ? 0 : undefined)}
+              value={security?.metrics?.openCases ?? security?.metrics?.cases ?? (securityOk ? 0 : undefined)}
               definition={security?.definition}
               source="/api/v1/reporting/security"
               limitation={securityLimit}
             />
             <Metric
               label="Awaiting customer"
-              value={security?.metrics?.casesAwaitingCustomer ?? security?.metrics?.awaitingCustomer ?? (security ? 0 : undefined)}
+              value={security?.metrics?.casesAwaitingCustomer ?? security?.metrics?.awaitingCustomer ?? (securityOk ? 0 : undefined)}
               definition={security?.definition}
               source="/api/v1/reporting/security"
               limitation={securityLimit}
@@ -264,34 +269,34 @@ export default function ExecutiveRiskPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             <Metric
               label="Effective"
-              value={assurance?.metrics?.controlsEffective ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.controlsEffective ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
             />
             <Metric
               label="Partial"
-              value={assurance?.metrics?.controlsPartiallyEffective ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.controlsPartiallyEffective ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
               warn={((assurance?.metrics?.controlsPartiallyEffective ?? 0) as number) > 0}
             />
             <Metric
               label="Ineffective"
-              value={assurance?.metrics?.controlsIneffective ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.controlsIneffective ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
               warn={controlsIneffective > 0}
             />
             <Metric
               label="Unknown"
-              value={assurance?.metrics?.controlsUnknown ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.controlsUnknown ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
               warn={controlsUnknown > 0}
             />
             <Metric
               label="Open evidence gaps"
-              value={assurance?.metrics?.evidenceGapsOpen ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.evidenceGapsOpen ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
               warn={((assurance?.metrics?.evidenceGapsOpen ?? 0) as number) > 0}
@@ -334,14 +339,14 @@ export default function ExecutiveRiskPage() {
             />
             <Metric
               label="Expired acceptances"
-              value={assurance?.metrics?.expiredRiskAcceptances ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.expiredRiskAcceptances ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
               warn={((assurance?.metrics?.expiredRiskAcceptances ?? 0) as number) > 0}
             />
             <Metric
               label="Expired exceptions"
-              value={assurance?.metrics?.expiredExceptions ?? (assurance ? 0 : undefined)}
+              value={assurance?.metrics?.expiredExceptions ?? (assuranceOk ? 0 : undefined)}
               definition={assurance?.definition}
               source="/api/v1/reporting/assurance"
               warn={((assurance?.metrics?.expiredExceptions ?? 0) as number) > 0}

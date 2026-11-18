@@ -1080,8 +1080,58 @@ export function useContractSources(
 ): ContractEvidence {
   const staleAfterSeconds = options.staleAfterSeconds ?? DEFAULT_STALE_AFTER_SECONDS;
   const [state] = useDemoState();
-  const tenantId = state.tenant?.id ?? "";
-  const sessionToken = state.session?.token ?? "";
+
+  // Resolve auth headers using the same multi-source discovery as backend.ts:
+  // 1. localStorage (zoikoshield_demo_state) — survives page navigation.
+  // 2. Browser cookies — set by the real auth flow (zoiko_shield_access_token, zoiko_shield_tenant_id).
+  // 3. useDemoState — in-memory fallback for test/SSR contexts.
+  const { tenantId, sessionToken } = useMemo(() => {
+    if (typeof window === "undefined") {
+      // SSR: fall back to in-memory state only.
+      return {
+        tenantId: state.tenant?.id ?? "",
+        sessionToken: state.session?.token ?? "",
+      };
+    }
+
+    let resolvedTenantId = "";
+    let resolvedSessionToken = "";
+
+    // 1. localStorage
+    try {
+      const stored = localStorage.getItem("zoikoshield_demo_state");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.tenant?.id) resolvedTenantId = parsed.tenant.id;
+        if (parsed?.session?.token) resolvedSessionToken = parsed.session.token;
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    // 2. Cookies
+    if (!resolvedSessionToken) {
+      const tokenMatch = document.cookie.match(
+        /(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/,
+      );
+      if (tokenMatch?.[1]) {
+        resolvedSessionToken = decodeURIComponent(tokenMatch[1].trim());
+      }
+    }
+    if (!resolvedTenantId) {
+      const tenantMatch = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
+      if (tenantMatch?.[1]) {
+        resolvedTenantId = decodeURIComponent(tenantMatch[1].trim());
+      }
+    }
+
+    // 3. In-memory state (useDemoState) as final fallback.
+    if (!resolvedTenantId) resolvedTenantId = state.tenant?.id ?? "";
+    if (!resolvedSessionToken) resolvedSessionToken = state.session?.token ?? "";
+
+    return { tenantId: resolvedTenantId, sessionToken: resolvedSessionToken };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.tenant?.id, state.session?.token]);
 
   const [results, setResults] = useState<SourceResult[] | null>(null);
   const [correlationId, setCorrelationId] = useState("");
