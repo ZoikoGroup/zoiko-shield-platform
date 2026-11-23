@@ -6581,6 +6581,422 @@ resource "aws_iam_policy" "least_privilege" {
       }),
     );
   }
+
+  // --- Email Threat Intelligence & Assurance (WF-01..WF-14, Shield Only) ---
+  static async getEmailOverview(params?: {
+    environmentId?: string;
+    windowHours?: number;
+  }): Promise<any> {
+    const qs = new URLSearchParams();
+    if (params?.environmentId) qs.set('environmentId', params.environmentId);
+    if (params?.windowHours) qs.set('windowHours', String(params.windowHours));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return this.safeFetch(`/api/v1/email/overview${suffix}`, { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async getEmailSourcesCoverage(): Promise<any> {
+    return this.safeFetch('/api/v1/email/sources/coverage', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async listEmailConnectors(): Promise<any[]> {
+    return this.safeFetch('/api/v1/email/connectors', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async createEmailConnectionIntent(payload: {
+    provider: 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+    displayName: string;
+    requestedMode?: 'READ_ONLY_TELEMETRY' | 'PHASE1_METADATA_SCOPED' | 'PHASE2_ACTIONS';
+    requestedScopes: string[];
+    residencyCode?: string;
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/connection-intents',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async verifyEmailConnectionIntent(
+    intentId: string,
+    payload: {
+      oauthState: string;
+      consentGranted: boolean;
+      grantedScopes: string[];
+      defenderLicenceVerified?: boolean;
+      exchangeAppRbacVerified?: boolean;
+    },
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/connection-intents/${encodeURIComponent(intentId)}/verify`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async testEmailConnector(connectionId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/test`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async syncEmailConnector(
+    connectionId: string,
+    payload: {
+      events: Record<string, unknown>[];
+      expectedCount?: number;
+      simulateRateLimit?: boolean;
+    },
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/sync`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async disconnectEmailConnector(
+    connectionId: string,
+    reason: string,
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/disconnect`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async listEmailReconciliations(): Promise<any[]> {
+    return this.safeFetch('/api/v1/email/reconciliations', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async requestEmailBackfill(
+    connectionId: string,
+    payload: { windowStart: string; windowEnd: string; reason: string },
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/backfills/${encodeURIComponent(connectionId)}`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async listEmailThreats(filters?: {
+    severity?: string;
+    status?: string;
+    provider?: string;
+    threatClass?: string;
+    search?: string;
+  }): Promise<any> {
+    const qs = new URLSearchParams();
+    if (filters?.severity) qs.set('severity', filters.severity);
+    if (filters?.status) qs.set('status', filters.status);
+    if (filters?.provider) qs.set('provider', filters.provider);
+    if (filters?.threatClass) qs.set('threatClass', filters.threatClass);
+    if (filters?.search) qs.set('search', filters.search);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return this.safeFetch(`/api/v1/email/threats${suffix}`, { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async getEmailThreatDetail(threatId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/threats/${encodeURIComponent(threatId)}`,
+      { method: 'GET' },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async promoteEmailThreatToCase(
+    threatId: string,
+    payload: { title?: string; severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' } = {},
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/threats/${encodeURIComponent(threatId)}/promote-case`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async recordEmailAdjudication(
+    threatId: string,
+    payload: {
+      decision: 'CONFIRMED' | 'BENIGN' | 'FALSE_POSITIVE' | 'INSUFFICIENT_EVIDENCE';
+      rationale: string;
+      idempotencyKey: string;
+    },
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/threats/${encodeURIComponent(threatId)}/adjudications`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async evaluateEmailThreatWithAi(
+    threatId: string,
+    payload: Record<string, unknown>,
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/threats/${encodeURIComponent(threatId)}/ai-evaluate`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async getEmailControlsCoverage(): Promise<any> {
+    return this.safeFetch('/api/v1/email/controls/coverage', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async listEmailEvidenceManifests(): Promise<any[]> {
+    return this.safeFetch('/api/v1/email/evidence/manifests', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async buildEmailEvidenceExport(payload: {
+    controlIds?: string[];
+    timeStart: string;
+    timeEnd: string;
+    jurisdiction?: string;
+    sourceProvider?: string;
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/evidence/exports',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async verifyEmailEvidenceManifest(manifestId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/evidence/manifests/${encodeURIComponent(manifestId)}/verify`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async listEmailPolicies(): Promise<any[]> {
+    return this.safeFetch('/api/v1/email/policies', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async draftEmailPolicy(payload: {
+    policyKey: string;
+    name: string;
+    providerCoverage: string[];
+    inputSources: string[];
+    severityMapping: Record<string, string>;
+    rationale: string;
+    falsePositiveImpact?: string;
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/policies',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async approveEmailPolicy(policyId: string, comments?: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/policies/${encodeURIComponent(policyId)}/approve`,
+      { method: 'POST', body: JSON.stringify({ comments }) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async activateEmailPolicy(policyId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/policies/${encodeURIComponent(policyId)}/activate`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async rollbackEmailPolicy(policyId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/policies/${encodeURIComponent(policyId)}/rollback`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async getEmailBehaviourOverview(): Promise<any> {
+    return this.safeFetch('/api/v1/email/behaviour/overview', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async recordEmailBehaviourLabel(payload: {
+    findingId: string;
+    label: 'TRUE_POSITIVE' | 'FALSE_POSITIVE' | 'BENIGN' | 'INSUFFICIENT_EVIDENCE';
+    nativeBaselineVerdict?: string;
+    falsePositiveCostUsd?: number;
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/behaviour/labels',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async getEmailAnalysisDetail(analysisId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/analyses/${encodeURIComponent(analysisId)}`,
+      { method: 'GET' },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async decideEmailAnalysis(
+    analysisId: string,
+    payload: {
+      decision: 'CONFIRMED' | 'BENIGN' | 'INSUFFICIENT_EVIDENCE';
+      rationale?: string;
+    },
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/analyses/${encodeURIComponent(analysisId)}/decision`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async listEmailActions(): Promise<any> {
+    return this.safeFetch('/api/v1/email/actions', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async proposeEmailAction(payload: {
+    findingId?: string;
+    provider: 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+    requestedAction:
+      | 'QUARANTINE_MESSAGE'
+      | 'PULL_BACK_MESSAGE'
+      | 'REMOVE_FORWARDING_RULE'
+      | 'REVOKE_MAILBOX_SESSIONS';
+    targetRefs: string[];
+    consentScope: string;
+    riskClass?: 'R2' | 'R3' | 'R4';
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/actions/proposals',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async simulateEmailAction(proposalId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/actions/${encodeURIComponent(proposalId)}/simulate`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async approveEmailAction(
+    proposalId: string,
+    payload: { decision: 'APPROVE' | 'REJECT'; expiresInMinutes?: number },
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/actions/${encodeURIComponent(proposalId)}/approve`,
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async executeEmailAction(proposalId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/actions/${encodeURIComponent(proposalId)}/execute`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async rollbackEmailAction(
+    proposalId: string,
+    reason?: string,
+  ): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/actions/${encodeURIComponent(proposalId)}/rollback`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async getEmailSettings(): Promise<any> {
+    return this.safeFetch('/api/v1/email/settings', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  static async grantEmailAuditorAccess(payload: {
+    auditorPrincipalId: string;
+    expiresInHours: number;
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/access-grants',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async revokeEmailAccess(payload: {
+    connectionId: string;
+    reason: string;
+  }): Promise<any> {
+    return this.safeFetch(
+      '/api/v1/email/revoke',
+      { method: 'POST', body: JSON.stringify(payload) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async getEmailPrivacyInventory(): Promise<any> {
+    return this.safeFetch('/api/v1/email/privacy/inventory', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
 }
 
 export interface KmsProviderHealthInfo {

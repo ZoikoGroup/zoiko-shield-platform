@@ -39,6 +39,11 @@ const PUBLIC_PREFIXES = [
   "/accept-invite",
   "/verify-certificate",
   "/assistant",
+  "/trust",
+  "/help",
+  "/pricing/success",
+  "/pricing/cancelled",
+  "/pricing/cancel",
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

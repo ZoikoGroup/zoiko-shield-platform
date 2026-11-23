@@ -72,7 +72,7 @@ export default function VerifyCertificatePage() {
   // requirements have no backing endpoint yet - this covers the read-only
   // access and verification part only.
   const [workspaceSummary, setWorkspaceSummary] = useState<any>(null);
-  const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(true);
+  const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
 
   const [evidencePackageId, setEvidencePackageId] = useState("");
@@ -86,6 +86,15 @@ export default function VerifyCertificatePage() {
   const [merklePathError, setMerklePathError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasSessionToken =
+      /(?:zoiko_shield_access_token|shield_access_token|access_token)=/.test(
+        document.cookie || ""
+      );
+    if (!hasSessionToken) {
+      setIsLoadingWorkspace(false);
+      return;
+    }
     let cancelled = false;
     setIsLoadingWorkspace(true);
     setWorkspaceError(null);

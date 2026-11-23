@@ -1,0 +1,261 @@
+// PostgreSQL schema "email_security". ZoikoShield Email Threat Intelligence & Assurance (ZS-UX-EMTI-001 V1.0).
+// Every model carries NOT NULL tenant_id for strict fail-closed PostgreSQL row-level security (ADR-19).
+
+model EmailSourceConnection {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  environment_id        String    @default("default-env")
+  provider              String // MICROSOFT_365 | GOOGLE_WORKSPACE
+  display_name          String
+  connector_instance_id String?
+  status                String    @default("DRAFT") // DRAFT | CONSENT_PENDING | VALIDATING | ACTIVE | DEGRADED | SUSPENDED | REVOKED
+  capabilities          Json      @default("{}")
+  consent_ref           String?
+  granted_scope_hash    String?
+  requested_scopes      String[]
+  granted_scopes        String[]
+  licence_assumptions   Json      @default("{}")
+  residency_code        String    @default("eu-west-1")
+  sync_frequency        String    @default("POLL_5M")
+  retention_days        Int       @default(90)
+  legal_hold            Boolean   @default(false)
+  last_sync_at          DateTime?
+  last_heartbeat_at     DateTime?
+  revoked_at            DateTime?
+  revoked_by            String?
+  created_by            String?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  coverageWindows SourceCoverageWindow[]
+  findings        EmailThreatFinding[]
+
+  @@index([tenant_id, provider])
+  @@index([tenant_id, status])
+  @@schema("email_security")
+}
+
+model EmailConnectionIntent {
+  id                  String    @id @default(uuid())
+  tenant_id           String
+  provider            String // MICROSOFT_365 | GOOGLE_WORKSPACE
+  requested_mode      String    @default("READ_ONLY_TELEMETRY")
+  oauth_state         String    @unique
+  pkce_challenge_hash String?
+  requested_scopes    String[]
+  residency_code      String    @default("eu-west-1")
+  status              String    @default("DRAFT") // DRAFT | CONSENT_PENDING | VERIFIED | ACTIVATED | EXPIRED | DENIED
+  granted_scope_hash  String?
+  verification_report Json?
+  connection_id       String?
+  expires_at          DateTime
+  created_by          String
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@index([tenant_id, status])
+  @@schema("email_security")
+}
+
+model SourceCoverageWindow {
+  id                   String                @id @default(uuid())
+  tenant_id            String
+  connection_id        String
+  connection           EmailSourceConnection @relation(fields: [connection_id], references: [id])
+  window_start         DateTime
+  window_end           DateTime
+  eligible_event_types String[]
+  checkpoint_cursor    String?
+  monotonic_sequence   BigInt                @default(0)
+  expected_count       Int                   @default(0)
+  ingested_count       Int                   @default(0)
+  duplicate_count      Int                   @default(0)
+  rejected_count       Int                   @default(0)
+  delayed_count        Int                   @default(0)
+  missing_count        Int                   @default(0)
+  gaps                 Json                  @default("[]")
+  completeness_grade   String                @default("UNKNOWN") // COMPLETE | DEGRADED | UNKNOWN
+  source_health        String                @default("UNAVAILABLE") // HEALTHY_SYNCED | STALE | DEGRADED | RECOVERY_IN_PROGRESS | UNAVAILABLE
+  created_at           DateTime              @default(now())
+  updated_at           DateTime              @updatedAt
+
+  @@index([tenant_id, connection_id])
+  @@index([tenant_id, window_start, window_end])
+  @@schema("email_security")
+}
+
+model EmailThreatFinding {
+  id                 String                @id @default(uuid())
+  tenant_id          String
+  connection_id      String
+  connection         EmailSourceConnection @relation(fields: [connection_id], references: [id])
+  source_event_ref   String
+  provider           String
+  provider_verdict   String
+  threat_class       String
+  severity           String
+  status             String                @default("OBSERVED") // OBSERVED | TRIAGED | CASE_OPENED | CONFIRMED | BENIGN | INSUFFICIENT_EVIDENCE
+  policy_id          String?
+  policy_version     String                @default("v1")
+  observed_at        DateTime
+  ingested_at        DateTime              @default(now())
+  last_reconciled_at DateTime?
+  subject_ref        String
+  indicator_hashes   Json                  @default("[]")
+  attachment_hashes  Json                  @default("[]")
+  deep_link_url      String?
+  source_confidence  String                @default("MEDIUM")
+  coverage_state     String                @default("COMPLETE")
+  case_id            String?
+  assigned_analyst_id String?
+  metadata           Json                  @default("{}")
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
+
+  adjudications      EmailThreatAdjudication[]
+  detectionDecisions EmailDetectionDecision[]
+  actionProposals    EmailActionProposal[]
+
+  @@unique([tenant_id, connection_id, source_event_ref])
+  @@index([tenant_id, severity, observed_at])
+  @@index([tenant_id, status])
+  @@index([tenant_id, case_id])
+  @@schema("email_security")
+}
+
+model EmailThreatAdjudication {
+  id              String             @id @default(uuid())
+  tenant_id       String
+  finding_id      String
+  finding         EmailThreatFinding @relation(fields: [finding_id], references: [id])
+  decision        String // CONFIRMED | BENIGN | FALSE_POSITIVE | INSUFFICIENT_EVIDENCE
+  rationale       String
+  actor_id        String
+  policy_version  String
+  idempotency_key String
+  created_at      DateTime           @default(now())
+
+  @@unique([tenant_id, finding_id, idempotency_key])
+  @@index([tenant_id, finding_id])
+  @@schema("email_security")
+}
+
+model EmailDetectionDecision {
+  id                      String             @id @default(uuid())
+  tenant_id               String
+  finding_id              String
+  finding                 EmailThreatFinding @relation(fields: [finding_id], references: [id])
+  detector_tier           String // DETERMINISTIC | BEHAVIORAL | GUARDED_LLM
+  detector_version        String
+  model_version           String?
+  source_facts            Json               @default("[]")
+  inferences              Json               @default("[]")
+  alternative_hypothesis  String?
+  unknowns                Json               @default("[]")
+  citation_refs           String[]
+  abstained               Boolean            @default(false)
+  confidence_score        Float              @default(0)
+  native_baseline_verdict String?
+  adjudicated_label       String?
+  false_positive_cost_usd Float?
+  reviewer_id             String?
+  reviewer_outcome        String?
+  reviewer_rationale      String?
+  reviewed_at             DateTime?
+  created_at              DateTime           @default(now())
+  updated_at              DateTime           @updatedAt
+
+  @@index([tenant_id, finding_id])
+  @@index([tenant_id, detector_tier])
+  @@schema("email_security")
+}
+
+model EmailPolicyVersion {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  policy_key            String
+  version               Int
+  name                  String
+  provider_coverage     String[]
+  input_sources         String[]
+  severity_mapping      Json      @default("{}")
+  excluded_scopes       Json      @default("[]")
+  rationale             String
+  false_positive_impact String?
+  status                String    @default("DRAFT") // DRAFT | APPROVED | ACTIVE | SUPERSEDED | ROLLED_BACK
+  authored_by           String
+  approved_by           String?
+  activated_by          String?
+  effective_from        DateTime?
+  effective_to          DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  @@unique([tenant_id, policy_key, version])
+  @@index([tenant_id, status])
+  @@schema("email_security")
+}
+
+model EmailEvidenceManifest {
+  id                       String    @id @default(uuid())
+  tenant_id                String
+  scope                    Json      @default("{}")
+  time_start               DateTime
+  time_end                 DateTime
+  source_inventory         Json      @default("[]")
+  exclusions               Json      @default("[]")
+  coverage_gaps            Json      @default("[]")
+  canonical_event_hashes   String[]
+  merkle_root              String?
+  merkle_proof_refs        Json      @default("[]")
+  verifier_version         String    @default("1.0.0")
+  detached_checksum        String
+  status                   String    @default("COLLECTING") // COLLECTING | SEALED | VERIFIED | VERIFICATION_FAILED
+  auditor_principal_id     String?
+  auditor_grant_expires_at DateTime?
+  created_by               String
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+
+  @@index([tenant_id, status])
+  @@schema("email_security")
+}
+
+model EmailActionProposal {
+  id               String              @id @default(uuid())
+  tenant_id        String
+  finding_id       String?
+  finding          EmailThreatFinding? @relation(fields: [finding_id], references: [id])
+  provider         String
+  requested_action String
+  target_refs      Json                @default("[]")
+  consent_scope    String
+  risk_class       String              @default("R3")
+  status           String              @default("PROPOSED") // PROPOSED | SIMULATED | PENDING_APPROVAL | AUTHORISED | EXECUTING | VERIFIED | PARTIAL | FAILED | COMPENSATING
+  simulation_result Json?
+  initiated_by     String
+  approved_by      String?
+  approval_expires_at DateTime?
+  execution_result Json?
+  partial_outcomes Json?
+  rollback_plan    Json                @default("{}")
+  rollback_receipt Json?
+  created_at       DateTime            @default(now())
+  updated_at       DateTime            @updatedAt
+
+  @@index([tenant_id, status])
+  @@schema("email_security")
+}
+
+model EmailAccessAuditEvent {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  actor_id   String
+  event_type String
+  target_id  String?
+  detail     Json     @default("{}")
+  created_at DateTime @default(now())
+
+  @@index([tenant_id, created_at])
+  @@schema("email_security")
+}

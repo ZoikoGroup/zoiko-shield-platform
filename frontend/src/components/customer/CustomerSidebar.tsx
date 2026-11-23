@@ -45,7 +45,7 @@ export const CUSTOMER_PRIMARY_NAV: CustomerNavItem[] = [
     label: "Threats & Incidents",
     href: "/customer/threats-incidents",
     icon: BellRing,
-    matchPaths: ["/customer/threats-incidents", "/alerts", "/incident-command"],
+    matchPaths: ["/customer/threats-incidents", "/alerts", "/incident-command", "/cases/incidents/command", "/email", "/email/threats"],
   },
   {
     label: "Exposure Management",
@@ -100,7 +100,7 @@ export const CUSTOMER_PRIMARY_NAV: CustomerNavItem[] = [
     label: "Compliance & Risk",
     href: "/customer/compliance-risk",
     icon: ClipboardCheck,
-    matchPaths: ["/customer/compliance-risk", "/compliance", "/controls", "/trust"],
+    matchPaths: ["/customer/compliance-risk", "/compliance", "/controls", "/trust", "/email/coverage"],
   },
   {
     label: "Reports & Analytics",
@@ -121,7 +121,7 @@ export const CUSTOMER_FOOTER_NAV: CustomerNavItem[] = [
     label: "Settings",
     href: "/customer/settings",
     icon: Settings,
-    matchPaths: ["/customer/settings", "/settings"],
+    matchPaths: ["/customer/settings", "/settings", "/tenant-management", "/email/settings"],
   },
 ];
 

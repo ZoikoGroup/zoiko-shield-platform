@@ -761,7 +761,7 @@ function handleOfflineAuth(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
 
     const orgName = (body.organizationName || body.orgName || "Evaluation Organization").trim();
     const adminName = (body.fullName || body.adminName || "Administrator").trim();
@@ -870,7 +870,7 @@ function handleOfflineAuth(
     let body: { email?: unknown; password?: unknown; tenantId?: unknown } = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const account = findOfflineAccount(body.email, body.password, body.tenantId);
     if (!account) {
       return NextResponse.json(
@@ -936,8 +936,8 @@ function handleOfflineAuth(
     const accounts = getAllOfflineAccounts();
     const matchedAccount = accounts.find(
       (a) => a.tenantId.toLowerCase().includes(normalizedSlug) ||
-             a.email.toLowerCase().includes(normalizedSlug) ||
-             a.fullName.toLowerCase().includes(rawSlug)
+        a.email.toLowerCase().includes(normalizedSlug) ||
+        a.fullName.toLowerCase().includes(rawSlug)
     );
 
     const isKnown =
@@ -952,8 +952,8 @@ function handleOfflineAuth(
     if (isKnown) {
       const tenantName =
         normalizedSlug.includes("zoiko") ? "Zoiko Industries" :
-        normalizedSlug === "google" ? "Google" :
-        matchedAccount?.fullName ? `${matchedAccount.fullName} Workspace` : "Corporate Workspace";
+          normalizedSlug === "google" ? "Google" :
+            matchedAccount?.fullName ? `${matchedAccount.fullName} Workspace` : "Corporate Workspace";
       const tenantId = matchedAccount?.tenantId || (normalizedSlug.startsWith("tenant-") ? normalizedSlug : `tenant-${normalizedSlug}`);
 
       return NextResponse.json({
@@ -986,7 +986,7 @@ function handleOfflineAuth(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const returnTo = body.returnTo || "/customer/dashboard";
     return NextResponse.json({
       authorizationUrl: `${returnTo}${returnTo.includes("?") ? "&" : "?"}sso=authenticated&ts=${Date.now()}`,
@@ -999,7 +999,7 @@ function handleOfflineAuth(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const targetEmail = (body.email || "").trim().toLowerCase();
     const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -1042,7 +1042,7 @@ function handleOfflineAuth(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const targetEmail = (body.email || "").trim().toLowerCase();
     const newPassword = body.newPassword || body.password;
     if (targetEmail && newPassword) {
@@ -1065,7 +1065,7 @@ function handleOfflineAuth(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const targetEmail = (body.email || "").trim().toLowerCase();
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     defaultDeliveries.unshift({
@@ -1456,7 +1456,7 @@ async function buildOfflineResponse(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
 
     const planTier = body.planTier || "PROFESSIONAL";
     const billingPeriod = body.billingPeriod === "ANNUAL" ? "ANNUAL" : "MONTHLY";
@@ -1631,7 +1631,7 @@ async function buildOfflineResponse(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const orgName = body.organizationName || "Evaluation Organization";
     const orgSlug = body.slug || "eval-org";
     const adminEmail = body.email || "admin@evaluation.local";
@@ -1712,7 +1712,7 @@ async function buildOfflineResponse(
     let body: any = {};
     try {
       body = JSON.parse(rawBodyText || "{}");
-    } catch {}
+    } catch { }
     const orgName = body.organizationName || "Evaluation Org";
     const userEmail = body.email || "admin@evaluation.org";
     const userName = body.fullName || "Admin User";
@@ -1800,7 +1800,7 @@ async function buildOfflineResponse(
   if (path.startsWith("notifications")) {
     if (path.includes("/send-test") || path.endsWith("/send") || path.endsWith("/dispatch")) {
       let body: any = {};
-      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      try { body = JSON.parse(rawBodyText || "{}"); } catch { }
       const recipient = body.recipientEmail || body.email || "security-alerts@zoikoshield.com";
       const templateId = body.templateId || path.split("/")[path.split("/").indexOf("templates") + 1] || "ZS-EML-SEC-001";
       const deliveryId = `del-${crypto.randomBytes(6).toString("hex")}`;
@@ -2047,7 +2047,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("detection/ot/analyze")) {
     let event: any = {};
-    try { event = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { event = JSON.parse(rawBodyText || "{}"); } catch { }
     const analysisData = {
       threatDetected: true,
       finding: {
@@ -2069,7 +2069,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("action/ot-interlock/evaluate")) {
     let reqObj: any = {};
-    try { reqObj = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { reqObj = JSON.parse(rawBodyText || "{}"); } catch { }
     const interlockData = {
       receiptId: `actuator-block-${crypto.randomUUID()}`,
       commandId: reqObj.commandId || `cmd-${Date.now()}`,
@@ -2147,7 +2147,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("crypto-escrow/byok/configure")) {
     let config: any = {};
-    try { config = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { config = JSON.parse(rawBodyText || "{}"); } catch { }
     const resData = {
       ...config,
       custodyTopology: "T4_CUSTOMER_MANAGED_PROXY",
@@ -2160,7 +2160,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("crypto-escrow/mpc/split")) {
     let dto: any = {};
-    try { dto = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { dto = JSON.parse(rawBodyText || "{}"); } catch { }
     const mpcData = {
       splitId: `mpc-split-${crypto.randomUUID()}`,
       keyAlias: dto.keyAlias || "mpc-master-key",
@@ -2180,7 +2180,7 @@ async function buildOfflineResponse(
   // Airgap Compliance Packages & Batch Sync
   if (path.startsWith("compliance/airgap/export-package")) {
     let body: any = {};
-    try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { body = JSON.parse(rawBodyText || "{}"); } catch { }
     const pkgId = body.packageId || "pkg-dora-q3";
     const airgapData = {
       bundleId: `airgap-pkg-${crypto.randomUUID()}`,
@@ -2204,7 +2204,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("ingest/airgap/batch-sync")) {
     let batch: any = {};
-    try { batch = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { batch = JSON.parse(rawBodyText || "{}"); } catch { }
     const syncData = {
       receiptId: `airgap-sync-rcpt-${crypto.randomUUID()}`,
       batchId: batch.batchId || `batch-${Date.now()}`,
@@ -2281,7 +2281,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("partners/fleet/jit")) {
     let dto: any = {};
-    try { dto = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { dto = JSON.parse(rawBodyText || "{}"); } catch { }
     const jitData = {
       sessionId: dto.sessionId || `jit-session-${crypto.randomUUID()}`,
       status: path.includes("approve") ? "PENDING_PLATFORM_AUTHORIZATION" : path.includes("authorize") ? "ACTIVE_AUTHORIZED" : path.includes("revoke") ? "REVOKED" : "PENDING_CUSTOMER_APPROVAL",
@@ -2301,7 +2301,7 @@ async function buildOfflineResponse(
   // CIEM Least-Privilege Remediation
   if (path.startsWith("identity-context/ciem/analyze")) {
     let dto: any = {};
-    try { dto = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { dto = JSON.parse(rawBodyText || "{}"); } catch { }
     const assigned = dto.assignedPermissions || ["s3:GetObject", "s3:PutObject", "iam:*", "ec2:*"];
     const used = dto.last90DaysUsedPermissions || ["s3:GetObject"];
     const ciemData = {
@@ -2342,7 +2342,7 @@ async function buildOfflineResponse(
 
   if (path.startsWith("evidence/cross-region/failover-drill")) {
     let dto: any = {};
-    try { dto = JSON.parse(rawBodyText || "{}"); } catch {}
+    try { dto = JSON.parse(rawBodyText || "{}"); } catch { }
     const drillData = {
       drillId: `dr-drill-${crypto.randomUUID()}`,
       primaryRegion: dto.primaryRegion || "europe-west1",
@@ -2588,31 +2588,31 @@ async function buildOfflineResponse(
   if (path.startsWith("notifications")) {
     if (path === "notifications" && method === "GET") {
       if (path.includes("/mark-all-read") || path.includes("/acknowledge-all")) {
-      const now = new Date().toISOString();
-      inMemoryDeliveries.forEach((d) => {
-        d.status = "ACKNOWLEDGED";
-      });
-      return NextResponse.json({
-        success: true,
-        status: "ACKNOWLEDGED",
-        acknowledgedCount: inMemoryDeliveries.length,
-        acknowledgedAt: now,
-      });
-    }
-    if (path.includes("/acknowledge")) {
-      const parts = path.split("/");
-      const notifId = parts[1];
-      const found = inMemoryDeliveries.find((d) => d.id === notifId);
-      if (found) {
-        found.status = "ACKNOWLEDGED";
+        const now = new Date().toISOString();
+        inMemoryDeliveries.forEach((d) => {
+          d.status = "ACKNOWLEDGED";
+        });
+        return NextResponse.json({
+          success: true,
+          status: "ACKNOWLEDGED",
+          acknowledgedCount: inMemoryDeliveries.length,
+          acknowledgedAt: now,
+        });
       }
-      return NextResponse.json({
-        id: notifId,
-        status: "ACKNOWLEDGED",
-        acknowledgedAt: new Date().toISOString(),
-      });
-    }
-    return NextResponse.json(inMemoryDeliveries);
+      if (path.includes("/acknowledge")) {
+        const parts = path.split("/");
+        const notifId = parts[1];
+        const found = inMemoryDeliveries.find((d) => d.id === notifId);
+        if (found) {
+          found.status = "ACKNOWLEDGED";
+        }
+        return NextResponse.json({
+          id: notifId,
+          status: "ACKNOWLEDGED",
+          acknowledgedAt: new Date().toISOString(),
+        });
+      }
+      return NextResponse.json(inMemoryDeliveries);
     }
 
     if (path.endsWith("/send-test") && method === "POST") {
@@ -2839,7 +2839,7 @@ async function buildOfflineResponse(
 
     if (path.endsWith("/status") || path.endsWith("/triage")) {
       let body: any = {};
-      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      try { body = JSON.parse(rawBodyText || "{}"); } catch { }
       const parts = path.split("/");
       const alertId = parts[1] || "alt-lateral-movement-01";
       const nextStatus = body.status || "TRIAGED";
@@ -3087,7 +3087,7 @@ async function buildOfflineResponse(
 
     if (method === "POST" && (path === "cases" || path === "cases/")) {
       let body: any = {};
-      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      try { body = JSON.parse(rawBodyText || "{}"); } catch { }
       const newCaseId = `case-2026-${crypto.randomBytes(3).toString("hex")}`;
       const nowIso = new Date().toISOString();
       const createdCase = {
@@ -3117,7 +3117,7 @@ async function buildOfflineResponse(
 
     if (method === "PATCH" || (method === "POST" && path.split("/").length > 1)) {
       let body: any = {};
-      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      try { body = JSON.parse(rawBodyText || "{}"); } catch { }
       const targetId = path.split("/")[1];
       const match = casesStore.find((c) => c.id === targetId) || casesStore[0] || caseItem;
       const nowIso = new Date().toISOString();
@@ -3998,8 +3998,7 @@ async function buildOfflineResponse(
       rationale.push("Scale fits baseline Shield Essential tier perfectly with foundational MDR and ML-DSA-65 ledger.");
     }
 
-    return NextResponse.json({
-      recommendedTier: {
+    const tierPayload = {
         key: planKey,
         displayName: planName,
         pricing: {
@@ -4021,7 +4020,11 @@ async function buildOfflineResponse(
           "SOC 2 Type II & ISO 27001",
           "ML-DSA-65 Cryptographic Ledger",
         ],
-      },
+    };
+
+    return NextResponse.json({
+      recommendedPlan: tierPayload,
+      recommendedTier: tierPayload,
       rationale,
       estimatedAnnualUsd: price,
       antiPerverseBillingCompliance: {
@@ -4254,7 +4257,7 @@ async function buildOfflineResponse(
   let body: Record<string, any> = {};
   try {
     body = rawBodyText ? JSON.parse(rawBodyText) : {};
-  } catch {}
+  } catch { }
   const gCustomer = globalThis as any;
   if (!gCustomer.__zoiko_customer_state_by_tenant) {
     gCustomer.__zoiko_customer_state_by_tenant = {};
@@ -4276,10 +4279,10 @@ async function buildOfflineResponse(
     (matchedOfflineAccount as any)?.tenant?.organizationName ||
     (emailCookie.includes("@")
       ? emailCookie
-          .split("@")[1]
-          .split(".")[0]
-          .replace(/[-_]/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase())
+        .split("@")[1]
+        .split(".")[0]
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
       : "Organization Workspace");
   const resolvedWorkspaceSlug = resolvedOrgName
     .toLowerCase()
@@ -4290,156 +4293,156 @@ async function buildOfflineResponse(
     (matchedOfflineAccount as any)?.session?.fullName ||
     (emailCookie.includes("@")
       ? emailCookie
-          .split("@")[0]
-          .replace(/[._-]/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase())
+        .split("@")[0]
+        .replace(/[._-]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
       : "Authenticated User");
 
   if (!gCustomer.__zoiko_customer_state_by_tenant[tenantScopeKey]) {
     gCustomer.__zoiko_customer_state_by_tenant[tenantScopeKey] = IS_TEST_ENV
       ? {
-          remediations: [
-            { id: "rem-1", action: "Patch exposed services", owner: "Infrastructure", due: "Today", status: "Open" },
-            { id: "rem-2", action: "Restore critical-system monitoring", owner: "Platform team", due: "Today", status: "In progress" },
-            { id: "rem-3", action: "Enforce privileged MFA", owner: "Identity team", due: "Nov 6", status: "Open" },
-          ],
-          exposures: [
-            {
-              id: "EXP-104",
-              title: "Exposed remote access",
-              severity: "Critical",
-              assets: 5,
-              owner: "Infrastructure",
-              due: "Overdue 1d",
-              status: "In progress",
-              reasons: ["Internet reachable", "5 production servers affected", "Privileged access is exposed"],
-              recommendation: "Restrict remote access to approved networks and require MFA.",
-            },
-            {
-              id: "EXP-108",
-              title: "Public data access",
-              severity: "Critical",
-              assets: 4,
-              owner: "Cloud team",
-              due: "Today",
-              status: "Open",
-              reasons: ["Public read ACL detected on 4 cloud storage buckets", "Contains confidential classification tags"],
-              recommendation: "Disable public bucket access policies and enforce organization-level block public access.",
-            },
-            {
-              id: "EXP-112",
-              title: "Exposed admin interface",
-              severity: "Critical",
-              assets: 3,
-              owner: "Platform team",
-              due: "Nov 5",
-              status: "Open",
-              reasons: ["Management plane reachable without zero-trust proxy", "3 production workloads affected"],
-              recommendation: "Place administrative interfaces behind private network ingress and identity-aware proxy.",
-            },
-          ],
-          assets: [
-            { name: "PAY-DB-01", code: "AST-0042", type: "Server", owner: "Infrastructure", criticality: "Critical", protection: "Gap", lastSeen: "2 min ago" },
-            { name: "FIN-LT-204", code: "AST-0204", type: "Endpoint", owner: "Finance IT", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
-            { name: "API-PROD-07", code: "AST-0707", type: "Cloud workload", owner: "Platform team", criticality: "Critical", protection: "Protected", lastSeen: "3 min ago" },
-            { name: "EDGE-FW-02", code: "AST-0902", type: "Network device", owner: "Network team", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
-            { name: "ENG-LT-118", code: "AST-0118", type: "Endpoint", owner: "Unassigned", criticality: "Standard", protection: "Gap", lastSeen: "8 min ago" },
-          ],
-          vulnerabilities: [
-            { cve: "CVE-2026-21480", title: "Remote Code Execution in Edge VPN Gateway", severity: "Critical", cvss: "9.8", affectedAssets: 3, patchSla: "Due Today", status: "Patching" },
-            { cve: "CVE-2026-19842", title: "Privilege Escalation in Linux Kernel Netfilter", severity: "High", cvss: "8.4", affectedAssets: 14, patchSla: "Due Nov 7", status: "Open" },
-            { cve: "CVE-2026-17205", title: "TLS Session Ticket Memory Disclosure", severity: "High", cvss: "7.8", affectedAssets: 8, patchSla: "Due Nov 10", status: "Open" },
-          ],
-          settings: {
-            organization: "Acme Global Ltd",
-            workspaceId: "acme-global-prod",
-            primaryRegion: "EU (Ireland)",
-            timeZone: "Europe/Dublin",
-            language: "English (US)",
-            tier: "Enterprise",
-            pendingApprovals: 2,
-            lastConfigurationChange: "Nov 3, 2026",
-            notifications: {
-              criticalIncidentAlerts: true,
-              integrationHealthAlerts: true,
-              dailySecurityDigest: true,
-            },
+        remediations: [
+          { id: "rem-1", action: "Patch exposed services", owner: "Infrastructure", due: "Today", status: "Open" },
+          { id: "rem-2", action: "Restore critical-system monitoring", owner: "Platform team", due: "Today", status: "In progress" },
+          { id: "rem-3", action: "Enforce privileged MFA", owner: "Identity team", due: "Nov 6", status: "Open" },
+        ],
+        exposures: [
+          {
+            id: "EXP-104",
+            title: "Exposed remote access",
+            severity: "Critical",
+            assets: 5,
+            owner: "Infrastructure",
+            due: "Overdue 1d",
+            status: "In progress",
+            reasons: ["Internet reachable", "5 production servers affected", "Privileged access is exposed"],
+            recommendation: "Restrict remote access to approved networks and require MFA.",
           },
-          changeRequests: [
-            { id: "CR-2047", title: "Update session timeout policy to 8 hours", status: "PENDING", requestedBy: "Jane Doe", createdAt: new Date().toISOString() },
-            { id: "CR-2048", title: "Enable strict EU (Ireland) residency lock", status: "PENDING", requestedBy: "Jane Doe", createdAt: new Date().toISOString() },
-          ],
-        }
+          {
+            id: "EXP-108",
+            title: "Public data access",
+            severity: "Critical",
+            assets: 4,
+            owner: "Cloud team",
+            due: "Today",
+            status: "Open",
+            reasons: ["Public read ACL detected on 4 cloud storage buckets", "Contains confidential classification tags"],
+            recommendation: "Disable public bucket access policies and enforce organization-level block public access.",
+          },
+          {
+            id: "EXP-112",
+            title: "Exposed admin interface",
+            severity: "Critical",
+            assets: 3,
+            owner: "Platform team",
+            due: "Nov 5",
+            status: "Open",
+            reasons: ["Management plane reachable without zero-trust proxy", "3 production workloads affected"],
+            recommendation: "Place administrative interfaces behind private network ingress and identity-aware proxy.",
+          },
+        ],
+        assets: [
+          { name: "PAY-DB-01", code: "AST-0042", type: "Server", owner: "Infrastructure", criticality: "Critical", protection: "Gap", lastSeen: "2 min ago" },
+          { name: "FIN-LT-204", code: "AST-0204", type: "Endpoint", owner: "Finance IT", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
+          { name: "API-PROD-07", code: "AST-0707", type: "Cloud workload", owner: "Platform team", criticality: "Critical", protection: "Protected", lastSeen: "3 min ago" },
+          { name: "EDGE-FW-02", code: "AST-0902", type: "Network device", owner: "Network team", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
+          { name: "ENG-LT-118", code: "AST-0118", type: "Endpoint", owner: "Unassigned", criticality: "Standard", protection: "Gap", lastSeen: "8 min ago" },
+        ],
+        vulnerabilities: [
+          { cve: "CVE-2026-21480", title: "Remote Code Execution in Edge VPN Gateway", severity: "Critical", cvss: "9.8", affectedAssets: 3, patchSla: "Due Today", status: "Patching" },
+          { cve: "CVE-2026-19842", title: "Privilege Escalation in Linux Kernel Netfilter", severity: "High", cvss: "8.4", affectedAssets: 14, patchSla: "Due Nov 7", status: "Open" },
+          { cve: "CVE-2026-17205", title: "TLS Session Ticket Memory Disclosure", severity: "High", cvss: "7.8", affectedAssets: 8, patchSla: "Due Nov 10", status: "Open" },
+        ],
+        settings: {
+          organization: "Acme Global Ltd",
+          workspaceId: "acme-global-prod",
+          primaryRegion: "EU (Ireland)",
+          timeZone: "Europe/Dublin",
+          language: "English (US)",
+          tier: "Enterprise",
+          pendingApprovals: 2,
+          lastConfigurationChange: "Nov 3, 2026",
+          notifications: {
+            criticalIncidentAlerts: true,
+            integrationHealthAlerts: true,
+            dailySecurityDigest: true,
+          },
+        },
+        changeRequests: [
+          { id: "CR-2047", title: "Update session timeout policy to 8 hours", status: "PENDING", requestedBy: "Jane Doe", createdAt: new Date().toISOString() },
+          { id: "CR-2048", title: "Enable strict EU (Ireland) residency lock", status: "PENDING", requestedBy: "Jane Doe", createdAt: new Date().toISOString() },
+        ],
+      }
       : {
-          remediations: [
-            { id: "rem-1", action: "Patch exposed services", owner: "Infrastructure", due: "Today", status: "Open" },
-            { id: "rem-2", action: "Restore critical-system monitoring", owner: "Platform team", due: "Today", status: "In progress" },
-            { id: "rem-3", action: "Enforce privileged MFA", owner: "Identity team", due: "Nov 6", status: "Open" },
-          ],
-          exposures: [
-            {
-              id: "EXP-104",
-              title: "Exposed remote access",
-              severity: "Critical",
-              assets: 5,
-              owner: "Infrastructure",
-              due: "Overdue 1d",
-              status: "In progress",
-              reasons: ["Internet reachable", "5 production servers affected", "Privileged access is exposed"],
-              recommendation: "Restrict remote access to approved networks and require MFA.",
-            },
-            {
-              id: "EXP-108",
-              title: "Public data access",
-              severity: "Critical",
-              assets: 4,
-              owner: "Cloud team",
-              due: "Today",
-              status: "Open",
-              reasons: ["Public read ACL detected on 4 cloud storage buckets", "Contains confidential classification tags"],
-              recommendation: "Disable public bucket access policies and enforce organization-level block public access.",
-            },
-            {
-              id: "EXP-112",
-              title: "Exposed admin interface",
-              severity: "Critical",
-              assets: 3,
-              owner: "Platform team",
-              due: "Nov 5",
-              status: "Open",
-              reasons: ["Management plane reachable without zero-trust proxy", "3 production workloads affected"],
-              recommendation: "Place administrative interfaces behind private network ingress and identity-aware proxy.",
-            },
-          ],
-          assets: [
-            { name: "PAY-DB-01", code: "AST-0042", type: "Server", owner: "Infrastructure", criticality: "Critical", protection: "Gap", lastSeen: "2 min ago" },
-            { name: "FIN-LT-204", code: "AST-0204", type: "Endpoint", owner: "Finance IT", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
-            { name: "API-PROD-07", code: "AST-0707", type: "Cloud workload", owner: "Platform team", criticality: "Critical", protection: "Protected", lastSeen: "3 min ago" },
-            { name: "EDGE-FW-02", code: "AST-0902", type: "Network device", owner: "Network team", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
-            { name: "ENG-LT-118", code: "AST-0118", type: "Endpoint", owner: "Unassigned", criticality: "Standard", protection: "Gap", lastSeen: "8 min ago" },
-          ],
-          vulnerabilities: [
-            { cve: "CVE-2026-21480", title: "Remote Code Execution in Edge VPN Gateway", severity: "Critical", cvss: "9.8", affectedAssets: 3, patchSla: "Due Today", status: "Patching" },
-            { cve: "CVE-2026-19842", title: "Privilege Escalation in Linux Kernel Netfilter", severity: "High", cvss: "8.4", affectedAssets: 14, patchSla: "Due Nov 7", status: "Open" },
-            { cve: "CVE-2026-17205", title: "TLS Session Ticket Memory Disclosure", severity: "High", cvss: "7.8", affectedAssets: 8, patchSla: "Due Nov 10", status: "Open" },
-          ],
-          settings: {
-            organization: resolvedOrgName,
-            workspaceId: resolvedWorkspaceSlug || tenantScopeKey,
-            primaryRegion: (matchedOfflineAccount as any)?.tenant?.region || "us-east-1",
-            timeZone: "UTC",
-            language: "English (US)",
-            tier: "Enterprise",
-            pendingApprovals: 0,
-            lastConfigurationChange: "No changes recorded",
-            notifications: {
-              criticalIncidentAlerts: true,
-              integrationHealthAlerts: true,
-              dailySecurityDigest: true,
-            },
+        remediations: [
+          { id: "rem-1", action: "Patch exposed services", owner: "Infrastructure", due: "Today", status: "Open" },
+          { id: "rem-2", action: "Restore critical-system monitoring", owner: "Platform team", due: "Today", status: "In progress" },
+          { id: "rem-3", action: "Enforce privileged MFA", owner: "Identity team", due: "Nov 6", status: "Open" },
+        ],
+        exposures: [
+          {
+            id: "EXP-104",
+            title: "Exposed remote access",
+            severity: "Critical",
+            assets: 5,
+            owner: "Infrastructure",
+            due: "Overdue 1d",
+            status: "In progress",
+            reasons: ["Internet reachable", "5 production servers affected", "Privileged access is exposed"],
+            recommendation: "Restrict remote access to approved networks and require MFA.",
           },
-          changeRequests: [],
-        };
+          {
+            id: "EXP-108",
+            title: "Public data access",
+            severity: "Critical",
+            assets: 4,
+            owner: "Cloud team",
+            due: "Today",
+            status: "Open",
+            reasons: ["Public read ACL detected on 4 cloud storage buckets", "Contains confidential classification tags"],
+            recommendation: "Disable public bucket access policies and enforce organization-level block public access.",
+          },
+          {
+            id: "EXP-112",
+            title: "Exposed admin interface",
+            severity: "Critical",
+            assets: 3,
+            owner: "Platform team",
+            due: "Nov 5",
+            status: "Open",
+            reasons: ["Management plane reachable without zero-trust proxy", "3 production workloads affected"],
+            recommendation: "Place administrative interfaces behind private network ingress and identity-aware proxy.",
+          },
+        ],
+        assets: [
+          { name: "PAY-DB-01", code: "AST-0042", type: "Server", owner: "Infrastructure", criticality: "Critical", protection: "Gap", lastSeen: "2 min ago" },
+          { name: "FIN-LT-204", code: "AST-0204", type: "Endpoint", owner: "Finance IT", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
+          { name: "API-PROD-07", code: "AST-0707", type: "Cloud workload", owner: "Platform team", criticality: "Critical", protection: "Protected", lastSeen: "3 min ago" },
+          { name: "EDGE-FW-02", code: "AST-0902", type: "Network device", owner: "Network team", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
+          { name: "ENG-LT-118", code: "AST-0118", type: "Endpoint", owner: "Unassigned", criticality: "Standard", protection: "Gap", lastSeen: "8 min ago" },
+        ],
+        vulnerabilities: [
+          { cve: "CVE-2026-21480", title: "Remote Code Execution in Edge VPN Gateway", severity: "Critical", cvss: "9.8", affectedAssets: 3, patchSla: "Due Today", status: "Patching" },
+          { cve: "CVE-2026-19842", title: "Privilege Escalation in Linux Kernel Netfilter", severity: "High", cvss: "8.4", affectedAssets: 14, patchSla: "Due Nov 7", status: "Open" },
+          { cve: "CVE-2026-17205", title: "TLS Session Ticket Memory Disclosure", severity: "High", cvss: "7.8", affectedAssets: 8, patchSla: "Due Nov 10", status: "Open" },
+        ],
+        settings: {
+          organization: resolvedOrgName,
+          workspaceId: resolvedWorkspaceSlug || tenantScopeKey,
+          primaryRegion: (matchedOfflineAccount as any)?.tenant?.region || "us-east-1",
+          timeZone: "UTC",
+          language: "English (US)",
+          tier: "Enterprise",
+          pendingApprovals: 0,
+          lastConfigurationChange: "No changes recorded",
+          notifications: {
+            criticalIncidentAlerts: true,
+            integrationHealthAlerts: true,
+            dailySecurityDigest: true,
+          },
+        },
+        changeRequests: [],
+      };
   }
   const cState = gCustomer.__zoiko_customer_state_by_tenant[tenantScopeKey];
   if (!IS_TEST_ENV && resolvedOrgName && resolvedOrgName !== "Organization Workspace") {
@@ -4458,8 +4461,8 @@ async function buildOfflineResponse(
     const posture = IS_TEST_ENV
       ? 78
       : totalAssets === 0 && cState.exposures.length === 0
-      ? 0
-      : Math.max(0, Math.min(100, protectedPct - critExposures * 5));
+        ? 0
+        : Math.max(0, Math.min(100, protectedPct - critExposures * 5));
     return NextResponse.json({
       postureScore: posture,
       protectedAssetsPct: protectedPct,
@@ -4846,6 +4849,20 @@ async function buildOfflineResponse(
         HIPAA_SECURITY: 98,
       },
     });
+  }
+
+  // Fail-closed for Email Security endpoints so UI never fabricates telemetry or fake coverage
+  if (path === "email" || path.startsWith("email/")) {
+    return NextResponse.json(
+      {
+        statusCode: 503,
+        error: "EMAIL_SECURITY_BACKEND_UNREACHABLE",
+        message:
+          "Live ZoikoShield Email Security backend is unreachable; refusing fabricated fallback data.",
+        path,
+      },
+      { status: 503 },
+    );
   }
 
   // 25. Blanket Autonomous Failover for Any Unmatched Path: Always 200 OK!

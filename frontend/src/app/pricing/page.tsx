@@ -97,8 +97,10 @@ export default function PricingPage() {
           protectedAssetCount: assets,
           estimatedDailyGb: telemetryGb,
           requiresContinuous24x7Mdr: requires24x7,
+          requiresManagedDefense: requires24x7,
+          requiresAiSecurity: true,
           requiresDedicatedTenantIsolation: requiresSovereign,
-        });
+        } as any);
         setRecommendation(res);
       } catch (err) {
         console.error("Failed to calculate recommendation", err);
@@ -495,7 +497,7 @@ export default function PricingPage() {
 
             {(() => {
               const rec = (recommendation as any)?.data || recommendation;
-              const plan = rec?.recommendedPlan;
+              const plan = rec?.recommendedPlan || rec?.recommendedTier;
               if (!rec || !plan) return null;
               return (
                 <div className="space-y-4">

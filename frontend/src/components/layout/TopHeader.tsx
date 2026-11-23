@@ -86,6 +86,12 @@ const SEARCH_ITEMS = [
   { type: "WORKSPACE", title: "Tenant Onboarding Wizard", subtitle: "Organization profile & sovereign data fencing", route: "/onboarding" },
   { type: "WORKSPACE", title: "Auditor Sealed Verification Portal", subtitle: "Independent external auditor verification", route: "/auditor" },
   { type: "WORKSPACE", title: "Regulated Sector Packs", subtitle: "DORA, HIPAA, FedRAMP, and CMMC industry overlays", route: "/sector-packs" },
+  { type: "EMAIL SECURITY", title: "Email Security Overview", subtitle: "Microsoft 365 & Google Workspace coverage and threat posture", route: "/email" },
+  { type: "EMAIL SECURITY", title: "Email Threat Queue", subtitle: "Triaged BEC, phishing, and credential alerts", route: "/email/threats" },
+  { type: "EMAIL SECURITY", title: "Email Connectors & Setup", subtitle: "Read-only Graph & Workspace Alert Center sources", route: "/email/connectors" },
+  { type: "EMAIL SECURITY", title: "Email Evidence & Controls", subtitle: "Merkle evidence manifests and gap-honest coverage", route: "/email/evidence" },
+  { type: "EMAIL SECURITY", title: "Email AI Intelligence & Policies", subtitle: "Guarded BEC/ATO benchmark & dual-control policies", route: "/email/intelligence" },
+  { type: "EMAIL SECURITY", title: "Email Remediation Actions (Phase 2)", subtitle: "Gated post-delivery quarantine & rollback simulation", route: "/email/actions" },
 ];
 
 /**
@@ -106,6 +112,23 @@ export const TopHeader: React.FC = () => {
 
   // Active Dropdown Popovers
   const [activeMenu, setActiveMenu] = useState<"notifications" | "theme" | "profile" | "help" | null>(null);
+  const [timezoneMode, setTimezoneMode] = useState<"LOCAL" | "UTC">("LOCAL");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedTz = localStorage.getItem("zoiko_timezone_mode");
+      if (savedTz === "UTC" || savedTz === "LOCAL") setTimezoneMode(savedTz);
+    } catch {}
+  }, []);
+
+  const handleToggleTimezone = () => {
+    const next = timezoneMode === "LOCAL" ? "UTC" : "LOCAL";
+    setTimezoneMode(next);
+    try {
+      localStorage.setItem("zoiko_timezone_mode", next);
+    } catch {}
+  };
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSearchIdx, setSelectedSearchIdx] = useState(0);
@@ -368,7 +391,7 @@ export const TopHeader: React.FC = () => {
           return;
         }
       }
-      const res = await fetch("/health");
+      const res = await fetch("/api/v1/health");
       if (res.ok) {
         setHealthStatus({ healthyCount: 6, totalCount: 6, state: "OK" });
       } else {
@@ -615,11 +638,20 @@ export const TopHeader: React.FC = () => {
             </div>
           )}
 
-          {/* Region Indicator */}
+          {/* Region & Timezone Indicator (T19) */}
           <div className="hidden xl:flex items-center gap-1.5 text-slate-400 text-xs font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span>{state.tenant.dataResidencyRegion || state.tenant.homeRegion || "—"}</span>
           </div>
+          <button
+            type="button"
+            onClick={handleToggleTimezone}
+            title="Switch timestamp display between Local time and UTC (T19)"
+            aria-label={`Timezone mode ${timezoneMode}; click to switch`}
+            className="hidden sm:inline-flex items-center px-2 py-1 rounded bg-raised border border-line hover:border-cyan-500/40 text-[11px] font-mono text-cyan-300 transition-colors"
+          >
+            TZ: {timezoneMode}
+          </button>
 
           {/* Microservices Health */}
           <Link

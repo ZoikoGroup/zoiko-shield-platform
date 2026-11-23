@@ -84,6 +84,7 @@ import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
 import { RequirementsRegisterModule } from './modules/requirements-register/requirements-register.module';
 import { JitElevationModule } from './modules/jit-elevation/jit-elevation.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
+import { EmailSecurityModule } from './modules/email-security/email-security.module';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -173,6 +174,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     RequirementsRegisterModule,
     JitElevationModule,
     StreamingModule,
+    EmailSecurityModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

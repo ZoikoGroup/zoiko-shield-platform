@@ -48,6 +48,9 @@ const SERVICE_ROLES = {
       'controls.ControlImplementation': 'read',
       'assessments.EvidenceGap': 'read',
       'risk.ControlDeficiency': 'read',
+      'email_security.EmailSourceConnection': 'read',
+      'email_security.SourceCoverageWindow': 'read',
+      'email_security.EmailThreatFinding': 'read',
     },
   },
   shield_ai_app: {
@@ -58,6 +61,8 @@ const SERVICE_ROLES = {
       'case_management.InvestigationHypothesis': 'read',
       'ai_governance.AiUsageRecord': 'read',
       'ai_governance.AiGovernanceProfile': 'read',
+      'email_security.EmailThreatFinding': 'read',
+      'email_security.EmailSourceConnection': 'read',
     },
   },
   shield_action_app: {

@@ -400,6 +400,26 @@ export class ShieldAiClient {
     return response.json();
   }
 
+  async evaluateEmailFinding(
+    tenantId: string,
+    payload: Record<string, unknown>,
+  ): Promise<any> {
+    return this.post('/internal/v1/email-ai/evaluate', payload, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async benchmarkEmailDetections(
+    tenantId: string,
+    decisions: Array<Record<string, unknown>>,
+  ): Promise<any> {
+    return this.post(
+      '/internal/v1/email-ai/benchmark',
+      { decisions },
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
   private async delete(
     path: string,
     extraHeaders?: Record<string, string>,

@@ -201,6 +201,30 @@ export default function CaseWorkspacePage() {
         </div>
       </div>
 
+      {/* Linked Email Threat Context Banner (WF-07) */}
+      {(currentCase.title?.includes("Email Threat") ||
+        (currentCase as { description?: string }).description?.includes(
+          "ZoikoShield email finding",
+        )) && (
+        <div className="p-4 rounded-xl bg-raised border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="space-y-0.5">
+            <div className="font-mono font-bold text-cyan-300">
+              Linked Email Threat Intelligence Case (WF-07)
+            </div>
+            <p className="text-slate-400">
+              {(currentCase as { description?: string }).description ||
+                "Escalated from ZoikoShield Email Threat Queue."}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => router.push("/email/threats")}
+          >
+            <span>Open Email Threat Queue →</span>
+          </Button>
+        </div>
+      )}
+
       {/* Tabs Navigation */}
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
