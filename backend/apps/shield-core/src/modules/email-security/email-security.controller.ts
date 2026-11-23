@@ -623,6 +623,14 @@ export class EmailSecurityController {
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @Get('audit/verify')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_EVIDENCE_EXPORT)
+  async verifyAuditChain(@Headers('x-tenant-id') headerTenantId: string) {
+    const tenantId = requireTenantId(headerTenantId);
+    const data = await this.emailService.verifyAuditChain(tenantId);
+    return { statusCode: HttpStatus.OK, data };
+  }
+
   @Post('access-grants')
   @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_MANAGE)
   async grantAuditorAccess(

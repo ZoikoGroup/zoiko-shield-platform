@@ -255,7 +255,13 @@ model EmailAccessAuditEvent {
   target_id  String?
   detail     Json     @default("{}")
   created_at DateTime @default(now())
+  // Per-tenant hash chain (append-only; see migration 20261123010000). Nullable
+  // only so rows written before the chain existed remain valid (expand step).
+  seq        Int?
+  prev_hash  String?
+  event_hash String?
 
+  @@unique([tenant_id, seq])
   @@index([tenant_id, created_at])
   @@schema("email_security")
 }

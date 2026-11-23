@@ -202,6 +202,10 @@ export class DeletionTaskService {
 
     const counts: Record<string, number> = {};
     await this.prisma.$transaction(async (tx) => {
+      // Append-only tables (e.g. email_security.EmailAccessAuditEvent) reject
+      // DELETE unless this transaction-local flag is set, so the only path that
+      // can erase them is the tenant-erasure transaction itself.
+      await tx.$executeRaw`SELECT set_config('zoiko.tenant_erasure', 'on', true)`;
       for (const table of ordered) {
         // Only catalogue-discovered, identifier-validated names reach SQL.
         if (!candidateSet.has(table)) {

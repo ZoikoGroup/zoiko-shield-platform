@@ -76,8 +76,11 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       emailAccessAuditEvent: {
         create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
         findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
+      $executeRaw: jest.fn().mockResolvedValue(1),
     };
+    prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const caseService: any = {
       createStandalone: jest.fn().mockResolvedValue({ id: 'case-101' }),
     };
