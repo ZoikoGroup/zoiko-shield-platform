@@ -1,3 +1,4 @@
+
 """
 ZoikoShield Platform Comprehensive PDF Documentation Generator
 Produces two publication-quality, exhaustive engineering & operator PDF manuals:
