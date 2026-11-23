@@ -63458,6 +63458,20 @@ paths:
       responses:
         '200':
           description: Email governance settings returned.
+  /api/v1/email/audit/verify:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Verify the tenant's append-only, hash-chained email access audit log
+      operationId: getEmailAuditChainVerification
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Chain verification result (valid flag, rows checked, unchained legacy rows, first broken sequence).
   /api/v1/email/access-grants:
     post:
       tags:

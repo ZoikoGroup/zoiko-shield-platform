@@ -1,0 +1,125 @@
+name: Supply Chain & Security Scans
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege by default; jobs widen only what they need.
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: CodeQL (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: github/codeql-action/init@v3.28.0
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3.28.0
+        with:
+          category: /language:javascript-typescript
+
+  trivy-fs:
+    name: Trivy filesystem vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  sbom:
+    name: CycloneDX SBOM (backend, frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: 20
+      - name: Generate backend SBOM
+        working-directory: backend
+        run: |
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+          npx --yes @cyclonedx/cyclonedx-npm@1.19.3 --omit dev --output-format JSON --output-file ../sbom-backend.cdx.json
+      - name: Generate frontend SBOM
+        working-directory: frontend
+        run: |
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+          npx --yes @cyclonedx/cyclonedx-npm@1.19.3 --omit dev --output-format JSON --output-file ../sbom-frontend.cdx.json
+      - name: Record SBOM digests
+        run: sha256sum sbom-backend.cdx.json sbom-frontend.cdx.json | tee sbom.sha256
+      - uses: actions/upload-artifact@v4.4.3
+        with:
+          name: sboms
+          path: |
+            sbom-backend.cdx.json
+            sbom-frontend.cdx.json
+            sbom.sha256
+          if-no-files-found: error
+
+  iac:
+    name: OpenTofu validate & IaC scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: opentofu/setup-opentofu@v1.0.5
+        with:
+          tofu_version: 1.8.5
+      - name: tofu fmt
+        run: tofu fmt -check -recursive infrastructure/tofu
+      - name: tofu validate
+        run: |
+          for dir in infrastructure/tofu/environments/nonprod infrastructure/tofu/regional-cell; do
+            echo "::group::$dir"
+            tofu -chdir="$dir" init -backend=false -input=false
+            tofu -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infrastructure
+          severity: HIGH,CRITICAL
+          # Report-only until the known finding GCP-0061 (GKE master authorized
+          # networks not enabled, infrastructure/tofu/regional-cell/main.tf) is
+          # fixed with the real admin CIDRs. Flip to '1' once it is clean.
+          exit-code: '0'
+
+  # PLACEHOLDER — intentionally disabled (`if: false`).
+  # Registry push, cosign/KMS signing, provenance attestation and promotion by
+  # immutable digest are blocked on the open ADR for the artifact registry and
+  # provenance/signing stack (spec CICD-04/07/08). Enable only after that ADR is
+  # approved; do not add signing keys to the builder.
+  sign-and-promote:
+    name: Sign and promote by digest (pending ADR)
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Blocked on registry / signing stack ADR"

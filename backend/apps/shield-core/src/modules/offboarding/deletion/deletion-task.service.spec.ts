@@ -53,8 +53,11 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
     prisma.$queryRawUnsafe.mockResolvedValue([{ count: BigInt(0) }]);
   };
 
+  let erasureFlagStatements: string[];
+
   beforeEach(() => {
     executedSql = [];
+    erasureFlagStatements = [];
     prisma = {
       deletionTask: {
         findUniqueOrThrow: jest.fn(),
@@ -68,6 +71,14 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
       $queryRawUnsafe: jest.fn(),
       $transaction: jest.fn().mockImplementation(async (fn: any) =>
         fn({
+          // Tagged-template call: arms the transaction-local erasure flag that
+          // lets append-only tables (email audit) be deleted ONLY in this path.
+          $executeRaw: jest
+            .fn()
+            .mockImplementation((strings: TemplateStringsArray) => {
+              erasureFlagStatements.push(strings.join('?'));
+              return Promise.resolve(1);
+            }),
           $executeRawUnsafe: jest
             .fn()
             .mockImplementation((sql: string, ...params: unknown[]) => {
@@ -180,6 +191,16 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
   });
 
   describe('authoritative relational deletion', () => {
+    it('arms the transaction-local erasure flag before any DELETE (append-only tables)', async () => {
+      prisma.deletionTask.findUniqueOrThrow.mockResolvedValue(task());
+      cleanDatabase();
+      await service.executeTask('task-1');
+      expect(executedSql.length).toBeGreaterThan(0);
+      expect(erasureFlagStatements.join(' ')).toContain(
+        "set_config('zoiko.tenant_erasure', 'on', true)",
+      );
+    });
+
     it('quotes the reserved "authorization" schema in every statement', async () => {
       prisma.deletionTask.findUniqueOrThrow.mockResolvedValue(task());
       cleanDatabase();

@@ -85,6 +85,10 @@ import { InvestigationAgentController } from './investigation/investigation-agen
 import { AutonomousInvestigationAgentService } from './investigation/autonomous-investigation-agent.service';
 import { EmailAiController } from './email-adjudication/email-ai.controller';
 import { EmailBecAdjudicationService } from './email-adjudication/email-bec-adjudication.service';
+import {
+  EMAIL_LLM_REVIEW_PORT,
+  NotConfiguredEmailLlmReviewPort,
+} from './email-adjudication/email-llm-review.port';
 
 @Module({
   imports: [PrismaModule, KafkaModule, DecisionRightsModule],
@@ -165,6 +169,10 @@ import { EmailBecAdjudicationService } from './email-adjudication/email-bec-adju
     InventoryAiUseCaseRegistryService,
     GroundingGateGuard,
     EmailBecAdjudicationService,
+    {
+      provide: EMAIL_LLM_REVIEW_PORT,
+      useClass: NotConfiguredEmailLlmReviewPort,
+    },
   ],
   exports: [
     ThreatHuntingCopilotService,

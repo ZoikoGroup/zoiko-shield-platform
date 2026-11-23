@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  EMAIL_LLM_REVIEW_PORT,
+  NotConfiguredEmailLlmReviewPort,
+  type EmailLlmReviewPort,
+} from './email-llm-review.port';
 import { createHash } from 'crypto';
 
 export interface EvaluateEmailFindingInput {
@@ -18,6 +23,10 @@ export interface EvaluateEmailFindingInput {
     inboxForwardingRuleAdded?: boolean;
     impossibleTravelDetected?: boolean;
     allowAmbiguousLlmReview?: boolean;
+    /**
+     * @deprecated Client-supplied citations are UNTRUSTED and ignored. LLM
+     * citations are accepted only from the gateway-backed review port.
+     */
     llmProposedCitations?: string[];
   };
   allowedSourceRefs: string[];
@@ -57,10 +66,24 @@ const PROMPT_INJECTION_PATTERNS = [
 @Injectable()
 export class EmailBecAdjudicationService {
   private readonly logger = new Logger(EmailBecAdjudicationService.name);
+  private readonly llmReview: EmailLlmReviewPort;
 
-  evaluateFinding(
+  constructor(
+    @Optional()
+    @Inject(EMAIL_LLM_REVIEW_PORT)
+    llmReview?: EmailLlmReviewPort,
+  ) {
+    this.llmReview = llmReview ?? new NotConfiguredEmailLlmReviewPort();
+  }
+
+  /** Kill switch: when engaged only deterministic/behavioral tiers may run. */
+  isAiKillSwitchEngaged(): boolean {
+    return process.env.EMAIL_AI_KILL_SWITCH === 'true';
+  }
+
+  async evaluateFinding(
     input: EvaluateEmailFindingInput,
-  ): EmailDetectionDecisionResult {
+  ): Promise<EmailDetectionDecisionResult> {
     const snippet = input.observedSignals.untrustedSnippet || '';
     const promptInjectionDetected = PROMPT_INJECTION_PATTERNS.some((re) =>
       re.test(snippet),
@@ -129,8 +152,42 @@ export class EmailBecAdjudicationService {
       );
     }
 
-    // Stage 3: Guarded LLM citation validation (reject hallucinated citations -> ABSTAIN per E12/T23)
-    const proposedCitations = input.observedSignals.llmProposedCitations || [];
+    // Stage 3: guarded LLM review. Citations come ONLY from the gateway-backed
+    // port, never from the request. Ungrounded citations -> ABSTAIN (E12/T23).
+    if (input.observedSignals.llmProposedCitations?.length) {
+      unknowns.push(
+        'Client-supplied LLM citations were ignored: only gateway-produced citations are trusted',
+      );
+    }
+    let proposedCitations: string[] = [];
+    let llmModelVersion: string | null = null;
+    if (input.observedSignals.allowAmbiguousLlmReview) {
+      if (this.isAiKillSwitchEngaged()) {
+        unknowns.push('AI kill switch engaged: LLM review not executed');
+      } else if (
+        promptInjectionDetected ||
+        input.allowedSourceRefs.length === 0
+      ) {
+        unknowns.push(
+          'LLM review skipped: untrusted payload or no verified source references',
+        );
+      } else {
+        const reviewed = await this.llmReview.review({
+          tenantId: input.tenantId,
+          findingId: input.findingId,
+          untrustedSnippet: snippet,
+          allowedSourceRefs: input.allowedSourceRefs,
+        });
+        if (reviewed) {
+          proposedCitations = reviewed.proposedCitations;
+          llmModelVersion = reviewed.modelVersion;
+        } else {
+          unknowns.push(
+            'LLM review not executed: no gateway-backed model route is bound for this use case',
+          );
+        }
+      }
+    }
     const ungroundedCitations = proposedCitations.filter(
       (ref) => !allowedSet.has(ref),
     );
@@ -154,11 +211,7 @@ export class EmailBecAdjudicationService {
     if (atoSignals.length > 0) {
       detectorTier = 'BEHAVIORAL';
     }
-    if (
-      input.observedSignals.allowAmbiguousLlmReview &&
-      !mustAbstain &&
-      proposedCitations.length > 0
-    ) {
+    if (llmModelVersion && !mustAbstain && proposedCitations.length > 0) {
       detectorTier = 'GUARDED_LLM';
     }
 
@@ -178,8 +231,7 @@ export class EmailBecAdjudicationService {
     return {
       detectorTier,
       detectorVersion: 'email-bec-ato-v1.0',
-      modelVersion:
-        detectorTier === 'GUARDED_LLM' ? 'guarded-citation-grounded-v1' : null,
+      modelVersion: detectorTier === 'GUARDED_LLM' ? llmModelVersion : null,
       sourceFacts,
       inferences,
       alternativeHypothesis:

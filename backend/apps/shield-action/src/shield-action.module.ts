@@ -68,6 +68,10 @@ import { LiveCrowdstrikeExecutor } from './executors/live/live-crowdstrike.execu
 import { LiveOktaExecutor } from './executors/live/live-okta.executor';
 import { EmailActionController } from './email-actions/email-action.controller';
 import { EmailActionAdapterService } from './email-actions/email-action-adapter.service';
+import {
+  EMAIL_PROVIDER_MUTATION_PORT,
+  NotConfiguredEmailProviderMutationPort,
+} from './email-actions/email-provider-mutation.port';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -129,6 +133,10 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     LiveCrowdstrikeExecutor,
     LiveOktaExecutor,
     EmailActionAdapterService,
+    {
+      provide: EMAIL_PROVIDER_MUTATION_PORT,
+      useClass: NotConfiguredEmailProviderMutationPort,
+    },
   ],
   exports: [
     ActionAuthorityService,
