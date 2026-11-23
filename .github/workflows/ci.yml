@@ -92,7 +92,7 @@ jobs:
       - name: ESLint
         run: npm run lint
 
-      - name: Run Vitest Suite (76 Tests)
+      - name: Run Vitest Suite
         run: npm test
 
   # ────────────────────────────────────────────────────────────────────────────
