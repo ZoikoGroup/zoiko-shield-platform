@@ -158,7 +158,7 @@
     "@azure/event-hubs": "^6.0.4",
     "@google-cloud/kms": "^6.2.0",
     "@google-cloud/storage": "^8.2.0",
-    "@nestjs/common": "^11.0.1",
+    "@nestjs/common": "^12.6.0",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
