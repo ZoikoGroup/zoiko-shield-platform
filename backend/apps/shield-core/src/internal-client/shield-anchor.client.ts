@@ -119,6 +119,29 @@ export class ShieldAnchorClient {
     return this.get(`/api/v1/anchor/proofs/${epochNumber}/${leafIndex}`);
   }
 
+  async anchorEmailManifest(payload: {
+    manifestId: string;
+    tenantId: string;
+    canonicalEventHashes: string[];
+    sourceInventory: Array<Record<string, unknown>>;
+    exclusions: Array<Record<string, unknown>>;
+    coverageGaps: Array<Record<string, unknown>>;
+    verifierVersion?: string;
+  }): Promise<any> {
+    return this.post('/internal/v1/email-evidence/manifests/anchor', payload);
+  }
+
+  async verifyEmailManifest(payload: {
+    canonicalEventHashes: string[];
+    sourceInventory: Array<Record<string, unknown>>;
+    exclusions: Array<Record<string, unknown>>;
+    coverageGaps: Array<Record<string, unknown>>;
+    expectedMerkleRoot: string;
+    expectedDetachedChecksum: string;
+  }): Promise<any> {
+    return this.post('/internal/v1/email-evidence/manifests/verify', payload);
+  }
+
   private headers(
     extraHeaders?: Record<string, string>,
   ): Record<string, string> {

@@ -66,11 +66,13 @@ import { LiveGcpCloudArmorExecutor } from './executors/live/live-gcp-cloud-armor
 import { LiveGoogleWorkspaceExecutor } from './executors/live/live-google-workspace.executor';
 import { LiveCrowdstrikeExecutor } from './executors/live/live-crowdstrike.executor';
 import { LiveOktaExecutor } from './executors/live/live-okta.executor';
+import { EmailActionController } from './email-actions/email-action.controller';
+import { EmailActionAdapterService } from './email-actions/email-action-adapter.service';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
-  controllers: [ShieldActionController],
+  controllers: [ShieldActionController, EmailActionController],
   providers: [
     CertifiedEdrBrokerService,
     ContentHashService,
@@ -126,6 +128,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     LiveGoogleWorkspaceExecutor,
     LiveCrowdstrikeExecutor,
     LiveOktaExecutor,
+    EmailActionAdapterService,
   ],
   exports: [
     ActionAuthorityService,
@@ -161,6 +164,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     LiveGoogleWorkspaceExecutor,
     LiveCrowdstrikeExecutor,
     LiveOktaExecutor,
+    EmailActionAdapterService,
   ],
 })
 export class ShieldActionModule implements NestModule {

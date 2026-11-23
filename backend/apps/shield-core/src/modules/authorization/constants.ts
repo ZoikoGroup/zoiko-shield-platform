@@ -73,7 +73,36 @@ export const PERMISSION_CODES = {
   POLICY_CONFIG_WRITE: 'policy:config:write',
   POLICY_CONFIG_APPROVE: 'policy:config:approve',
   POLICY_CONFIG_ROLLBACK: 'policy:config:rollback',
+  EMAIL_CONNECTOR_VIEW: 'email:connector:view',
+  EMAIL_CONNECTOR_MANAGE: 'email:connector:manage',
+  EMAIL_THREAT_READ: 'email:threat:read',
+  EMAIL_CASE_INVESTIGATE: 'email:case:investigate',
+  EMAIL_COVERAGE_READ: 'email:coverage:read',
+  EMAIL_POLICY_READ: 'email:policy:read',
+  EMAIL_POLICY_MANAGE: 'email:policy:manage',
+  EMAIL_EVIDENCE_EXPORT: 'email:evidence:export',
+  EMAIL_ACTION_PROPOSE: 'email:action:propose',
+  EMAIL_ACTION_APPROVE: 'email:action:approve',
+  EMAIL_ACTION_EXECUTE: 'email:action:execute',
 } as const;
+
+/**
+ * Capability mapping between ZS-UX-EMTI-001 §02 specification capability names
+ * and ZoikoShield canonical colon-delimited PERMISSION_CODES.
+ */
+export const EMAIL_CAPABILITY_ALIASES: Readonly<Record<string, string>> = {
+  'email.connector.view': PERMISSION_CODES.EMAIL_CONNECTOR_VIEW,
+  'email.connector.manage': PERMISSION_CODES.EMAIL_CONNECTOR_MANAGE,
+  'email.threat.read': PERMISSION_CODES.EMAIL_THREAT_READ,
+  'email.case.investigate': PERMISSION_CODES.EMAIL_CASE_INVESTIGATE,
+  'email.coverage.read': PERMISSION_CODES.EMAIL_COVERAGE_READ,
+  'email.policy.read': PERMISSION_CODES.EMAIL_POLICY_READ,
+  'email.policy.manage': PERMISSION_CODES.EMAIL_POLICY_MANAGE,
+  'email.evidence.export': PERMISSION_CODES.EMAIL_EVIDENCE_EXPORT,
+  'email.action.propose': PERMISSION_CODES.EMAIL_ACTION_PROPOSE,
+  'email.action.approve': PERMISSION_CODES.EMAIL_ACTION_APPROVE,
+  'email.action.execute': PERMISSION_CODES.EMAIL_ACTION_EXECUTE,
+};
 
 /**
  * These permissions may be granted through either a real tenant membership or

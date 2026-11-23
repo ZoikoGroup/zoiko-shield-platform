@@ -57,6 +57,11 @@ import { MicrosoftDefenderProvider } from './connectors/providers/microsoft-defe
 import { MicrosoftDefenderNormalizerService } from './connectors/providers/microsoft-defender/microsoft-defender.normalizer';
 import { GcpSccProvider } from './connectors/providers/gcp-scc/gcp-scc.provider';
 import { GcpSccNormalizerService } from './connectors/providers/gcp-scc/gcp-scc.normalizer';
+import { Microsoft365EmailProvider } from './connectors/providers/microsoft-365-email/m365-email.provider';
+import { M365EmailNormalizerService } from './connectors/providers/microsoft-365-email/m365-email.normalizer';
+import { GoogleWorkspaceAlertCenterProvider } from './connectors/providers/google-workspace-alert-center/gw-alert-center.provider';
+import { EmailReconciliationService } from './email-security/email-reconciliation.service';
+import { EmailIngestController } from './email-security/email-ingest.controller';
 import { SnykProvider } from './connectors/providers/snyk-vulnerability/snyk-vulnerability.provider';
 import { SnykNormalizerService } from './connectors/providers/snyk-vulnerability/snyk-vulnerability.normalizer';
 import { JiraTicketingProvider } from './connectors/providers/jira-ticketing/jira-ticketing.provider';
@@ -153,6 +158,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     ControlTestingController,
     AssuranceReviewController,
     SLAClaimController,
+    EmailIngestController,
   ],
 
   providers: [
@@ -194,6 +200,10 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     MicrosoftDefenderNormalizerService,
     GcpSccProvider,
     GcpSccNormalizerService,
+    Microsoft365EmailProvider,
+    M365EmailNormalizerService,
+    GoogleWorkspaceAlertCenterProvider,
+    EmailReconciliationService,
     SnykProvider,
     SnykNormalizerService,
     JiraTicketingProvider,

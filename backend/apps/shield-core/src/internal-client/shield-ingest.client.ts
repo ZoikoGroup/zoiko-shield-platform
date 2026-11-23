@@ -178,6 +178,45 @@ export class ShieldIngestClient {
     });
   }
 
+  // --- Email Security Telemetry (shield-ingest) ---
+  async testEmailSource(tenantId: string, connectionId: string): Promise<any> {
+    return this.post(
+      `/api/v1/email-ingest/sources/${encodeURIComponent(connectionId)}/test`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
+  async syncEmailSource(
+    tenantId: string,
+    connectionId: string,
+    events: unknown[],
+    expectedCount?: number,
+  ): Promise<any> {
+    return this.post(
+      `/api/v1/email-ingest/sources/${encodeURIComponent(connectionId)}/sync`,
+      { events, ...(expectedCount !== undefined ? { expectedCount } : {}) },
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
+  async requestEmailBackfill(
+    tenantId: string,
+    connectionId: string,
+    payload: {
+      actorId: string;
+      windowStart: string;
+      windowEnd: string;
+      reason: string;
+    },
+  ): Promise<any> {
+    return this.post(
+      `/api/v1/email-ingest/sources/${encodeURIComponent(connectionId)}/backfills`,
+      payload,
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
   // --- Events & Telemetry ---
   async listEvents(
     tenantId: string,

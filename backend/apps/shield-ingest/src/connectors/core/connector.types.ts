@@ -16,7 +16,9 @@ export type ConnectorProviderKey =
   | 'microsoft-defender-edr'
   | 'gcp-scc'
   | 'snyk-vulnerability'
-  | 'jira-ticketing';
+  | 'jira-ticketing'
+  | 'microsoft-365-email'
+  | 'google-workspace-alert-center';
 
 export type ConnectorCategory =
   | 'Webhook Ingestion'
@@ -25,4 +27,5 @@ export type ConnectorCategory =
   | 'Cloud Infrastructure'
   | 'EDR'
   | 'Vulnerability Management'
-  | 'Ticketing / Incident Management';
+  | 'Ticketing / Incident Management'
+  | 'Email Security Telemetry';

@@ -117,6 +117,10 @@ export class UpdateCaseDto {
   @IsOptional()
   @IsString()
   queue?: string;
+
+  @IsOptional()
+  @IsString()
+  expectedUpdatedAt?: string;
 }
 
 export class AssignCaseDto {
@@ -178,6 +182,10 @@ export class TransitionCaseDto {
   @IsOptional()
   @IsString()
   actorId?: string;
+
+  @IsOptional()
+  @IsString()
+  expectedUpdatedAt?: string;
 }
 
 export class LinkAlertDto {
@@ -333,6 +341,7 @@ export class CaseController {
       severity: dto.severity,
       priority: dto.priority,
       queue: dto.queue,
+      expectedUpdatedAt: dto.expectedUpdatedAt,
     });
     return { statusCode: HttpStatus.OK, data: caseRow };
   }
@@ -369,6 +378,7 @@ export class CaseController {
       actorId: user.id,
       reason: dto.reason,
       disposition: dto.disposition,
+      expectedUpdatedAt: dto.expectedUpdatedAt,
     });
     return { statusCode: HttpStatus.OK, data: transition };
   }

@@ -9,6 +9,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { KafkaModule } from './kafka/kafka.module';
 import { ShieldAnchorController } from './shield-anchor.controller';
 import { CheckpointController } from './verification-receipts/checkpoint.controller';
+import { EmailEvidenceController } from './email-evidence/email-evidence.controller';
+import { EmailEvidenceService } from './email-evidence/email-evidence.service';
 
 import { OutboxService } from './outbox/outbox.service';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
@@ -36,12 +38,17 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
-  controllers: [ShieldAnchorController, CheckpointController],
+  controllers: [
+    ShieldAnchorController,
+    CheckpointController,
+    EmailEvidenceController,
+  ],
   providers: [
     OutboxService,
     OutboxPublisherService,
     TenantAnchorHeadService,
     MerkleTreeService,
+    EmailEvidenceService,
     {
       provide: CHECKPOINT_SIGNER,
       useFactory: () =>

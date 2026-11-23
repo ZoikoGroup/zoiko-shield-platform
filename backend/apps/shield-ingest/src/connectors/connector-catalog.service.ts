@@ -220,6 +220,22 @@ export class ConnectorCatalogService {
         description: 'Sync security case tickets with Jira',
         supportedAuthTypes: ['API_KEY'],
       },
+      {
+        id: 'microsoft-365-email',
+        name: 'Microsoft 365 Security Alerts (Email)',
+        category: 'Email Security Telemetry',
+        description:
+          'Read-only Microsoft Graph /security/alerts_v2 ingestion for Defender for Office 365 & Exchange email threat telemetry (no Mail.ReadWrite in Phase 0)',
+        supportedAuthTypes: ['OAUTH', 'CLIENT_CREDENTIALS'],
+      },
+      {
+        id: 'google-workspace-alert-center',
+        name: 'Google Workspace Alert Center (Email)',
+        category: 'Email Security Telemetry',
+        description:
+          'Read-only Google Workspace Alert Center v1beta1 alert ingestion (excludes unrestricted Gmail content scopes in Phase 0)',
+        supportedAuthTypes: ['OAUTH', 'SERVICE_ACCOUNT'],
+      },
     ];
   }
 

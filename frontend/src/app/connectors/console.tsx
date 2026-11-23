@@ -149,9 +149,9 @@ export default function ConnectorsPage() {
             prev.map((c) =>
               c.id === instId
                 ? {
-                    ...c,
-                    healthStatus: payload.driftStatus === "REVOKED" ? ("UNHEALTHY" as const) : payload.driftStatus === "DEGRADED" ? ("DEGRADED" as const) : ("HEALTHY" as const),
-                  }
+                  ...c,
+                  healthStatus: payload.driftStatus === "REVOKED" ? ("UNHEALTHY" as const) : payload.driftStatus === "DEGRADED" ? ("DEGRADED" as const) : ("HEALTHY" as const),
+                }
                 : c
             )
           );
@@ -266,10 +266,10 @@ export default function ConnectorsPage() {
         prev.map((c) =>
           c.id === connectorId
             ? {
-                ...c,
-                eventsIngestedCount: (c.eventsIngestedCount || 0) + (res.syncedCount || 0),
-                lastEventAt: res.lastSyncAt || new Date().toISOString(),
-              }
+              ...c,
+              eventsIngestedCount: (c.eventsIngestedCount || 0) + (res.syncedCount || 0),
+              lastEventAt: res.lastSyncAt || new Date().toISOString(),
+            }
             : c
         )
       );
@@ -343,7 +343,7 @@ export default function ConnectorsPage() {
   const filteredConnectors = useMemo(() => {
     return connectors.filter((conn) => {
       const tier = conn.tier || getProviderTier(conn.provider);
-      
+
       // Tier filter
       if (tierFilter !== "ALL" && tier !== tierFilter) {
         return false;
@@ -390,11 +390,10 @@ export default function ConnectorsPage() {
                 INGESTION PIPELINE &amp; TIER CERTIFICATION
               </span>
               <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
-                  isSseConnected
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold ${isSseConnected
                     ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
                     : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-                }`}
+                  }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${isSseConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
                 {isSseConnected ? "SSE LIVE STREAM" : "POLLING FALLBACK"}
@@ -541,41 +540,37 @@ export default function ConnectorsPage() {
           </span>
           <button
             onClick={() => setTierFilter("ALL")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-              tierFilter === "ALL"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${tierFilter === "ALL"
                 ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
                 : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
-            }`}
+              }`}
           >
             ALL ({connectors.length})
           </button>
           <button
             onClick={() => setTierFilter("P0_CERTIFIED")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-              tierFilter === "P0_CERTIFIED"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${tierFilter === "P0_CERTIFIED"
                 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                 : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
-            }`}
+              }`}
           >
             🟢 P0 GA ({p0Count})
           </button>
           <button
             onClick={() => setTierFilter("P1_PREVIEW")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-              tierFilter === "P1_PREVIEW"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${tierFilter === "P1_PREVIEW"
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                 : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
-            }`}
+              }`}
           >
             🟡 P1 PREVIEW ({p1Count})
           </button>
           <button
             onClick={() => setTierFilter("EXPERIMENTAL_UNCERTIFIED")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-              tierFilter === "EXPERIMENTAL_UNCERTIFIED"
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${tierFilter === "EXPERIMENTAL_UNCERTIFIED"
                 ? "bg-slate-700 text-slate-100 border border-slate-500"
                 : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
-            }`}
+              }`}
           >
             ⚪ EXPERIMENTAL ({expCount})
           </button>
@@ -673,11 +668,10 @@ export default function ConnectorsPage() {
                     type="button"
                     onClick={() => handleToggleState(conn)}
                     disabled={actionLoadingId === conn.id}
-                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-mono transition-colors flex items-center justify-center gap-1 cursor-pointer ${
-                      conn.status === "ACTIVE"
+                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-mono transition-colors flex items-center justify-center gap-1 cursor-pointer ${conn.status === "ACTIVE"
                         ? "bg-slate-900 hover:bg-rose-950/60 border-slate-700 hover:border-rose-500/40 text-rose-300"
                         : "bg-slate-900 hover:bg-cyan-950/60 border-slate-700 hover:border-cyan-500/40 text-cyan-300"
-                    }`}
+                      }`}
                   >
                     <span>{conn.status === "ACTIVE" ? "Disable" : "Enable"}</span>
                   </button>

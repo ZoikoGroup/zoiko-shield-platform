@@ -327,8 +327,21 @@ export class CaseService {
     severity?: string;
     priority?: string;
     queue?: string;
+    expectedUpdatedAt?: string;
   }) {
     await this.getById(params.tenantId, params.caseId);
+    const existing = await this.getById(params.tenantId, params.caseId);
+    if (
+      params.expectedUpdatedAt &&
+      existing.updated_at?.toISOString() !== params.expectedUpdatedAt
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'CONCURRENT_MODIFICATION_DETECTED',
+        message:
+          'Case was modified concurrently; reload latest state before saving.',
+      });
+    }
 
     const data: Record<string, unknown> = {};
     if (params.title) data.title = params.title;
@@ -539,8 +552,20 @@ export class CaseService {
     actorId: string;
     reason: string;
     disposition?: CaseDisposition;
+    expectedUpdatedAt?: string;
   }) {
     const caseRow = await this.getById(params.tenantId, params.caseId);
+    if (
+      params.expectedUpdatedAt &&
+      caseRow.updated_at?.toISOString() !== params.expectedUpdatedAt
+    ) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'CONCURRENT_MODIFICATION_DETECTED',
+        message:
+          'Case state changed concurrently; refresh before transitioning.',
+      });
+    }
     this.stateMachine.assertValidTransition(caseRow.status, params.toState);
 
     // A material outcome needs a second pair of eyes before it becomes the

@@ -62516,3 +62516,999 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/email-ingest/sources/{connectionId}/test:
+    post:
+      tags:
+        - EmailSecurityIngest
+      summary: Verify read-only email source connectivity (shield-ingest)
+      operationId: postEmailIngestSourceTest
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connectivity test verdict returned.
+  /api/v1/email-ingest/sources/{connectionId}/sync:
+    post:
+      tags:
+        - EmailSecurityIngest
+      summary: Normalize and ingest provider email security alerts (shield-ingest)
+      operationId: postEmailIngestSourceSync
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Normalization and reconciliation summary.
+  /api/v1/email-ingest/sources/{connectionId}/health:
+    get:
+      tags:
+        - EmailSecurityIngest
+      summary: Get email source health and latest coverage window (shield-ingest)
+      operationId: getEmailIngestSourceHealth
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Source health summary returned.
+  /api/v1/email-ingest/sources/{connectionId}/backfills:
+    post:
+      tags:
+        - EmailSecurityIngest
+      summary: Trigger bounded historical email telemetry backfill (shield-ingest)
+      operationId: postEmailIngestSourceBackfill
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Bounded backfill accepted.
+  /internal/v1/email-ai/evaluate:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Run 3-stage BEC/ATO adjudication with prompt-injection firewall (shield-ai)
+      operationId: postInternalEmailAiEvaluate
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Grounded or ABSTAIN evaluation result.
+  /internal/v1/email-ai/benchmark:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Compute native provider vs ZoikoShield incremental comparison (shield-ai)
+      operationId: postInternalEmailAiBenchmark
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Blinded benchmark metrics computed.
+  /internal/v1/email-actions/simulate:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Simulate post-delivery email action without mutating mailboxes (shield-action)
+      operationId: postInternalEmailActionSimulate
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Simulation blast-radius and rollback plan returned.
+  /internal/v1/email-actions/execute:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Execute dual-custody email action when Phase 2 gate is enabled (shield-action)
+      operationId: postInternalEmailActionExecute
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Execution receipt returned.
+  /internal/v1/email-actions/rollback:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Record compensating rollback request for reversible email action (shield-action)
+      operationId: postInternalEmailActionRollback
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Compensating rollback recorded.
+  /internal/v1/email-evidence/manifests/anchor:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Anchor email evidence hashes using RFC 6962 TREE_PROFILE_V2 (shield-anchor)
+      operationId: postInternalEmailEvidenceAnchor
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Anchored Merkle root and inclusion proofs returned.
+  /internal/v1/email-evidence/manifests/verify:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Verify email evidence manifest integrity and surface coverage gaps (shield-anchor)
+      operationId: postInternalEmailEvidenceVerify
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Verification outcome with gap-honest status returned.
+  /api/v1/email/overview:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get ZoikoShield email security posture overview (WF-01)
+      operationId: getEmailOverview
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: environmentId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: windowHours
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Honest email protection state and telemetry KPIs.
+  /api/v1/email/sources/coverage:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get email source inventory and coverage denominator (WF-01/WF-08)
+      operationId: getEmailSourcesCoverage
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Per-source coverage inventory returned.
+  /api/v1/email/sources/{connectionId}/health:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get single email source health and reconciliation windows (WF-04)
+      operationId: getEmailSourceHealth
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Source health detail returned.
+  /api/v1/email/connectors:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List Microsoft 365 and Google Workspace email security connectors (WF-02)
+      operationId: listEmailConnectors
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Configured email connectors returned.
+  /api/v1/email/connection-intents:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Start read-only Microsoft 365 or Google Workspace connector onboarding (WF-03)
+      operationId: postEmailConnectionIntent
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Connection onboarding intent created.
+  /api/v1/email/connection-intents/{id}/verify:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Verify admin OAuth consent and activate email source connection (WF-03)
+      operationId: postEmailConnectionIntentVerify
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Verification outcome and connection activation status.
+  /api/v1/email/connectors/{id}/test:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Test connectivity on an existing email connector (WF-02/WF-04)
+      operationId: postEmailConnectorTest
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connectivity test result returned.
+  /api/v1/email/connectors/{id}/sync:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Sync and reconcile provider email threat telemetry (WF-04)
+      operationId: postEmailConnectorSync
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Sync and coverage window result returned.
+  /api/v1/email/connectors/{id}/disconnect:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Revoke and halt email telemetry collection (WF-02/WF-14)
+      operationId: postEmailConnectorDisconnect
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Email connector revoked.
+  /api/v1/email/reconciliations:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List email source reconciliation windows and gaps (WF-04)
+      operationId: getEmailReconciliations
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Reconciliation windows listed.
+  /api/v1/email/backfills/{connectionId}:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Request bounded backfill for missed email telemetry window (WF-04)
+      operationId: postEmailBackfill
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Backfill recovery window created.
+  /api/v1/email/threats:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List triaged email threat findings with completeness disclaimer (WF-05)
+      operationId: getEmailThreats
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: provider
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: threatClass
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email threat queue returned.
+  /api/v1/email/threats/{id}:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get email threat finding investigation detail (WF-06)
+      operationId: getEmailThreatDetail
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Finding facts, AI inferences, and action proposals returned.
+  /api/v1/email/threats/{id}/promote-case:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Promote email threat finding to formal Shield incident case (WF-07)
+      operationId: postEmailThreatPromoteCase
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Case created and linked to email threat finding.
+  /api/v1/email/threats/{id}/adjudications:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Record idempotent analyst adjudication on email threat finding (WF-06/WF-07)
+      operationId: postEmailThreatAdjudication
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Adjudication persisted.
+  /api/v1/email/threats/{id}/ai-evaluate:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Evaluate email threat finding via 3-stage AI classifier (WF-11/WF-12)
+      operationId: postEmailThreatAiEvaluate
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Structured AI decision or ABSTAIN returned.
+  /api/v1/email/controls/coverage:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get email security compliance control coverage without overclaiming (WF-08)
+      operationId: getEmailControlsCoverage
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Email control coverage map returned.
+  /api/v1/email/evidence/manifests:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List anchored email evidence manifests (WF-09)
+      operationId: getEmailEvidenceManifests
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Manifests returned.
+  /api/v1/email/evidence/exports:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Generate and Merkle-anchor an email assurance evidence manifest (WF-09)
+      operationId: postEmailEvidenceExport
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Evidence manifest anchored and sealed.
+  /api/v1/email/evidence/manifests/{id}/verify:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Independently verify email evidence manifest integrity and coverage gaps (WF-09)
+      operationId: postEmailEvidenceManifestVerify
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Manifest verification result returned.
+  /api/v1/email/policies:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List versioned email security policies (WF-10)
+      operationId: getEmailPolicies
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Policy versions returned.
+    post:
+      tags:
+        - EmailSecurity
+      summary: Draft a new email security policy version (WF-10)
+      operationId: postEmailPolicy
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Draft policy created.
+  /api/v1/email/policies/{id}/approve:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Approve email policy version with dual-control non-self-approval (WF-10)
+      operationId: postEmailPolicyApprove
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Policy approved.
+  /api/v1/email/policies/{id}/activate:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Activate an approved email policy version (WF-10)
+      operationId: postEmailPolicyActivate
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy version activated.
+  /api/v1/email/policies/{id}/rollback:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Roll back an email policy version (WF-10)
+      operationId: postEmailPolicyRollback
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy rolled back.
+  /api/v1/email/behaviour/overview:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get AI BEC/ATO behavioural benchmark and native incremental comparison (WF-11)
+      operationId: getEmailBehaviourOverview
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Benchmark metrics and recent decisions returned.
+  /api/v1/email/behaviour/labels:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Record ground-truth analyst label for blinded AI benchmarking (WF-11)
+      operationId: postEmailBehaviourLabel
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Ground-truth label recorded.
+  /api/v1/email/analyses/{id}:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get guarded AI email investigation analysis detail (WF-12)
+      operationId: getEmailAnalysisDetail
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: AI analysis breakdown returned.
+  /api/v1/email/analyses/{id}/decision:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Record human reviewer disposition on AI email analysis (WF-12)
+      operationId: postEmailAnalysisDecision
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Reviewer decision recorded.
+  /api/v1/email/actions:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List Phase 2 post-delivery email action proposals (WF-13)
+      operationId: getEmailActions
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Action proposals and Phase 2 gate status returned.
+  /api/v1/email/actions/proposals:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Propose a post-delivery email remediation action (WF-13)
+      operationId: postEmailActionProposal
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Action proposal created.
+  /api/v1/email/actions/{id}/simulate:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Simulate post-delivery email action blast radius without mailbox mutation (WF-13)
+      operationId: postEmailActionSimulate
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simulation result returned.
+  /api/v1/email/actions/{id}/approve:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Dual-custody approval or rejection of email action proposal (WF-13)
+      operationId: postEmailActionApprove
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Action approval decision recorded.
+  /api/v1/email/actions/{id}/execute:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Execute approved email action when Phase 2 gate is enabled (WF-13)
+      operationId: postEmailActionExecute
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action execution result returned.
+  /api/v1/email/actions/{id}/rollback:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Trigger compensating rollback for reversible email action (WF-13)
+      operationId: postEmailActionRollback
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Rollback receipt returned.
+  /api/v1/email/settings:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get email access governance, grants, and audit log (WF-14)
+      operationId: getEmailSettings
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Email governance settings returned.
+  /api/v1/email/access-grants:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Issue time-bounded external auditor access grant for email manifests (WF-14)
+      operationId: postEmailAccessGrant
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Bounded auditor grant created.
+  /api/v1/email/revoke:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Immediately revoke email connector consent and halt collection (WF-14)
+      operationId: postEmailRevoke
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Access revoked cleanly.
+  /api/v1/email/privacy/inventory:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get email telemetry data minimization and residency inventory (WF-14)
+      operationId: getEmailPrivacyInventory
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Privacy inventory returned.

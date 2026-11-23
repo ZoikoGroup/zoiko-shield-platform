@@ -1331,3 +1331,101 @@ export interface PolicyVersionRecord {
   reversalReason?: string;
 }
 
+export type EmailProviderType = 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+
+export interface EmailOverviewResponse {
+  protectionState:
+    | 'NO_COVERAGE'
+    | 'HEALTHY_SYNCED'
+    | 'DEGRADED'
+    | 'STALE'
+    | 'RECOVERY_IN_PROGRESS'
+    | 'UNAVAILABLE';
+  truthBanner: string;
+  windowHours: number;
+  phase2ActionsLocked: boolean;
+  connectorsSummary: {
+    total: number;
+    active: number;
+    degraded: number;
+    revoked: number;
+  };
+  coverageDenominator: {
+    eligibleEvents: number;
+    ingestedEvents: number;
+    rejectedEvents: number;
+    missingEvents: number;
+    completenessGrade: string;
+  };
+  openFindingsCount: number;
+  criticalFindingsCount: number;
+  pendingActionsCount: number;
+  activePolicyVersion: string | null;
+  providers: Array<{
+    id: string;
+    provider: EmailProviderType;
+    displayName: string;
+    status: string;
+    residencyCode: string;
+    lastSyncAt: string | null;
+    lastHeartbeatAt: string | null;
+  }>;
+  recentThreats: Array<{
+    id: string;
+    provider: EmailProviderType;
+    threatClass: string;
+    severity: string;
+    status: string;
+    providerVerdict: string;
+    observedAt: string;
+    caseId: string | null;
+  }>;
+}
+
+export interface EmailSourceConnectionRecord {
+  id: string;
+  tenant_id: string;
+  environment_id: string;
+  provider: EmailProviderType;
+  display_name: string;
+  status: string;
+  residency_code: string;
+  sync_frequency: string;
+  retention_days: number;
+  legal_hold: boolean;
+  requested_scopes: string[];
+  granted_scopes: string[];
+  last_sync_at: string | null;
+  last_heartbeat_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export interface EmailThreatFindingRecord {
+  id: string;
+  connection_id: string;
+  source_event_ref: string;
+  provider: EmailProviderType;
+  provider_verdict: string;
+  threat_class: string;
+  severity: string;
+  status: string;
+  policy_version: string;
+  observed_at: string;
+  ingested_at: string;
+  subject_ref: string;
+  indicator_hashes: unknown[];
+  attachment_hashes: unknown[];
+  deep_link_url: string | null;
+  source_confidence: string;
+  coverage_state: string;
+  case_id: string | null;
+  metadata: Record<string, unknown>;
+  roleScopedRedacted?: boolean;
+  phase2ActionsLocked?: boolean;
+  adjudications?: any[];
+  detectionDecisions?: any[];
+  actionProposals?: any[];
+}
+
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -314,7 +314,7 @@ export default function IngestionPage() {
             </span>
             <p className="text-[10px] font-mono text-slate-400 truncate">{preset.desc}</p>
           </button>
-        ))}  
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

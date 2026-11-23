@@ -83,6 +83,8 @@ import { TrainingExclusionWatermarkerService } from './safety/training-exclusion
 import { AdversarialEvaluationHarnessService } from './safety/adversarial-evaluation-harness.service';
 import { InvestigationAgentController } from './investigation/investigation-agent.controller';
 import { AutonomousInvestigationAgentService } from './investigation/autonomous-investigation-agent.service';
+import { EmailAiController } from './email-adjudication/email-ai.controller';
+import { EmailBecAdjudicationService } from './email-adjudication/email-bec-adjudication.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, DecisionRightsModule],
@@ -94,6 +96,7 @@ import { AutonomousInvestigationAgentService } from './investigation/autonomous-
     AiIncidentController,
     AiSafetyDefenseController,
     InvestigationAgentController,
+    EmailAiController,
   ],
 
   providers: [
@@ -161,6 +164,7 @@ import { AutonomousInvestigationAgentService } from './investigation/autonomous-
     AiSystemInventoryService,
     InventoryAiUseCaseRegistryService,
     GroundingGateGuard,
+    EmailBecAdjudicationService,
   ],
   exports: [
     ThreatHuntingCopilotService,

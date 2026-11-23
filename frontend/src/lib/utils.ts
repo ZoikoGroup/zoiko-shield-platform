@@ -5,18 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatTimestamp(isoString?: string): string {
+export function formatTimestamp(
+  isoString?: string,
+  timezoneMode?: "UTC" | "LOCAL",
+): string {
   if (!isoString) return "N/A";
   try {
     const date = new Date(isoString);
-    return date.toLocaleString("en-US", {
+    const resolvedMode =
+      timezoneMode ??
+      (typeof window !== "undefined" &&
+      localStorage.getItem("zoiko_timezone_mode") === "UTC"
+        ? "UTC"
+        : "LOCAL");
+    const formatted = date.toLocaleString("en-US", {
       month: "short",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
+      ...(resolvedMode === "UTC" ? { timeZone: "UTC" } : {}),
     });
+    return resolvedMode === "UTC" ? `${formatted} UTC` : formatted;
   } catch {
     return isoString;
   }
