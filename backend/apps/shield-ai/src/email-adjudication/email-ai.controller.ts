@@ -13,8 +13,8 @@ export class EmailAiController {
   ) {}
 
   @Post('evaluate')
-  evaluate(@Body() body: EvaluateEmailFindingInput) {
-    const data = this.adjudicationService.evaluateFinding(body);
+  async evaluate(@Body() body: EvaluateEmailFindingInput) {
+    const data = await this.adjudicationService.evaluateFinding(body);
     return { statusCode: HttpStatus.OK, data };
   }
 
