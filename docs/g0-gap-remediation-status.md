@@ -39,6 +39,7 @@
 | CI/CD | Frontend CI step label hardcodes "76 Tests" (now stale) | Fixed in code | `.github/workflows/ci.yml` |
 | Infrastructure | Only `nonprod` and `production`; spec defines nine environment classes | ADR drafted | `infrastructure/tofu/environments/`; ADR-24 |
 | Infrastructure | No OpenTofu plan/policy/drift CI | Partly fixed (fmt/validate/Trivy config in `supply-chain.yml`; plan, policy and drift remain open) | `infrastructure/tofu/` |
+| Infrastructure | **New finding (Trivy IaC, HIGH):** GKE cluster has no master authorized networks (GCP-0061) in `regional-cell/main.tf`; affects both prod cells and nonprod | Open - needs owner (needs real admin CIDRs; IaC scan is report-only until fixed) | `infrastructure/tofu/regional-cell/main.tf:41-67` |
 | Infrastructure | No K8s admission control (signature/provenance verify) | ADR drafted (ADR-23 D5) | `infrastructure/k8s/base/` |
 | Infrastructure | No runtime resource inventory or release manifest | Open - needs owner | — |
 | Security | Workload identity / mTLS / key-custody profile unratified; service-to-service auth mechanism not inventoried | ADR drafted | ADR-25; `backend/libs/kms/` |
