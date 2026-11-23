@@ -10,6 +10,17 @@ import {
   ProviderBadge,
 } from "@/components/email/EmailSecurityUi";
 
+/** Non-success outcomes must never read as success (spec: no assertion without evidence). */
+const STATUS_NOTES: Record<string, string> = {
+  NOT_EXECUTED:
+    "Nothing was executed: no certified provider mutation client is bound. The mailbox is unchanged.",
+  UNKNOWN:
+    "Outcome unknown: the provider did not confirm. Reconcile against the mailbox before assuming any change.",
+  PARTIAL:
+    "Partial result: some targets were verified and others were not. Reconciliation is required.",
+  FAILED: "Execution failed. No provider receipt was issued.",
+};
+
 export default function EmailActionsPage() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [phase2Locked, setPhase2Locked] = useState(true);
@@ -20,7 +31,7 @@ export default function EmailActionsPage() {
     | "REMOVE_FORWARDING_RULE"
     | "REVOKE_MAILBOX_SESSIONS"
   >("QUARANTINE_MESSAGE");
-  const [targetRef, setTargetRef] = useState("msg-ref-sample-001");
+  const [targetRef, setTargetRef] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,6 +162,7 @@ export default function EmailActionsPage() {
           <input
             type="text"
             required
+            placeholder="Provider message IDs or rule IDs, comma-separated (verified refs only)"
             value={targetRef}
             onChange={(e) => setTargetRef(e.target.value)}
             className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100 font-mono"
@@ -176,6 +188,14 @@ export default function EmailActionsPage() {
               </div>
               <span className="font-mono font-bold text-cyan-300">{p.status}</span>
             </div>
+            {STATUS_NOTES[p.status] && (
+              <div
+                role="note"
+                className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200"
+              >
+                {STATUS_NOTES[p.status]}
+              </div>
+            )}
             <div className="font-mono text-[11px] text-slate-400">
               Initiator: {p.initiated_by} · Approver: {p.approved_by || "Pending distinct approver"}
             </div>
