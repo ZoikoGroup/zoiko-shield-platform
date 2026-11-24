@@ -39,6 +39,8 @@ describe('EmailSecurityService tenant isolation (QA-08)', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
+      {} as any,
     );
     return { service, calls };
   }

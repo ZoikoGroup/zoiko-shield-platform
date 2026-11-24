@@ -7,13 +7,38 @@ import { buildCanonicalEvent, type CanonicalEvent } from './canonical-event';
  */
 export const SECURITY_EVENT_ENVELOPE_VERSION = '1.0' as const;
 
+/**
+ * Zoiko Mail -> ZoikoShield events (ZS-ZM-ENG-003 V3.0 §07.2). These are the
+ * only event types the Zoiko Mail intake endpoint accepts.
+ */
+export const ZOIKO_MAIL_INBOUND_EVENT_TYPES = [
+  'mail.security.inbound_verdict.v1',
+  'mail.security.outbound_hold.v1',
+  'mail.security.quarantine_changed.v1',
+  'mail.security.account_risk.v1',
+  'mail.security.coverage_report.v1',
+  'mail.security.action_receipt.v1',
+] as const;
+
+/** ZoikoShield -> Zoiko Mail (non-executing request; §07.2). */
+export const ZOIKO_MAIL_OUTBOUND_EVENT_TYPES = [
+  'mail.security.action_proposal.v1',
+] as const;
+
 export const MAIL_SECURITY_EVENT_TYPES = [
   'email.security.alert_ingested.v1',
   'email.security.account_risk.v1',
   'email.security.coverage_report.v1',
   'email.security.action_proposal.v1',
   'email.security.action_receipt.v1',
+  ...ZOIKO_MAIL_INBOUND_EVENT_TYPES,
+  ...ZOIKO_MAIL_OUTBOUND_EVENT_TYPES,
 ] as const;
+
+/** Default maximum age of `occurred_at` accepted by the validator (24h). */
+export const DEFAULT_ENVELOPE_MAX_EVENT_AGE_MS = 24 * 60 * 60 * 1000;
+/** Default tolerated clock skew for `observed_at` in the future (5 min). */
+export const DEFAULT_ENVELOPE_MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 
 export const EMAIL_SECURITY_EVENT_TYPES = MAIL_SECURITY_EVENT_TYPES;
 
@@ -195,6 +220,20 @@ export interface EnvelopeValidationOptions {
   hmacSecret?: string;
   requireSignatureVerification?: boolean;
   allowedProducers?: ReadonlySet<string>;
+  /** Narrower registry for a specific intake (e.g. Zoiko Mail inbound only). */
+  allowedEventTypes?: ReadonlySet<string>;
+  /** Recompute payload_hash from the envelope body and reject on mismatch. */
+  verifyPayloadHash?: boolean;
+  /**
+   * Freshness (replay-window) enforcement. Enabled by default: occurred_at may
+   * not be older than maxEventAgeMs and observed_at may not be more than
+   * maxFutureSkewMs in the future. Set false only for offline replay/verification.
+   */
+  enforceFreshness?: boolean;
+  maxEventAgeMs?: number;
+  maxFutureSkewMs?: number;
+  /** Clock override for deterministic tests. */
+  now?: Date;
 }
 
 export type EnvelopeValidationResult =
@@ -232,7 +271,9 @@ export function validateSecurityEventEnvelopeV1(
 
   if (
     typeof raw.event_type !== 'string' ||
-    !ALLOWED_EVENT_TYPES.has(raw.event_type)
+    !ALLOWED_EVENT_TYPES.has(raw.event_type) ||
+    (options.allowedEventTypes !== undefined &&
+      !options.allowedEventTypes.has(raw.event_type))
   ) {
     return {
       valid: false,
@@ -342,6 +383,57 @@ export function validateSecurityEventEnvelopeV1(
   }
 
   const envelope = raw as unknown as SecurityEventEnvelopeV1;
+
+  if (options.enforceFreshness !== false) {
+    const nowMs = (options.now ?? new Date()).getTime();
+    const maxAge = options.maxEventAgeMs ?? DEFAULT_ENVELOPE_MAX_EVENT_AGE_MS;
+    const maxSkew =
+      options.maxFutureSkewMs ?? DEFAULT_ENVELOPE_MAX_FUTURE_SKEW_MS;
+    const occurredMs = Date.parse(envelope.occurred_at);
+    const observedMs = Date.parse(envelope.observed_at);
+    if (observedMs > nowMs + maxSkew || occurredMs > nowMs + maxSkew) {
+      return {
+        valid: false,
+        reasonCode: 'ENVELOPE_TIMESTAMP_IN_FUTURE',
+        errors: [
+          `occurred_at/observed_at are more than ${maxSkew}ms ahead of the receiver clock`,
+        ],
+      };
+    }
+    if (nowMs - occurredMs > maxAge) {
+      return {
+        valid: false,
+        reasonCode: 'ENVELOPE_STALE_REPLAY_WINDOW',
+        errors: [
+          `occurred_at is older than the ${maxAge}ms replay window; route through reconciliation/backfill instead`,
+        ],
+      };
+    }
+    if (observedMs < occurredMs) {
+      return {
+        valid: false,
+        reasonCode: 'ENVELOPE_SCHEMA_VALIDATION_FAILED',
+        errors: ['observed_at must not precede occurred_at'],
+      };
+    }
+  }
+
+  if (options.verifyPayloadHash) {
+    const body = { ...(envelope as unknown as Record<string, unknown>) };
+    delete body.signature;
+    delete body.payload_hash;
+    const expectedHash = computeEnvelopePayloadHash(
+      body as Omit<SecurityEventEnvelopeV1, 'signature' | 'payload_hash'>,
+    );
+    if (expectedHash !== envelope.payload_hash) {
+      return {
+        valid: false,
+        reasonCode: 'PAYLOAD_HASH_MISMATCH',
+        errors: ['payload_hash does not match the canonical envelope body'],
+      };
+    }
+  }
+
   if (options.requireSignatureVerification || options.hmacSecret) {
     const secret = options.hmacSecret || '';
     if (!verifySecurityEventEnvelopeSignature(envelope, secret)) {

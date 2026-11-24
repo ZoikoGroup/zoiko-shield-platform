@@ -7,6 +7,50 @@ const SHIELD_CORE_BASE_URL =
 export class ShieldCoreUnreachableError extends Error {}
 export class TenantNotFoundError extends Error {}
 export class AlertNotFoundError extends Error {}
+export class MailEventRejectedError extends Error {
+  constructor(
+    readonly httpStatus: number,
+    readonly reasonCode: string,
+  ) {
+    super(`shield-core rejected Zoiko Mail event: ${reasonCode}`);
+  }
+}
+
+/** Contract: POST /internal/v1/email/mail-events (email-contract.md §2). */
+export interface ForwardedMailSecurityEvent {
+  tenantBindingId: string;
+  eventId: string;
+  eventType: string;
+  producer: string;
+  sourceEventId: string;
+  occurredAt: string;
+  observedAt: string;
+  subjectRef: string;
+  threatClass?: string;
+  sourceVerdict?: string;
+  actionState?: string;
+  policyId?: string;
+  policyVersion?: string;
+  dataClass: string;
+  residencyCode?: string;
+  coverageState: string;
+  evidenceRef?: string;
+  payloadHash: string;
+  coverage?: {
+    windowStart: string;
+    windowEnd: string;
+    expectedCount: number;
+    observedCount: number;
+    gaps: Array<{ reason: string; detail: string }>;
+  };
+}
+
+export interface ForwardedMailSecurityEventResult {
+  accepted: boolean;
+  duplicate: boolean;
+  findingId?: string;
+  reason?: string;
+}
 
 export interface TenantResidencyContext {
   tenantId: string;
@@ -103,5 +147,52 @@ export class ShieldCoreClient {
 
     const body = await response.json();
     return body.data as TenantResidencyContext;
+  }
+
+  /**
+   * Hand a verified Zoiko Mail envelope to shield-core, which owns the
+   * tenant-binding registry and the email_security tables. No x-tenant-id is
+   * sent: the tenant is resolved server-side from the opaque binding id.
+   */
+  async forwardMailSecurityEvent(
+    event: ForwardedMailSecurityEvent,
+  ): Promise<ForwardedMailSecurityEventResult> {
+    let response: Response;
+    try {
+      response = await fetch(
+        `${SHIELD_CORE_BASE_URL}/internal/v1/email/mail-events`,
+        {
+          method: 'POST',
+          headers: {
+            ...workloadAuthorizationHeaders('shield-core'),
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(event),
+        },
+      );
+    } catch (err) {
+      this.logger.error(`shield-core unreachable: ${(err as Error).message}`);
+      throw new ShieldCoreUnreachableError(
+        'shield-core unreachable while forwarding a Zoiko Mail event',
+      );
+    }
+    if (response.status >= 500) {
+      throw new ShieldCoreUnreachableError(
+        `shield-core returned ${response.status} for a Zoiko Mail event`,
+      );
+    }
+    let body: any = null;
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
+    if (!response.ok) {
+      const code =
+        (body && (body.code || body.message || body.error)) ||
+        `HTTP_${response.status}`;
+      throw new MailEventRejectedError(response.status, String(code));
+    }
+    return (body?.data ?? body) as ForwardedMailSecurityEventResult;
   }
 }

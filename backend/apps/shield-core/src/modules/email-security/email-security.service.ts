@@ -1,10 +1,17 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  runWithPlatformScope,
+  runWithTenantScope,
+} from '../../../../../libs/database/src';
+import { EmailCredentialVaultService } from './email-credential-vault.service';
+import { EmailOAuthService, type OAuthProvider } from './email-oauth.service';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import {
   computeEmailAuditHash,
@@ -22,6 +29,9 @@ import type {
   ApproveOrActivateEmailPolicyDto,
   BuildEmailEvidenceExportDto,
   CreateEmailConnectionIntentDto,
+  CreateMailBindingDto,
+  EmailOAuthCallbackDto,
+  InternalMailEventDto,
   DecideEmailAnalysisDto,
   DisconnectEmailConnectorDto,
   DraftEmailPolicyDto,
@@ -34,8 +44,6 @@ import type {
   RequestEmailBackfillDto,
   RevokeEmailAccessDto,
   RollbackEmailActionDto,
-  SyncEmailConnectorDto,
-  VerifyEmailConnectionIntentDto,
 } from './dto/email-security.dto';
 
 export const ALLOWED_EMAIL_PROVIDERS = [
@@ -53,6 +61,7 @@ const PHASE0_PROHIBITED_SCOPES = [
 ];
 
 const MAX_BACKFILL_DAYS = 90;
+const INTENT_TTL_MS = 15 * 60 * 1000;
 const MAX_AUDITOR_GRANT_HOURS = 168;
 
 export interface EmailActorContext {
@@ -77,7 +86,22 @@ export class EmailSecurityService {
     private readonly aiClient: ShieldAiClient,
     private readonly actionClient: ShieldActionClient,
     private readonly anchorClient: ShieldAnchorClient,
-  ) { }
+    private readonly vault: EmailCredentialVaultService,
+    private readonly oauth: EmailOAuthService,
+  ) {}
+
+  /** 409 when the analyst decided on a stale view of the record (E07). */
+  private assertVersion(current: number, expected: number | undefined) {
+    if (!Number.isInteger(expected) || expected !== current) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'STALE_VERSION',
+        message:
+          'This record changed after you loaded it. Reload to review the latest decision before saving.',
+        currentVersion: current,
+      });
+    }
+  }
 
   isPhase2ActionsEnabled(): boolean {
     return process.env.ENABLE_EMAIL_PHASE2_ACTIONS === 'true';
@@ -225,7 +249,8 @@ export class EmailSecurityService {
         : 24;
     const since = new Date(Date.now() - windowHours * 3600 * 1000);
 
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         ...(filters.environmentId
@@ -235,11 +260,14 @@ export class EmailSecurityService {
       orderBy: { created_at: 'desc' },
     });
 
-    const activeConnections = connections.filter((c) => c.status === 'ACTIVE');
-    const degradedConnections = connections.filter(
-      (c) => c.status === 'DEGRADED',
+    const activeConnections = connections.filter(
+      (c) => this.effectiveStatus(c).status === 'ACTIVE',
     );
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const degradedConnections = connections.filter((c) =>
+      ['DEGRADED', 'SUSPENDED'].includes(this.effectiveStatus(c).status),
+    );
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         window_end: { gte: since },
@@ -248,7 +276,8 @@ export class EmailSecurityService {
       take: 100,
     });
 
-    const openFindings = await this.prisma.emailThreatFinding.findMany({ // tenant_id
+    const openFindings = await this.prisma.emailThreatFinding.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         status: { in: ['OBSERVED', 'TRIAGED', 'CASE_OPENED', 'CONFIRMED'] },
@@ -310,7 +339,8 @@ export class EmailSecurityService {
       protectionState = 'HEALTHY_SYNCED';
     }
 
-    const activePolicies = await this.prisma.emailPolicyVersion.findMany({ // tenant_id
+    const activePolicies = await this.prisma.emailPolicyVersion.findMany({
+      // tenant_id
       where: { tenant_id: tenantId, status: 'ACTIVE' },
       orderBy: { version: 'desc' },
     });
@@ -355,7 +385,10 @@ export class EmailSecurityService {
         id: c.id,
         provider: c.provider,
         displayName: c.display_name,
-        status: c.status,
+        // Effective status: expired consent is SUSPENDED, never ACTIVE (18.1).
+        status: this.effectiveStatus(c).status,
+        statusReason: this.effectiveStatus(c).statusReason,
+        consentExpiresAt: c.consent_expires_at?.toISOString() ?? null,
         residencyCode: c.residency_code,
         lastSyncAt: c.last_sync_at?.toISOString() ?? null,
         lastHeartbeatAt: c.last_heartbeat_at?.toISOString() ?? null,
@@ -374,7 +407,8 @@ export class EmailSecurityService {
   }
 
   async getSourceCoverage(tenantId: string) {
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       include: {
         coverageWindows: {
@@ -398,26 +432,28 @@ export class EmailSecurityService {
         lastSyncAt: c.last_sync_at?.toISOString() ?? null,
         latestWindow: c.coverageWindows[0]
           ? {
-            id: c.coverageWindows[0].id,
-            windowStart: c.coverageWindows[0].window_start.toISOString(),
-            windowEnd: c.coverageWindows[0].window_end.toISOString(),
-            expectedCount: c.coverageWindows[0].expected_count,
-            ingestedCount: c.coverageWindows[0].ingested_count,
-            rejectedCount: c.coverageWindows[0].rejected_count,
-            missingCount: c.coverageWindows[0].missing_count,
-            completenessGrade: c.coverageWindows[0].completeness_grade,
-            sourceHealth: c.coverageWindows[0].source_health,
-          }
+              id: c.coverageWindows[0].id,
+              windowStart: c.coverageWindows[0].window_start.toISOString(),
+              windowEnd: c.coverageWindows[0].window_end.toISOString(),
+              expectedCount: c.coverageWindows[0].expected_count,
+              ingestedCount: c.coverageWindows[0].ingested_count,
+              rejectedCount: c.coverageWindows[0].rejected_count,
+              missingCount: c.coverageWindows[0].missing_count,
+              completenessGrade: c.coverageWindows[0].completeness_grade,
+              sourceHealth: c.coverageWindows[0].source_health,
+            }
           : null,
       })),
     };
   }
 
   async listConnectors(tenantId: string) {
-    return this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const rows = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { created_at: 'desc' },
     });
+    return rows.map((r) => this.presentConnection(r));
   }
 
   async createConnectionIntent(
@@ -427,26 +463,50 @@ export class EmailSecurityService {
   ) {
     this.assertSupportedProvider(dto.provider);
     this.assertSafeScopesForPhase(dto.requestedMode, dto.requestedScopes);
+    const provider = dto.provider as OAuthProvider;
+    if (!this.oauth.isConfigured(provider)) {
+      throw new BadRequestException(
+        `PROVIDER_OAUTH_NOT_CONFIGURED: OAuth client for ${provider} is not configured`,
+      );
+    }
+    // Fail before any side effect if the secret vault is unusable.
+    this.vault.assertConfigured();
 
-    const oauthState = `zoiko-emti-${randomBytes(16).toString('hex')}`;
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    // State and PKCE verifier are generated and kept server-side (WF-03, T04).
+    const oauthState = EmailOAuthService.newState();
+    const codeVerifier = EmailOAuthService.newCodeVerifier();
+    const expiresAt = new Date(Date.now() + INTENT_TTL_MS);
+    const serverScopes = EmailOAuthService.readOnlyScopes(provider);
 
     const intent = await this.prisma.emailConnectionIntent.create({
       data: {
         tenant_id: tenantId,
-        provider: dto.provider,
+        provider,
         requested_mode: dto.requestedMode || 'READ_ONLY_TELEMETRY',
         oauth_state: oauthState,
-        pkce_challenge_hash: dto.pkceChallengeHash || null,
-        requested_scopes: dto.requestedScopes,
+        pkce_challenge_hash: EmailOAuthService.codeChallenge(codeVerifier),
+        requested_scopes: serverScopes,
         residency_code: dto.residencyCode || 'eu-west-1',
         status: 'CONSENT_PENDING',
         expires_at: expiresAt,
         created_by: actor.userId,
         verification_report: {
           displayName: dto.displayName,
+          clientRequestedScopes: dto.requestedScopes,
         } as any,
       },
+    });
+    const verifierRef = await this.vault.store({
+      tenantId,
+      provider,
+      purpose: 'PKCE_VERIFIER',
+      plaintext: codeVerifier,
+      intentId: intent.id,
+      expiresAt,
+    });
+    await this.prisma.emailConnectionIntent.update({
+      where: { id: intent.id },
+      data: { pkce_verifier_ref: verifierRef },
     });
 
     await this.appendAudit(
@@ -455,68 +515,132 @@ export class EmailSecurityService {
       'CONNECTION_INTENT_CREATED',
       intent.id,
       {
-        provider: dto.provider,
+        provider,
         requestedMode: intent.requested_mode,
-        requestedScopes: dto.requestedScopes,
+        requestedScopes: serverScopes,
       },
     );
 
     return {
       intentId: intent.id,
       provider: intent.provider,
-      oauthState: intent.oauth_state,
-      requestedMode: intent.requested_mode,
-      requestedScopes: intent.requested_scopes,
-      residencyCode: intent.residency_code,
       status: intent.status,
+      authorizationUrl: this.oauth.buildAuthorizationUrl(
+        provider,
+        oauthState,
+        codeVerifier,
+      ),
+      requestedScopes: serverScopes,
       expiresAt: intent.expires_at.toISOString(),
     };
   }
 
-  async verifyConnectionIntent(
-    tenantId: string,
-    actor: EmailActorContext,
-    intentId: string,
-    dto: VerifyEmailConnectionIntentDto,
-  ) {
+  async getConnectionIntent(tenantId: string, intentId: string) {
     const intent = await this.prisma.emailConnectionIntent.findFirst({
       where: { id: intentId, tenant_id: tenantId },
     });
     if (!intent) {
       throw new NotFoundException(`Connection intent '${intentId}' not found`);
     }
-    this.assertSupportedProvider(intent.provider);
+    const expired =
+      intent.status === 'CONSENT_PENDING' &&
+      intent.expires_at.getTime() <= Date.now();
+    return {
+      intentId: intent.id,
+      provider: intent.provider,
+      status: expired ? 'EXPIRED' : intent.status,
+      requestedScopes: intent.requested_scopes,
+      expiresAt: intent.expires_at.toISOString(),
+      connectionId: intent.connection_id ?? null,
+      failureReason: intent.failure_reason ?? null,
+    };
+  }
 
-    if (intent.expires_at.getTime() <= Date.now()) {
+  /**
+   * OAuth redirect handler (WF-03 step 4). The intent is located by the
+   * server-issued state AND the caller's tenant, so a state from another tenant
+   * or a forged state is rejected (T04). The code is exchanged with the
+   * server-held PKCE verifier; granted scopes are what the provider reports.
+   * The new connection starts in VALIDATING — never ACTIVE from a handshake.
+   */
+  async handleOAuthCallback(
+    tenantId: string,
+    actor: EmailActorContext,
+    dto: EmailOAuthCallbackDto,
+  ) {
+    const intent = await this.prisma.emailConnectionIntent.findFirst({
+      where: { oauth_state: dto.state, tenant_id: tenantId },
+    });
+    if (!intent || intent.status !== 'CONSENT_PENDING') {
+      await this.appendAudit(
+        tenantId,
+        actor.userId,
+        'OAUTH_CALLBACK_REJECTED',
+        null,
+        {
+          reason: intent ? `intent status ${intent.status}` : 'unknown state',
+        },
+      );
+      throw new ForbiddenException(
+        'OAUTH_STATE_MISMATCH: Anti-CSRF OAuth state token did not match an open intent for this tenant',
+      );
+    }
+    const provider = intent.provider as OAuthProvider;
+
+    const closeIntent = async (
+      status: 'DENIED' | 'EXPIRED',
+      failureReason: string,
+    ) => {
+      await this.vault.revoke(tenantId, { intentId: intent.id });
       await this.prisma.emailConnectionIntent.update({
         where: { id: intent.id },
-        data: { status: 'EXPIRED' },
+        data: { status, failure_reason: failureReason },
       });
-      throw new BadRequestException(
-        'CONNECTION_INTENT_EXPIRED: OAuth verification intent expired',
-      );
-    }
-
-    if (intent.oauth_state !== dto.oauthState) {
-      throw new ForbiddenException(
-        'OAUTH_STATE_MISMATCH: Anti-CSRF OAuth state token did not match',
-      );
-    }
-
-    if (!dto.consentGranted) {
-      const denied = await this.prisma.emailConnectionIntent.update({
-        where: { id: intent.id },
-        data: {
-          status: 'DENIED',
-          verification_report: {
-            reason: 'Admin did not grant consent',
-          } as any,
+      await this.appendAudit(
+        tenantId,
+        actor.userId,
+        `CONNECTION_INTENT_${status}`,
+        intent.id,
+        {
+          provider,
+          failureReason,
         },
-      });
-      return { intent: denied, connection: null };
+      );
+      return { intentId: intent.id, status, connection: null, failureReason };
+    };
+
+    if (intent.expires_at.getTime() <= Date.now()) {
+      return closeIntent(
+        'EXPIRED',
+        'Consent was not completed before the setup intent expired',
+      );
+    }
+    if (dto.error || !dto.code) {
+      return closeIntent(
+        'DENIED',
+        dto.error
+          ? `Provider returned '${dto.error}'`
+          : 'No authorization code returned',
+      );
     }
 
-    this.assertSafeScopesForPhase(intent.requested_mode, dto.grantedScopes);
+    const verifier = await this.vault.reveal(
+      tenantId,
+      intent.pkce_verifier_ref ?? '',
+      'PKCE_VERIFIER',
+    );
+    const tokens = await this.oauth.exchangeCode(provider, dto.code, verifier);
+    // Single-use verifier.
+    await this.vault.revoke(tenantId, { intentId: intent.id });
+
+    // Provider-reported scopes are checked against the phase allowlist.
+    this.assertSafeScopesForPhase(intent.requested_mode, tokens.grantedScopes);
+    if (!tokens.refreshToken) {
+      return closeIntent(
+        'DENIED',
+        'Provider did not issue an offline (refresh) grant; continuous read-only collection is not possible',
+      );
+    }
 
     const reportMeta =
       (intent.verification_report as Record<string, unknown> | null) || {};
@@ -524,85 +648,50 @@ export class EmailSecurityService {
       typeof reportMeta.displayName === 'string'
         ? reportMeta.displayName
         : `${intent.provider} Security Feed`;
-
-    const missingAssumptions: string[] = [];
-    if (
-      intent.provider === 'MICROSOFT_365' &&
-      dto.defenderLicenceVerified === false
-    ) {
-      missingAssumptions.push(
-        'Microsoft Defender for Office 365 Plan P1/P2 not verified',
-      );
-    }
-    if (
-      intent.provider === 'MICROSOFT_365' &&
-      dto.exchangeAppRbacVerified === false
-    ) {
-      missingAssumptions.push('Exchange Application RBAC scoping unverified');
-    }
-
     const grantedScopeHash = createHash('sha256')
-      .update([...dto.grantedScopes].sort().join('|'))
+      .update([...tokens.grantedScopes].sort().join('|'))
       .digest('hex');
-
-    const connectionStatus =
-      missingAssumptions.length > 0 ? 'DEGRADED' : 'ACTIVE';
 
     const connection = await this.prisma.emailSourceConnection.create({
       data: {
         tenant_id: tenantId,
-        provider: intent.provider,
+        provider,
         display_name: displayName,
-        status: connectionStatus,
+        status: 'VALIDATING',
         consent_ref: intent.id,
         granted_scope_hash: grantedScopeHash,
         requested_scopes: intent.requested_scopes,
-        granted_scopes: dto.grantedScopes,
+        granted_scopes: tokens.grantedScopes,
         residency_code: intent.residency_code,
-        licence_assumptions: {
-          defenderLicenceVerified: dto.defenderLicenceVerified ?? true,
-          exchangeAppRbacVerified: dto.exchangeAppRbacVerified ?? true,
-          missingAssumptions,
-        } as any,
+        consent_expires_at: new Date(Date.now() + this.consentTtlMs()),
         capabilities: {
           readOnlyAlerts: true,
           phase2ActionsLocked: !this.isPhase2ActionsEnabled(),
         } as any,
-        last_heartbeat_at: new Date(),
         created_by: actor.userId,
       },
     });
-
-    const now = new Date();
-    const hourStart = new Date(Math.floor(now.getTime() / 3600000) * 3600000);
-    const hourEnd = new Date(hourStart.getTime() + 3600000);
-
-    await this.prisma.sourceCoverageWindow.create({
-      data: {
-        tenant_id: tenantId,
-        connection_id: connection.id,
-        window_start: hourStart,
-        window_end: hourEnd,
-        eligible_event_types: ['email.provider.alert.v1'],
-        expected_count: 0,
-        ingested_count: 0,
-        completeness_grade:
-          connectionStatus === 'ACTIVE' ? 'COMPLETE' : 'DEGRADED',
-        source_health:
-          connectionStatus === 'ACTIVE' ? 'HEALTHY_SYNCED' : 'DEGRADED',
-      },
+    const credentialRef = await this.vault.store({
+      tenantId,
+      provider,
+      purpose: 'OAUTH_REFRESH_TOKEN',
+      plaintext: tokens.refreshToken,
+      connectionId: connection.id,
+    });
+    const validating = await this.prisma.emailSourceConnection.update({
+      where: { id: connection.id },
+      data: { credential_ref: credentialRef },
     });
 
-    const updatedIntent = await this.prisma.emailConnectionIntent.update({
+    await this.prisma.emailConnectionIntent.update({
       where: { id: intent.id },
       data: {
-        status: 'ACTIVATED',
+        status: 'VERIFIED',
         granted_scope_hash: grantedScopeHash,
         connection_id: connection.id,
         verification_report: {
           ...reportMeta,
-          missingAssumptions,
-          verifiedAt: now.toISOString(),
+          verifiedAt: new Date().toISOString(),
         } as any,
       },
     });
@@ -610,17 +699,16 @@ export class EmailSecurityService {
     await this.appendAudit(
       tenantId,
       actor.userId,
-      'CONNECTION_VERIFIED_AND_ACTIVATED',
+      'CONNECTION_CONSENT_VERIFIED',
       connection.id,
-      {
-        provider: connection.provider,
-        status: connection.status,
-        grantedScopeHash,
-        missingAssumptions,
-      },
+      { provider, status: 'VALIDATING', grantedScopeHash },
     );
 
-    return { intent: updatedIntent, connection };
+    return {
+      intentId: intent.id,
+      status: 'VERIFIED' as const,
+      connection: this.presentConnection(validating),
+    };
   }
 
   async getSourceHealth(tenantId: string, connectionId: string) {
@@ -631,17 +719,156 @@ export class EmailSecurityService {
       throw new NotFoundException(`Email source '${connectionId}' not found`);
     }
 
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId, connection_id: connection.id },
       orderBy: { window_end: 'desc' },
       take: 24,
     });
 
     return {
-      connection,
+      connection: this.presentConnection(connection),
+      sourceHealth: this.effectiveSourceHealth(connection, windows[0] ?? null),
       latestWindow: windows[0] ?? null,
       windows,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Connector lifecycle helpers (ZS-UX-EMTI-001 §18.1)
+  // ---------------------------------------------------------------------------
+
+  private consentTtlMs(): number {
+    const days = Number(process.env.EMAIL_CONSENT_TTL_DAYS || 90);
+    return (Number.isFinite(days) && days > 0 ? days : 90) * 86_400_000;
+  }
+
+  /** Expired consent is never presented as ACTIVE (18.1 invariant, T05). */
+  private effectiveStatus(connection: {
+    status: string;
+    status_reason?: string | null;
+    consent_expires_at?: Date | null;
+  }): { status: string; statusReason: string | null } {
+    const consentExpired =
+      connection.consent_expires_at != null &&
+      connection.consent_expires_at.getTime() <= Date.now();
+    if (
+      consentExpired &&
+      ['ACTIVE', 'DEGRADED', 'VALIDATING'].includes(connection.status)
+    ) {
+      return { status: 'SUSPENDED', statusReason: 'CONSENT_EXPIRED' };
+    }
+    return {
+      status: connection.status,
+      statusReason: connection.status_reason ?? null,
+    };
+  }
+
+  private presentConnection<T extends Record<string, any>>(connection: T) {
+    const eff = this.effectiveStatus(connection as any);
+    // Never expose secret references or binding internals beyond what the UI needs.
+    const {
+      credential_ref: _ref,
+      last_test_report: _report,
+      ...rest
+    } = connection;
+    return {
+      ...rest,
+      status: eff.status,
+      status_reason: eff.statusReason,
+      consent_expires_at: connection.consent_expires_at
+        ? new Date(connection.consent_expires_at).toISOString()
+        : null,
+      has_credential: Boolean(connection.credential_ref),
+    };
+  }
+
+  private effectiveSourceHealth(
+    connection: {
+      status: string;
+      last_sync_at?: Date | null;
+      consent_expires_at?: Date | null;
+      status_reason?: string | null;
+    },
+    latestWindow: { source_health: string } | null,
+  ): string {
+    const eff = this.effectiveStatus(connection);
+    if (['REVOKED', 'SUSPENDED'].includes(eff.status)) return 'UNAVAILABLE';
+    if (['DRAFT', 'CONSENT_PENDING', 'VALIDATING'].includes(eff.status)) {
+      return 'UNAVAILABLE';
+    }
+    const staleMs =
+      Number(process.env.EMAIL_SOURCE_STALE_MINUTES || 30) * 60_000;
+    if (
+      !connection.last_sync_at ||
+      Date.now() - connection.last_sync_at.getTime() > staleMs
+    ) {
+      return 'STALE';
+    }
+    return latestWindow?.source_health ?? 'STALE';
+  }
+
+  private async findConnectionOrThrow(tenantId: string, connectionId: string) {
+    const connection = await this.prisma.emailSourceConnection.findFirst({
+      where: { id: connectionId, tenant_id: tenantId },
+    });
+    if (!connection) {
+      throw new NotFoundException(`Email source '${connectionId}' not found`);
+    }
+    return connection;
+  }
+
+  /** Short-lived access token from the vault-held refresh token; never persisted or logged. */
+  private async resolveAccessToken(
+    tenantId: string,
+    connection: { id: string; provider: string; credential_ref: string | null },
+  ): Promise<string> {
+    if (!connection.credential_ref) {
+      throw new ForbiddenException(
+        'CREDENTIAL_MISSING: reconnect this provider to grant read-only access',
+      );
+    }
+    const refreshToken = await this.vault.reveal(
+      tenantId,
+      connection.credential_ref,
+      'OAUTH_REFRESH_TOKEN',
+    );
+    const tokens = await this.oauth.refreshAccessToken(
+      connection.provider as OAuthProvider,
+      refreshToken,
+    );
+    if (tokens.refreshToken && tokens.refreshToken !== refreshToken) {
+      // Provider rotated the refresh token: store the new one, shred the old.
+      const newRef = await this.vault.store({
+        tenantId,
+        provider: connection.provider,
+        purpose: 'OAUTH_REFRESH_TOKEN',
+        plaintext: tokens.refreshToken,
+        connectionId: connection.id,
+      });
+      await this.vault.revoke(tenantId, {
+        secretId: connection.credential_ref,
+      });
+      await this.prisma.emailSourceConnection.update({
+        where: { id: connection.id },
+        data: { credential_ref: newRef },
+      });
+    }
+    return tokens.accessToken;
+  }
+
+  private assertCollectable(connection: {
+    id: string;
+    status: string;
+    consent_expires_at?: Date | null;
+    status_reason?: string | null;
+  }) {
+    const eff = this.effectiveStatus(connection);
+    if (['REVOKED', 'SUSPENDED'].includes(eff.status)) {
+      throw new ForbiddenException(
+        `COLLECTION_HALTED: Email source '${connection.id}' is ${eff.status}${eff.statusReason ? ` (${eff.statusReason})` : ''} (T05/T16).`,
+      );
+    }
   }
 
   async testConnector(
@@ -649,83 +876,186 @@ export class EmailSecurityService {
     actor: EmailActorContext,
     connectionId: string,
   ) {
-    const connection = await this.prisma.emailSourceConnection.findFirst({
-      where: { id: connectionId, tenant_id: tenantId },
-    });
-    if (!connection) {
-      throw new NotFoundException(`Email source '${connectionId}' not found`);
+    const connection = await this.findConnectionOrThrow(tenantId, connectionId);
+    if (connection.provider === 'ZOIKO_MAIL') {
+      throw new BadRequestException(
+        'Zoiko Mail sources are verified by their first signed security event, not by a provider probe',
+      );
     }
-
-    const result = await this.ingestClient.testEmailSource(
+    this.assertCollectable(connection);
+    const accessToken = await this.resolveAccessToken(tenantId, connection);
+    const raw = await this.ingestClient.testEmailSource(
       tenantId,
       connectionId,
+      {
+        accessToken,
+      },
     );
+    const result = raw?.data ?? raw ?? {};
+    const status = String(result.status || 'UNVERIFIED');
+    const capabilityReport = {
+      availableEventTypes: Array.isArray(
+        result.capabilityReport?.availableEventTypes,
+      )
+        ? result.capabilityReport.availableEventTypes
+        : [],
+      unavailableEventTypes: Array.isArray(
+        result.capabilityReport?.unavailableEventTypes,
+      )
+        ? result.capabilityReport.unavailableEventTypes
+        : [],
+      limitedCapability: Boolean(result.capabilityReport?.limitedCapability),
+      ...(result.capabilityReport?.reason
+        ? { reason: String(result.capabilityReport.reason) }
+        : {}),
+    };
+    // A probe "passes" only when the provider actually returned data access.
+    const passed =
+      status === 'HEALTHY' && capabilityReport.availableEventTypes.length > 0;
+    const testedAt = new Date();
+
     await this.prisma.emailSourceConnection.update({
       where: { id: connection.id },
-      data: { last_heartbeat_at: new Date() },
+      data: {
+        last_heartbeat_at: testedAt,
+        last_tested_at: testedAt,
+        last_test_status: passed ? 'PASSED' : status,
+        last_test_report: { status, passed, capabilityReport } as any,
+        capabilities: {
+          ...((connection.capabilities as Record<string, unknown>) || {}),
+          ...capabilityReport,
+        } as any,
+        ...(status === 'PERMISSION_REVOKED'
+          ? { status: 'DEGRADED', status_reason: 'PERMISSION_REVOKED' }
+          : {}),
+      },
     });
     await this.appendAudit(
       tenantId,
       actor.userId,
       'CONNECTOR_TESTED',
       connection.id,
-      { status: result?.data?.status ?? result?.status ?? 'CHECKED' },
+      {
+        status,
+        passed,
+        limitedCapability: capabilityReport.limitedCapability,
+      },
     );
-    return result?.data ?? result;
+    return {
+      passed,
+      status,
+      capabilityReport,
+      testedAt: testedAt.toISOString(),
+    };
+  }
+
+  async activateConnector(
+    tenantId: string,
+    actor: EmailActorContext,
+    connectionId: string,
+  ) {
+    const connection = await this.findConnectionOrThrow(tenantId, connectionId);
+    const eff = this.effectiveStatus(connection);
+    if (eff.statusReason === 'CONSENT_EXPIRED') {
+      throw new ConflictException(
+        'CONSENT_EXPIRED: reconnect the provider to renew consent',
+      );
+    }
+    if (['REVOKED', 'SUSPENDED'].includes(eff.status)) {
+      throw new ConflictException(`CONNECTOR_${eff.status}: cannot activate`);
+    }
+    const testFresh =
+      connection.last_test_status === 'PASSED' &&
+      connection.last_tested_at != null &&
+      Date.now() - connection.last_tested_at.getTime() <= 24 * 3_600_000;
+    if (!testFresh) {
+      throw new ConflictException(
+        'ACTIVATION_REQUIRES_PASSING_TEST: run a connection test that returns provider data within the last 24 hours',
+      );
+    }
+    const report = (connection.last_test_report as any) || {};
+    const limited = Boolean(report.capabilityReport?.limitedCapability);
+    const updated = await this.prisma.emailSourceConnection.update({
+      where: { id: connection.id },
+      data: {
+        status: limited ? 'DEGRADED' : 'ACTIVE',
+        status_reason: limited ? 'LIMITED_CAPABILITY' : null,
+        last_heartbeat_at: new Date(),
+      },
+    });
+    await this.appendAudit(
+      tenantId,
+      actor.userId,
+      'CONNECTOR_ACTIVATED',
+      connection.id,
+      {
+        status: updated.status,
+        limitedCapability: limited,
+      },
+    );
+    return this.presentConnection(updated);
+  }
+
+  async getConnectorCapabilities(tenantId: string, connectionId: string) {
+    const connection = await this.findConnectionOrThrow(tenantId, connectionId);
+    const caps = (connection.capabilities as Record<string, any>) || {};
+    return {
+      connectionId: connection.id,
+      provider: connection.provider,
+      availableEventTypes: Array.isArray(caps.availableEventTypes)
+        ? caps.availableEventTypes
+        : [],
+      unavailableEventTypes: Array.isArray(caps.unavailableEventTypes)
+        ? caps.unavailableEventTypes
+        : [],
+      limitedCapability: Boolean(caps.limitedCapability),
+      licenceAssumptions: connection.licence_assumptions,
+      requestedScopes: connection.requested_scopes,
+      grantedScopes: connection.granted_scopes,
+      lastTestedAt: connection.last_tested_at?.toISOString() ?? null,
+      lastTestStatus: connection.last_test_status ?? null,
+    };
   }
 
   async syncConnector(
     tenantId: string,
     actor: EmailActorContext,
     connectionId: string,
-    dto: SyncEmailConnectorDto,
   ) {
-    const connection = await this.prisma.emailSourceConnection.findFirst({
-      where: { id: connectionId, tenant_id: tenantId },
-    });
-    if (!connection) {
-      throw new NotFoundException(`Email source '${connectionId}' not found`);
+    const connection = await this.findConnectionOrThrow(tenantId, connectionId);
+    if (connection.provider === 'ZOIKO_MAIL') {
+      throw new BadRequestException(
+        'Zoiko Mail sources push signed events; there is nothing to pull',
+      );
     }
-    if (connection.status === 'REVOKED' || connection.status === 'SUSPENDED') {
-      throw new ForbiddenException(
-        `COLLECTION_HALTED: Email source '${connectionId}' is ${connection.status} (T16).`,
+    this.assertCollectable(connection);
+    if (connection.status !== 'ACTIVE' && connection.status !== 'DEGRADED') {
+      throw new ConflictException(
+        `CONNECTOR_NOT_ACTIVE: test and activate the connector before collection (status ${connection.status})`,
       );
     }
 
-    const syncRes = dto.simulateRateLimit
-      ? {
-        status: 'DEGRADED',
-        ingestedCount: 0,
-        expectedCount: dto.expectedCount ?? dto.events.length,
-        rejectedCount: 0,
-        normalizedRecords: [],
-        gaps: [
-          {
-            reason: 'PROVIDER_429_RATE_LIMITED',
-            detail:
-              'Simulated upstream throttling backoff recorded honestly.',
-          },
-        ],
-        windowStart: new Date(
-          Math.floor(Date.now() / 3600000) * 3600000,
-        ).toISOString(),
-        windowEnd: new Date(
-          Math.floor(Date.now() / 3600000) * 3600000 + 3600000,
-        ).toISOString(),
-      }
-      : ((
-        await this.ingestClient.syncEmailSource(
-          tenantId,
-          connectionId,
-          dto.events,
-          dto.expectedCount,
-        )
-      )?.data ?? {
-        status: 'UNAVAILABLE',
-        normalizedRecords: [],
-        gaps: [],
-        rejectedCount: 0,
-      });
+    const accessToken = await this.resolveAccessToken(tenantId, connection);
+    const syncRes = (
+      await this.ingestClient.syncEmailSource(tenantId, connectionId, {
+        accessToken,
+        cursor: connection.sync_cursor ?? null,
+        maxPages: 5,
+      })
+    )?.data ?? {
+      status: 'UNAVAILABLE',
+      normalizedRecords: [],
+      gaps: [
+        {
+          reason: 'INGEST_UNAVAILABLE',
+          detail: 'shield-ingest did not respond',
+        },
+      ],
+      rejectedCount: 0,
+      duplicateCount: 0,
+      expectedCount: null,
+      completenessGrade: 'UNKNOWN',
+    };
 
     const normalized = Array.isArray(syncRes.normalizedRecords)
       ? syncRes.normalizedRecords
@@ -741,19 +1071,15 @@ export class EmailSecurityService {
             source_event_ref: String(rec.sourceEventRef),
           },
         },
-        update: {
-          last_reconciled_at: new Date(),
-          severity: String(rec.severity || 'MEDIUM'),
-          provider_verdict: String(rec.providerVerdict || 'SUSPICIOUS'),
-          threat_class: String(rec.threatClass || 'UNKNOWN'),
-        },
+        // Source facts are immutable once observed (18.1); only reconciliation time moves.
+        update: { last_reconciled_at: new Date() },
         create: {
           tenant_id: tenantId,
           connection_id: connection.id,
           source_event_ref: String(rec.sourceEventRef),
           provider: connection.provider,
           provider_verdict: String(rec.providerVerdict || 'SUSPICIOUS'),
-          threat_class: String(rec.threatClass || 'PHISHING'),
+          threat_class: String(rec.threatClass || 'UNKNOWN'),
           severity: String(rec.severity || 'MEDIUM'),
           status: 'OBSERVED',
           observed_at: rec.observedAt ? new Date(rec.observedAt) : new Date(),
@@ -763,44 +1089,76 @@ export class EmailSecurityService {
           deep_link_url: this.sanitizeDeepLink(rec.deepLinkUrl),
           source_confidence: String(rec.sourceConfidence || 'MEDIUM'),
           coverage_state:
-            syncRes.status === 'DEGRADED' ? 'DEGRADED' : 'COMPLETE',
+            syncRes.completenessGrade === 'COMPLETE' ? 'COMPLETE' : 'DEGRADED',
           metadata: (rec.metadata || {}) as any,
         },
       });
       persistedFindings.push(upserted);
     }
 
-    const expectedCount =
-      syncRes.expectedCount ?? dto.expectedCount ?? dto.events.length;
+    // The denominator comes ONLY from the provider; no total -> UNKNOWN, never COMPLETE.
+    const expectedCount: number | null =
+      typeof syncRes.expectedCount === 'number' ? syncRes.expectedCount : null;
     const ingestedCount = persistedFindings.length;
     const rejectedCount = Number(syncRes.rejectedCount || 0);
-    const missingCount = Math.max(
-      0,
-      expectedCount - ingestedCount - rejectedCount,
-    );
+    const duplicateCount = Number(syncRes.duplicateCount || 0);
+    const missingCount =
+      expectedCount === null
+        ? 0
+        : Math.max(
+            0,
+            expectedCount - ingestedCount - rejectedCount - duplicateCount,
+          );
+    const completenessGrade =
+      expectedCount === null
+        ? 'UNKNOWN'
+        : syncRes.status === 'SYNCED' &&
+            missingCount === 0 &&
+            rejectedCount === 0
+          ? 'COMPLETE'
+          : missingCount > 0 || rejectedCount > 0
+            ? 'PARTIAL'
+            : 'DEGRADED';
     const windowHealth =
-      syncRes.status === 'DEGRADED' || missingCount > 0 || rejectedCount > 0
-        ? 'DEGRADED'
-        : 'HEALTHY_SYNCED';
+      syncRes.status === 'PERMISSION_REVOKED' ||
+      syncRes.status === 'UNAVAILABLE'
+        ? 'UNAVAILABLE'
+        : syncRes.status === 'SYNCED' && completenessGrade === 'COMPLETE'
+          ? 'HEALTHY_SYNCED'
+          : 'DEGRADED';
+    const hourStart = Math.floor(Date.now() / 3600000) * 3600000;
+    const windowStart = syncRes.windowStart
+      ? new Date(syncRes.windowStart)
+      : new Date(hourStart);
+    const windowEnd = syncRes.windowEnd
+      ? new Date(syncRes.windowEnd)
+      : new Date(hourStart + 3600000);
+    const gaps = [
+      ...(syncRes.gaps || []),
+      ...(expectedCount === null
+        ? [
+            {
+              reason: 'PROVIDER_TOTAL_UNAVAILABLE',
+              detail:
+                'Provider did not report a total; completeness cannot be asserted',
+            },
+          ]
+        : []),
+    ];
 
     const coverageWindow = await this.prisma.sourceCoverageWindow.create({
       data: {
         tenant_id: tenantId,
         connection_id: connection.id,
-        window_start: syncRes.windowStart
-          ? new Date(syncRes.windowStart)
-          : new Date(Math.floor(Date.now() / 3600000) * 3600000),
-        window_end: syncRes.windowEnd
-          ? new Date(syncRes.windowEnd)
-          : new Date(Math.floor(Date.now() / 3600000) * 3600000 + 3600000),
+        window_start: windowStart,
+        window_end: windowEnd,
         eligible_event_types: ['email.provider.alert.v1'],
-        expected_count: expectedCount,
+        expected_count: expectedCount ?? 0,
         ingested_count: ingestedCount,
         rejected_count: rejectedCount,
         missing_count: missingCount,
-        gaps: (syncRes.gaps || []) as any,
-        completeness_grade:
-          windowHealth === 'HEALTHY_SYNCED' ? 'COMPLETE' : 'DEGRADED',
+        gaps: gaps as any,
+        completeness_grade: completenessGrade,
         source_health: windowHealth,
       },
     });
@@ -810,7 +1168,14 @@ export class EmailSecurityService {
       data: {
         last_sync_at: new Date(),
         last_heartbeat_at: new Date(),
-        status: windowHealth === 'DEGRADED' ? 'DEGRADED' : 'ACTIVE',
+        ...(syncRes.nextCursor
+          ? { sync_cursor: String(syncRes.nextCursor) }
+          : {}),
+        ...(syncRes.status === 'PERMISSION_REVOKED'
+          ? { status: 'DEGRADED', status_reason: 'PERMISSION_REVOKED' }
+          : windowHealth === 'HEALTHY_SYNCED'
+            ? { status: 'ACTIVE', status_reason: null }
+            : { status: 'DEGRADED' }),
       },
     });
 
@@ -822,7 +1187,10 @@ export class EmailSecurityService {
       {
         ingestedCount,
         rejectedCount,
+        duplicateCount,
         missingCount,
+        expectedCount,
+        completenessGrade,
         windowHealth,
       },
     );
@@ -831,30 +1199,38 @@ export class EmailSecurityService {
       status: windowHealth,
       ingestedCount,
       rejectedCount,
+      duplicateCount,
       missingCount,
+      expectedCount,
+      completenessGrade,
       findingsCreatedOrUpdated: persistedFindings.length,
       coverageWindow,
-      gaps: syncRes.gaps || [],
+      gaps,
+      windowStart: windowStart.toISOString(),
+      windowEnd: windowEnd.toISOString(),
     };
   }
 
+  /** Revoke: stop collection, crypto-shred credentials, record who/why (WF-14, T16). */
   async disconnectConnector(
     tenantId: string,
     actor: EmailActorContext,
     connectionId: string,
     dto: DisconnectEmailConnectorDto,
   ) {
-    const connection = await this.prisma.emailSourceConnection.findFirst({
-      where: { id: connectionId, tenant_id: tenantId },
-    });
-    if (!connection) {
-      throw new NotFoundException(`Email source '${connectionId}' not found`);
-    }
+    const connection = await this.findConnectionOrThrow(tenantId, connectionId);
 
+    const shredded = await this.vault.revoke(tenantId, {
+      connectionId: connection.id,
+    });
     const updated = await this.prisma.emailSourceConnection.update({
       where: { id: connection.id },
       data: {
         status: 'REVOKED',
+        status_reason: 'PERMISSION_REVOKED',
+        credential_ref: null,
+        sync_cursor: null,
+        mail_binding_id: null,
         revoked_at: new Date(),
         revoked_by: actor.userId,
       },
@@ -868,14 +1244,253 @@ export class EmailSecurityService {
       {
         provider: connection.provider,
         reason: dto.reason,
+        credentialsShredded: shredded,
       },
     );
 
-    return updated;
+    return this.presentConnection(updated);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Providers and Zoiko Mail binding (WF-02/03, ZS-UX-EMTI-001 EW06)
+  // ---------------------------------------------------------------------------
+
+  private zoikoMailEnabled(): boolean {
+    return process.env.EMAIL_ZOIKO_MAIL_INTEGRATION_ENABLED === 'true';
+  }
+
+  listProviders() {
+    const oauth = (provider: OAuthProvider, displayName: string) => {
+      const enabled = this.oauth.isConfigured(provider);
+      return {
+        provider,
+        displayName,
+        enabled,
+        connectMethod: 'OAUTH' as const,
+        ...(enabled
+          ? {}
+          : {
+              reasonDisabled:
+                'The OAuth client for this provider is not configured on this deployment.',
+            }),
+      };
+    };
+    return [
+      oauth('MICROSOFT_365', 'Microsoft 365'),
+      oauth('GOOGLE_WORKSPACE', 'Google Workspace'),
+      {
+        provider: 'ZOIKO_MAIL' as const,
+        displayName: 'Zoiko Mail',
+        enabled: this.zoikoMailEnabled(),
+        connectMethod: 'MAIL_BINDING' as const,
+        ...(this.zoikoMailEnabled()
+          ? {}
+          : {
+              reasonDisabled:
+                'Zoiko Mail security events are not enabled: the cross-product event boundary (ADR-ZSSEC-01, decision D05) is pending approval.',
+            }),
+      },
+    ];
+  }
+
+  async createMailBinding(
+    tenantId: string,
+    actor: EmailActorContext,
+    dto: CreateMailBindingDto,
+  ) {
+    if (!this.zoikoMailEnabled()) {
+      throw new ForbiddenException(
+        'ZOIKO_MAIL_INTEGRATION_DISABLED: pending ADR-ZSSEC-01 / decision D05',
+      );
+    }
+    // Opaque, server-issued mapping; Mail never chooses the Shield tenant (07.1 tenant_binding_id).
+    const bindingId = `zmb_${randomBytes(24).toString('base64url')}`;
+    const connection = await this.prisma.emailSourceConnection.create({
+      data: {
+        tenant_id: tenantId,
+        provider: 'ZOIKO_MAIL',
+        display_name: dto.displayName,
+        status: 'VALIDATING',
+        status_reason: 'AWAITING_FIRST_EVENT',
+        mail_binding_id: bindingId,
+        requested_scopes: [],
+        granted_scopes: [],
+        sync_frequency: 'PUSH',
+        capabilities: {
+          readOnlyAlerts: true,
+          availableEventTypes: [
+            'mail.security.inbound_verdict.v1',
+            'mail.security.outbound_hold.v1',
+            'mail.security.quarantine_changed.v1',
+            'mail.security.account_risk.v1',
+            'mail.security.coverage_report.v1',
+          ],
+        } as any,
+        created_by: actor.userId,
+      },
+    });
+    await this.appendAudit(
+      tenantId,
+      actor.userId,
+      'MAIL_BINDING_CREATED',
+      connection.id,
+      {
+        provider: 'ZOIKO_MAIL',
+      },
+    );
+    return {
+      bindingId,
+      connectionId: connection.id,
+      status: 'VALIDATING',
+      status_reason: 'AWAITING_FIRST_EVENT',
+    };
+  }
+
+  /**
+   * Internal: a Zoiko Mail SecurityEventEnvelope that shield-ingest has already
+   * signature-, registry-, freshness- and replay-checked. The tenant comes only
+   * from the server-side binding, never from the event (07.1).
+   */
+  async ingestMailEvent(dto: InternalMailEventDto) {
+    if (!this.zoikoMailEnabled()) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'ZOIKO_MAIL_INTEGRATION_DISABLED',
+        message:
+          'Zoiko Mail security events are not enabled on this deployment',
+      });
+    }
+    // Binding lookup is the only cross-tenant read: by unique opaque id, in an
+    // explicitly declared and logged platform scope. Everything after it runs in
+    // the resolved tenant's scope, so RLS applies to every write.
+    const connection = await runWithPlatformScope(
+      'zoiko mail tenant binding resolution',
+      () =>
+        this.prisma.emailSourceConnection.findFirst({
+          where: {
+            mail_binding_id: dto.tenantBindingId,
+            provider: 'ZOIKO_MAIL',
+          },
+        }),
+    );
+    if (!connection || connection.status === 'REVOKED') {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'UNKNOWN_TENANT_BINDING',
+        message: 'The tenant binding is unknown or revoked',
+      });
+    }
+    return runWithTenantScope(connection.tenant_id, () =>
+      this.persistMailEvent(connection, dto),
+    );
+  }
+
+  private async persistMailEvent(
+    connection: { id: string; tenant_id: string },
+    dto: InternalMailEventDto,
+  ) {
+    const tenantId = connection.tenant_id;
+    const now = new Date();
+
+    if (dto.eventType === 'mail.security.coverage_report.v1' && dto.coverage) {
+      const expected = Math.max(0, Number(dto.coverage.expectedCount) || 0);
+      const observed = Math.max(0, Number(dto.coverage.observedCount) || 0);
+      const missing = Math.max(0, expected - observed);
+      await this.prisma.sourceCoverageWindow.create({
+        data: {
+          tenant_id: tenantId,
+          connection_id: connection.id,
+          window_start: new Date(dto.coverage.windowStart),
+          window_end: new Date(dto.coverage.windowEnd),
+          eligible_event_types: ['mail.security.*'],
+          expected_count: expected,
+          ingested_count: observed,
+          missing_count: missing,
+          gaps: (dto.coverage.gaps || []) as any,
+          completeness_grade:
+            dto.coverageState === 'COMPLETE' && missing === 0
+              ? 'COMPLETE'
+              : 'DEGRADED',
+          source_health:
+            dto.coverageState === 'COMPLETE' && missing === 0
+              ? 'HEALTHY_SYNCED'
+              : 'DEGRADED',
+        },
+      });
+      await this.markMailBindingLive(connection.id, now);
+      return { accepted: true, duplicate: false };
+    }
+
+    const existing = await this.prisma.emailThreatFinding.findFirst({
+      where: {
+        tenant_id: tenantId,
+        connection_id: connection.id,
+        source_event_ref: dto.sourceEventId,
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      await this.markMailBindingLive(connection.id, now);
+      return { accepted: true, duplicate: true, findingId: existing.id };
+    }
+    const finding = await this.prisma.emailThreatFinding.create({
+      data: {
+        tenant_id: tenantId,
+        connection_id: connection.id,
+        source_event_ref: dto.sourceEventId,
+        provider: 'ZOIKO_MAIL',
+        provider_verdict: dto.sourceVerdict || 'UNKNOWN',
+        threat_class: dto.threatClass || dto.eventType,
+        severity: dto.sourceVerdict === 'MALICIOUS' ? 'HIGH' : 'MEDIUM',
+        status: 'OBSERVED',
+        policy_id: dto.policyId ?? null,
+        policy_version: dto.policyVersion || 'unknown',
+        observed_at: new Date(dto.observedAt),
+        subject_ref: dto.subjectRef,
+        source_confidence: 'PROVIDER_ASSERTED',
+        coverage_state: dto.coverageState,
+        metadata: {
+          eventId: dto.eventId,
+          eventType: dto.eventType,
+          producer: dto.producer,
+          actionState: dto.actionState ?? null,
+          dataClass: dto.dataClass,
+          residencyCode: dto.residencyCode ?? null,
+          evidenceRef: dto.evidenceRef ?? null,
+          payloadHash: dto.payloadHash,
+          occurredAt: dto.occurredAt,
+        } as any,
+      },
+    });
+    await this.markMailBindingLive(connection.id, now);
+    await this.appendAudit(
+      tenantId,
+      'system:zoiko-mail',
+      'MAIL_EVENT_INGESTED',
+      finding.id,
+      {
+        eventType: dto.eventType,
+        eventId: dto.eventId,
+      },
+    );
+    return { accepted: true, duplicate: false, findingId: finding.id };
+  }
+
+  private async markMailBindingLive(connectionId: string, at: Date) {
+    await this.prisma.emailSourceConnection.update({
+      where: { id: connectionId },
+      data: {
+        last_sync_at: at,
+        last_heartbeat_at: at,
+        status: 'ACTIVE',
+        status_reason: null,
+      },
+    });
   }
 
   async listReconciliations(tenantId: string) {
-    return this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    return this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       include: {
         connection: {
@@ -989,32 +1604,36 @@ export class EmailSecurityService {
     },
   ) {
     const limit = Math.min(Math.max(query.limit || 50, 1), 200);
+    const term = query.search?.trim().slice(0, 200);
+    // Tenant filter and search are applied in the query, before pagination (WF-05).
     const where: Record<string, unknown> = {
       tenant_id: tenantId,
       ...(query.severity ? { severity: query.severity } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.provider ? { provider: query.provider } : {}),
       ...(query.threatClass ? { threat_class: query.threatClass } : {}),
+      ...(term
+        ? {
+            OR: [
+              { subject_ref: { contains: term, mode: 'insensitive' } },
+              { source_event_ref: { contains: term, mode: 'insensitive' } },
+              { threat_class: { contains: term, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
 
-    const items = await this.prisma.emailThreatFinding.findMany({ // tenant_id
+    const items = await this.prisma.emailThreatFinding.findMany({
+      // tenant_id
       where: where as any,
       orderBy: { observed_at: 'desc' },
       take: limit,
     });
 
-    const filtered = query.search
-      ? items.filter((item) => {
-        const term = query.search!.toLowerCase();
-        return (
-          item.subject_ref.toLowerCase().includes(term) ||
-          item.source_event_ref.toLowerCase().includes(term) ||
-          item.threat_class.toLowerCase().includes(term)
-        );
-      })
-      : items;
+    const filtered = items;
 
-    const latestWindows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const latestWindows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { window_end: 'desc' },
       take: 10,
@@ -1026,7 +1645,7 @@ export class EmailSecurityService {
       activeFilters: query,
       completenessDisclaimer:
         latestWindows.some((w) => w.completeness_grade !== 'COMPLETE') ||
-          latestWindows.length === 0
+        latestWindows.length === 0
           ? 'Coverage completeness for the selected window is incomplete or degraded; verify reconciliation gaps before drawing negative conclusions (T03).'
           : 'All configured sources report complete coverage for the latest window.',
     };
@@ -1066,6 +1685,148 @@ export class EmailSecurityService {
       deep_link_url: this.sanitizeDeepLink(finding.deep_link_url),
       roleScopedRedacted: this.isAuditorOnly(actor.roleCodes),
       phase2ActionsLocked: !this.isPhase2ActionsEnabled(),
+    };
+  }
+
+  /** WF-06 provenance rail and timeline: what was observed, by which source/policy, and what was not. */
+  async getThreatProvenance(
+    tenantId: string,
+    actor: EmailActorContext,
+    findingId: string,
+  ) {
+    const finding = await this.prisma.emailThreatFinding.findFirst({
+      where: { id: findingId, tenant_id: tenantId },
+      include: {
+        connection: true,
+        adjudications: { orderBy: { created_at: 'asc' } },
+        detectionDecisions: { orderBy: { created_at: 'asc' } },
+      },
+    });
+    if (!finding) {
+      throw new NotFoundException(
+        `Email threat finding '${findingId}' not found`,
+      );
+    }
+    const dayMs = 86_400_000;
+    const [windows, manifests, caseAudit] = await Promise.all([
+      this.prisma.sourceCoverageWindow.findMany({
+        // tenant_id
+        where: {
+          tenant_id: tenantId,
+          connection_id: finding.connection_id,
+          window_end: { gte: new Date(finding.observed_at.getTime() - dayMs) },
+          window_start: {
+            lte: new Date(finding.observed_at.getTime() + dayMs),
+          },
+        },
+        orderBy: { window_start: 'asc' },
+        take: 100,
+      }),
+      this.prisma.emailEvidenceManifest.findMany({
+        // tenant_id
+        where: {
+          tenant_id: tenantId,
+          time_start: { lte: finding.observed_at },
+          time_end: { gte: finding.observed_at },
+        },
+        orderBy: { created_at: 'asc' },
+        take: 20,
+      }),
+      finding.case_id
+        ? this.prisma.emailAccessAuditEvent.findFirst({
+            where: {
+              tenant_id: tenantId,
+              target_id: finding.id,
+              event_type: 'THREAT_PROMOTED_TO_CASE',
+            },
+            orderBy: { created_at: 'asc' },
+          })
+        : Promise.resolve(null),
+    ]);
+    const latestWindow = windows[windows.length - 1] ?? null;
+
+    const timeline = [
+      {
+        stage: 'SOURCE_OBSERVED',
+        at: finding.observed_at.toISOString(),
+        ref: finding.source_event_ref,
+      },
+      {
+        stage: 'INGESTED',
+        at: finding.ingested_at.toISOString(),
+        ref: finding.id,
+      },
+      ...(finding.case_id
+        ? [
+            {
+              stage: 'CASE_OPENED',
+              at: (caseAudit?.created_at ?? finding.updated_at).toISOString(),
+              ref: finding.case_id,
+            },
+          ]
+        : []),
+      ...finding.adjudications.map((a) => ({
+        stage: 'ANALYST_DECISION',
+        at: a.created_at.toISOString(),
+        ref: a.id,
+      })),
+      ...manifests.map((m) => ({
+        stage: 'EVIDENCE_COMMITTED',
+        at: m.created_at.toISOString(),
+        ref: m.id,
+      })),
+    ].sort((x, y) => x.at.localeCompare(y.at));
+
+    await this.appendAudit(
+      tenantId,
+      actor.userId,
+      'THREAT_PROVENANCE_VIEWED',
+      finding.id,
+      {},
+    );
+
+    return {
+      findingId: finding.id,
+      version: finding.version,
+      sourceEventRef: finding.source_event_ref,
+      provider: finding.provider,
+      providerVerdict: finding.provider_verdict,
+      policyId: finding.policy_id,
+      policyVersion: finding.policy_version,
+      detectorDecisions: finding.detectionDecisions.map((d) => ({
+        detectorTier: d.detector_tier,
+        detectorVersion: d.detector_version,
+        modelVersion: d.model_version,
+        abstained: d.abstained,
+        createdAt: d.created_at.toISOString(),
+      })),
+      observedAt: finding.observed_at.toISOString(),
+      ingestedAt: finding.ingested_at.toISOString(),
+      lastReconciledAt: finding.last_reconciled_at?.toISOString() ?? null,
+      sourcePermissionTier:
+        finding.provider === 'ZOIKO_MAIL'
+          ? 'SIGNED_EVENT_BINDING'
+          : 'READ_ONLY_ALERT_TELEMETRY',
+      licenceAssumptions: finding.connection.licence_assumptions,
+      dataFreshness: {
+        lastSyncAt: finding.connection.last_sync_at?.toISOString() ?? null,
+        sourceHealth: this.effectiveSourceHealth(
+          finding.connection,
+          latestWindow,
+        ),
+      },
+      coverageExceptions: windows
+        .filter(
+          (w) => w.completeness_grade !== 'COMPLETE' || w.missing_count > 0,
+        )
+        .map((w) => ({
+          windowStart: w.window_start.toISOString(),
+          windowEnd: w.window_end.toISOString(),
+          completenessGrade: w.completeness_grade,
+          missingCount: w.missing_count,
+        })),
+      timeline,
+      roleScopedRedacted: this.isAuditorOnly(actor.roleCodes),
     };
   }
 
@@ -1155,6 +1916,7 @@ export class EmailSecurityService {
     if (existing) {
       return { idempotentReplay: true, adjudication: existing, finding };
     }
+    this.assertVersion(finding.version, dto.expectedVersion);
 
     const adjudication = await this.prisma.emailThreatAdjudication.create({
       data: {
@@ -1175,9 +1937,23 @@ export class EmailSecurityService {
           ? 'INSUFFICIENT_EVIDENCE'
           : 'BENIGN';
 
-    const updatedFinding = await this.prisma.emailThreatFinding.update({
-      where: { id: finding.id },
-      data: { status: nextStatus },
+    // Compare-and-set on version so two analysts cannot silently overwrite each other.
+    const cas = await this.prisma.emailThreatFinding.updateMany({
+      where: { id: finding.id, tenant_id: tenantId, version: finding.version },
+      data: { status: nextStatus, version: { increment: 1 } },
+    });
+    if (cas.count !== 1) {
+      const fresh = await this.prisma.emailThreatFinding.findFirst({
+        where: { id: finding.id, tenant_id: tenantId },
+        select: { version: true },
+      });
+      this.assertVersion(
+        fresh?.version ?? finding.version + 1,
+        dto.expectedVersion,
+      );
+    }
+    const updatedFinding = await this.prisma.emailThreatFinding.findFirst({
+      where: { id: finding.id, tenant_id: tenantId },
     });
 
     await this.appendAudit(
@@ -1217,6 +1993,25 @@ export class EmailSecurityService {
       `finding:${finding.id}`,
       finding.source_event_ref,
     ];
+    // Message text is adversary-controlled and privacy-sensitive (SEC-12): it is
+    // forwarded only for this one evaluation, never stored, and its use is audited
+    // by hash and length only.
+    const snippet =
+      typeof (dto as any).untrustedSnippet === 'string'
+        ? ((dto as any).untrustedSnippet as string)
+        : '';
+    if (snippet) {
+      await this.appendAudit(
+        tenantId,
+        actor.userId,
+        'UNTRUSTED_CONTENT_SUBMITTED_FOR_AI',
+        finding.id,
+        {
+          sha256: createHash('sha256').update(snippet).digest('hex'),
+          length: snippet.length,
+        },
+      );
+    }
     const aiResp = await this.aiClient.evaluateEmailFinding(tenantId, {
       tenantId,
       findingId: finding.id,
@@ -1265,15 +2060,18 @@ export class EmailSecurityService {
   }
 
   async getControlsCoverage(tenantId: string) {
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
     });
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { window_end: 'desc' },
       take: 25,
     });
-    const activePolicies = await this.prisma.emailPolicyVersion.findMany({ // tenant_id
+    const activePolicies = await this.prisma.emailPolicyVersion.findMany({
+      // tenant_id
       where: { tenant_id: tenantId, status: 'ACTIVE' },
     });
     const latestManifest = await this.prisma.emailEvidenceManifest.findFirst({
@@ -1281,13 +2079,35 @@ export class EmailSecurityService {
       orderBy: { created_at: 'desc' },
     });
 
-    const hasActiveSource = connections.some((c) => c.status === 'ACTIVE');
+    const hasActiveSource = connections.some(
+      (c) => this.effectiveStatus(c).status === 'ACTIVE',
+    );
     const hasDegradedWindow = windows.some(
       (w) => w.completeness_grade !== 'COMPLETE',
     );
     const hasActivePolicy = activePolicies.length > 0;
     const hasVerifiedManifest = latestManifest?.status === 'VERIFIED';
 
+    // E08: every coverage fraction exposes numerator, denominator and exclusions.
+    const eligible = connections.filter((c) => c.status !== 'REVOKED');
+    const monitored = eligible.filter((c) =>
+      ['ACTIVE'].includes(this.effectiveStatus(c).status),
+    );
+    const excluded = eligible
+      .filter((c) => !monitored.includes(c))
+      .map((c) => {
+        const eff = this.effectiveStatus(c);
+        return {
+          connectionId: c.id,
+          provider: c.provider,
+          reason: eff.statusReason ?? eff.status,
+        };
+      });
+    const fraction = {
+      numerator: monitored.length,
+      denominator: eligible.length,
+      excluded,
+    };
     const deriveStatus = (met: boolean) =>
       connections.length === 0
         ? 'NO_COVERAGE'
@@ -1307,9 +2127,10 @@ export class EmailSecurityService {
           missingPrerequisites: hasActiveSource
             ? []
             : [
-              'Connect and verify Microsoft 365 or Google Workspace read-only source',
-            ],
+                'Connect and verify Microsoft 365 or Google Workspace read-only source',
+              ],
           latestManifestId: latestManifest?.id ?? null,
+          ...fraction,
         },
         {
           controlId: 'EMAIL-GOV-02',
@@ -1321,6 +2142,7 @@ export class EmailSecurityService {
             ? []
             : ['No active connector inventory configured'],
           latestManifestId: latestManifest?.id ?? null,
+          ...fraction,
         },
         {
           controlId: 'EMAIL-GOV-03',
@@ -1335,11 +2157,12 @@ export class EmailSecurityService {
               : []),
             ...(hasDegradedWindow
               ? [
-                'One or more reconciliation windows show missing/delayed events',
-              ]
+                  'One or more reconciliation windows show missing/delayed events',
+                ]
               : []),
           ],
           latestManifestId: latestManifest?.id ?? null,
+          ...fraction,
         },
         {
           controlId: 'EMAIL-GOV-04',
@@ -1352,14 +2175,95 @@ export class EmailSecurityService {
             ? []
             : ['Generate and verify an email evidence manifest export'],
           latestManifestId: latestManifest?.id ?? null,
+          ...fraction,
         },
       ],
     };
   }
 
-  async listEvidenceManifests(tenantId: string) {
-    return this.prisma.emailEvidenceManifest.findMany({ // tenant_id
-      where: { tenant_id: tenantId },
+  /** WF-08 "View evidence": control -> windows -> manifests -> findings for a period, with the fraction behind it. */
+  async getControlEvidence(
+    tenantId: string,
+    controlId: string,
+    range: { windowStart?: string; windowEnd?: string },
+  ) {
+    const coverage = await this.getControlsCoverage(tenantId);
+    const control = coverage.controls.find((c) => c.controlId === controlId);
+    if (!control) {
+      throw new NotFoundException(`Email control '${controlId}' not found`);
+    }
+    const end = range.windowEnd ? new Date(range.windowEnd) : new Date();
+    const start = range.windowStart
+      ? new Date(range.windowStart)
+      : new Date(end.getTime() - 30 * 86_400_000);
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start >= end
+    ) {
+      throw new BadRequestException(
+        'INVALID_RANGE: windowStart must be earlier than windowEnd',
+      );
+    }
+    const [manifests, findings] = await Promise.all([
+      this.prisma.emailEvidenceManifest.findMany({
+        // tenant_id
+        where: {
+          tenant_id: tenantId,
+          time_end: { gte: start },
+          time_start: { lte: end },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+      this.prisma.emailThreatFinding.findMany({
+        // tenant_id
+        where: { tenant_id: tenantId, observed_at: { gte: start, lte: end } },
+        orderBy: { observed_at: 'desc' },
+        take: 200,
+        select: { id: true, observed_at: true, policy_version: true },
+      }),
+    ]);
+    return {
+      controlId,
+      status: control.status,
+      windowStart: start.toISOString(),
+      windowEnd: end.toISOString(),
+      numerator: control.numerator,
+      denominator: control.denominator,
+      excluded: control.excluded,
+      manifests: manifests.map((m) => ({
+        id: m.id,
+        merkleRoot: m.merkle_root,
+        status: m.status,
+        createdAt: m.created_at.toISOString(),
+        coverageGaps: m.coverage_gaps,
+      })),
+      findings: findings.map((f) => ({
+        id: f.id,
+        observedAt: f.observed_at.toISOString(),
+        policyVersion: f.policy_version,
+      })),
+      limitations:
+        'Cryptographic integrity of captured records is not proof of completeness or detection accuracy; excluded and missing sources are listed separately.',
+    };
+  }
+
+  async listEvidenceManifests(tenantId: string, actor?: EmailActorContext) {
+    // External auditors see only manifests expressly shared with them, while the grant is live (T09).
+    const auditorOnly = actor ? this.isAuditorOnly(actor.roleCodes) : false;
+    return this.prisma.emailEvidenceManifest.findMany({
+      // tenant_id
+      where: {
+        tenant_id: tenantId,
+        ...(auditorOnly
+          ? {
+              auditor_principal_id: actor!.userId,
+              auditor_grant_revoked_at: null,
+              auditor_grant_expires_at: { gt: new Date() },
+            }
+          : {}),
+      },
       orderBy: { created_at: 'desc' },
       take: 50,
     });
@@ -1385,20 +2289,23 @@ export class EmailSecurityService {
     const startDate = new Date(startMs);
     const endDate = new Date(endMs);
 
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         ...(dto.sourceProvider ? { provider: dto.sourceProvider } : {}),
         ...(dto.jurisdiction ? { residency_code: dto.jurisdiction } : {}),
       },
     });
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         window_end: { gte: startDate, lte: endDate },
       },
     });
-    const findings = await this.prisma.emailThreatFinding.findMany({ // tenant_id
+    const findings = await this.prisma.emailThreatFinding.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         observed_at: { gte: startDate, lte: endDate },
@@ -1442,11 +2349,11 @@ export class EmailSecurityService {
 
     const exclusions = dto.sourceProvider
       ? [
-        {
-          type: 'PROVIDER_FILTER',
-          excludedOtherProviders: dto.sourceProvider,
-        },
-      ]
+          {
+            type: 'PROVIDER_FILTER',
+            excludedOtherProviders: dto.sourceProvider,
+          },
+        ]
       : [];
 
     const manifestId = randomUUID();
@@ -1481,9 +2388,9 @@ export class EmailSecurityService {
         verifier_version: String(anchored?.verifierVersion || '1.0.0'),
         detached_checksum: String(
           anchored?.detachedChecksum ||
-          createHash('sha256')
-            .update(canonicalEventHashes.join('|'))
-            .digest('hex'),
+            createHash('sha256')
+              .update(canonicalEventHashes.join('|'))
+              .digest('hex'),
         ),
         status: 'SEALED',
         created_by: actor.userId,
@@ -1556,7 +2463,8 @@ export class EmailSecurityService {
   }
 
   async listPolicies(tenantId: string) {
-    return this.prisma.emailPolicyVersion.findMany({ // tenant_id
+    return this.prisma.emailPolicyVersion.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: [{ policy_key: 'asc' }, { version: 'desc' }],
     });
@@ -1728,7 +2636,8 @@ export class EmailSecurityService {
   }
 
   async getBehaviourOverview(tenantId: string) {
-    const decisions = await this.prisma.emailDetectionDecision.findMany({ // tenant_id
+    const decisions = await this.prisma.emailDetectionDecision.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       include: { finding: true },
       orderBy: { created_at: 'desc' },
@@ -1770,26 +2679,26 @@ export class EmailSecurityService {
 
     const record = latestDecision
       ? await this.prisma.emailDetectionDecision.update({
-        where: { id: latestDecision.id },
-        data: {
-          adjudicated_label: dto.label,
-          native_baseline_verdict:
-            dto.nativeBaselineVerdict ?? finding.provider_verdict,
-          false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
-        },
-      })
+          where: { id: latestDecision.id },
+          data: {
+            adjudicated_label: dto.label,
+            native_baseline_verdict:
+              dto.nativeBaselineVerdict ?? finding.provider_verdict,
+            false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
+          },
+        })
       : await this.prisma.emailDetectionDecision.create({
-        data: {
-          tenant_id: tenantId,
-          finding_id: finding.id,
-          detector_tier: 'DETERMINISTIC',
-          detector_version: '1.0.0',
-          adjudicated_label: dto.label,
-          native_baseline_verdict:
-            dto.nativeBaselineVerdict ?? finding.provider_verdict,
-          false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
-        },
-      });
+          data: {
+            tenant_id: tenantId,
+            finding_id: finding.id,
+            detector_tier: 'DETERMINISTIC',
+            detector_version: '1.0.0',
+            adjudicated_label: dto.label,
+            native_baseline_verdict:
+              dto.nativeBaselineVerdict ?? finding.provider_verdict,
+            false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
+          },
+        });
 
     await this.appendAudit(
       tenantId,
@@ -1834,9 +2743,15 @@ export class EmailSecurityService {
       );
     }
 
-    const updated = await this.prisma.emailDetectionDecision.update({
-      where: { id: decision.id },
+    this.assertVersion(decision.version, dto.expectedVersion);
+    const cas = await this.prisma.emailDetectionDecision.updateMany({
+      where: {
+        id: decision.id,
+        tenant_id: tenantId,
+        version: decision.version,
+      },
       data: {
+        version: { increment: 1 },
         reviewer_id: actor.userId,
         reviewer_outcome: dto.decision,
         reviewer_rationale: dto.rationale ?? null,
@@ -1848,6 +2763,12 @@ export class EmailSecurityService {
               ? 'BENIGN'
               : 'INSUFFICIENT_EVIDENCE',
       },
+    });
+    if (cas.count !== 1) {
+      this.assertVersion(decision.version + 1, dto.expectedVersion);
+    }
+    const updated = await this.prisma.emailDetectionDecision.findFirst({
+      where: { id: decision.id, tenant_id: tenantId },
     });
 
     await this.appendAudit(
@@ -1862,7 +2783,8 @@ export class EmailSecurityService {
   }
 
   async listActions(tenantId: string) {
-    const proposals = await this.prisma.emailActionProposal.findMany({ // tenant_id
+    const proposals = await this.prisma.emailActionProposal.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { created_at: 'desc' },
       take: 50,
@@ -2064,9 +2986,14 @@ export class EmailSecurityService {
         initiatedBy: proposal.initiated_by,
         approvedBy: proposal.approved_by,
         approvalExpiresAt: proposal.approval_expires_at?.toISOString() ?? null,
-        hasDedicatedWriteCredential: Boolean(
-          process.env.EMAIL_PHASE2_WRITE_CREDENTIAL_CONFIGURED === 'true',
-        ),
+        // Per-tenant, per-provider vault entry, not a deployment-wide flag (SEC-04).
+        hasDedicatedWriteCredential:
+          process.env.EMAIL_PHASE2_WRITE_CREDENTIAL_CONFIGURED === 'true' &&
+          (await this.vault.hasActive(
+            tenantId,
+            'PHASE2_WRITE',
+            proposal.provider,
+          )),
         dryRun: options?.dryRun ?? false,
         idempotencyKey: options?.idempotencyKey,
         actorTenantId: tenantId,
@@ -2152,16 +3079,19 @@ export class EmailSecurityService {
 
   async getSettingsAndGovernance(tenantId: string) {
     const [connections, recentAudit, manifests] = await Promise.all([
-      this.prisma.emailSourceConnection.findMany({ // tenant_id
+      this.prisma.emailSourceConnection.findMany({
+        // tenant_id
         where: { tenant_id: tenantId },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.emailAccessAuditEvent.findMany({ // tenant_id
+      this.prisma.emailAccessAuditEvent.findMany({
+        // tenant_id
         where: { tenant_id: tenantId },
         orderBy: { created_at: 'desc' },
         take: 50,
       }),
-      this.prisma.emailEvidenceManifest.findMany({ // tenant_id
+      this.prisma.emailEvidenceManifest.findMany({
+        // tenant_id
         where: {
           tenant_id: tenantId,
           auditor_principal_id: { not: null },
@@ -2174,9 +3104,10 @@ export class EmailSecurityService {
     return {
       phase2ActionsLocked: !this.isPhase2ActionsEnabled(),
       supportedProviders: ALLOWED_EMAIL_PROVIDERS,
-      connections,
+      connections: connections.map((c) => this.presentConnection(c)),
       activeAuditorGrants: manifests.filter(
         (m) =>
+          !m.auditor_grant_revoked_at &&
           m.auditor_grant_expires_at &&
           m.auditor_grant_expires_at.getTime() > Date.now(),
       ),
@@ -2202,13 +3133,25 @@ export class EmailSecurityService {
       Date.now() + dto.expiresInHours * 60 * 60 * 1000,
     );
 
-    await this.prisma.emailEvidenceManifest.updateMany({
-      where: { tenant_id: tenantId },
+    const manifestIds = [...new Set(dto.manifestIds || [])];
+    if (manifestIds.length === 0) {
+      throw new BadRequestException(
+        'AUDITOR_GRANT_SCOPE_REQUIRED: select the evidence manifests to share (T09)',
+      );
+    }
+    const res = await this.prisma.emailEvidenceManifest.updateMany({
+      where: { tenant_id: tenantId, id: { in: manifestIds } },
       data: {
         auditor_principal_id: dto.auditorPrincipalId,
         auditor_grant_expires_at: expiresAt,
+        auditor_grant_revoked_at: null,
       },
     });
+    if (res.count !== manifestIds.length) {
+      throw new NotFoundException(
+        'One or more evidence manifests were not found for this tenant',
+      );
+    }
 
     await this.appendAudit(
       tenantId,
@@ -2218,13 +3161,37 @@ export class EmailSecurityService {
       {
         auditorPrincipalId: dto.auditorPrincipalId,
         expiresAt: expiresAt.toISOString(),
+        manifestIds,
       },
     );
 
     return {
       auditorPrincipalId: dto.auditorPrincipalId,
       expiresAt: expiresAt.toISOString(),
+      manifestIds,
       scopedRole: 'SECURITY_AUDITOR',
+    };
+  }
+
+  async listAccessGrants(tenantId: string) {
+    const manifests = await this.prisma.emailEvidenceManifest.findMany({
+      // tenant_id
+      where: { tenant_id: tenantId, auditor_principal_id: { not: null } },
+      orderBy: { created_at: 'desc' },
+      take: 200,
+    });
+    const now = Date.now();
+    return {
+      grants: manifests.map((m) => ({
+        manifestId: m.id,
+        auditorPrincipalId: m.auditor_principal_id,
+        expiresAt: m.auditor_grant_expires_at?.toISOString() ?? null,
+        revokedAt: m.auditor_grant_revoked_at?.toISOString() ?? null,
+        active:
+          !m.auditor_grant_revoked_at &&
+          m.auditor_grant_expires_at != null &&
+          m.auditor_grant_expires_at.getTime() > now,
+      })),
     };
   }
 
@@ -2239,7 +3206,8 @@ export class EmailSecurityService {
   }
 
   async getPrivacyInventory(tenantId: string) {
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
     });
 

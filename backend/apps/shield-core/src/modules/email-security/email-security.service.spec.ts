@@ -41,6 +41,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
         findFirst: jest.fn(),
         upsert: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       emailThreatAdjudication: {
         findFirst: jest.fn(),
@@ -51,6 +52,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       emailPolicyVersion: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -103,6 +105,32 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       verifyEmailManifest: jest.fn(),
     };
 
+    const vault: any = {
+      assertConfigured: jest.fn(),
+      store: jest.fn().mockResolvedValue('sec-1'),
+      reveal: jest.fn().mockResolvedValue('secret-value'),
+      revoke: jest.fn().mockResolvedValue(1),
+      hasActive: jest.fn().mockResolvedValue(false),
+    };
+    const oauth: any = {
+      isConfigured: jest.fn().mockReturnValue(true),
+      buildAuthorizationUrl: jest
+        .fn()
+        .mockReturnValue('https://login.example/authorize?state=x'),
+      exchangeCode: jest.fn().mockResolvedValue({
+        accessToken: 'at-1',
+        refreshToken: 'rt-1',
+        expiresInSeconds: 3600,
+        grantedScopes: ['https://graph.microsoft.com/SecurityAlert.Read.All'],
+      }),
+      refreshAccessToken: jest.fn().mockResolvedValue({
+        accessToken: 'at-2',
+        refreshToken: null,
+        expiresInSeconds: 3600,
+        grantedScopes: [],
+      }),
+    };
+
     const service = new EmailSecurityService(
       prisma,
       caseService,
@@ -110,6 +138,8 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       aiClient,
       actionClient,
       anchorClient,
+      vault,
+      oauth,
     );
 
     return {
@@ -120,6 +150,8 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       aiClient,
       actionClient,
       anchorClient,
+      vault,
+      oauth,
     };
   }
 
@@ -174,7 +206,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
     });
 
     await expect(
-      service.syncConnector(tenantId, adminActor, 'conn-1', { events: [] }),
+      service.syncConnector(tenantId, adminActor, 'conn-1'),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -289,20 +321,29 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
-  it('enforces bounded time-limited auditor grants (T09)', async () => {
-    const { service } = createService();
+  it('enforces bounded, manifest-scoped auditor grants (T09)', async () => {
+    const { service, prisma } = createService();
     await expect(
       service.grantAuditorAccess(tenantId, adminActor, {
         auditorPrincipalId: 'auditor-1',
         expiresInHours: 500,
+        manifestIds: ['man-1'],
       }),
     ).rejects.toThrow(BadRequestException);
 
+    prisma.emailEvidenceManifest.updateMany.mockResolvedValue({ count: 1 });
     const granted = await service.grantAuditorAccess(tenantId, adminActor, {
       auditorPrincipalId: 'auditor-1',
       expiresInHours: 24,
+      manifestIds: ['man-1'],
     });
     expect(granted.scopedRole).toBe('SECURITY_AUDITOR');
+    expect(granted.manifestIds).toEqual(['man-1']);
+    expect(prisma.emailEvidenceManifest.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenant_id: tenantId, id: { in: ['man-1'] } },
+      }),
+    );
   });
 
   it('covers onboarding verify, sync, backfill validation, evidence, policy lifecycle, AI behaviour, actions, and privacy inventory', async () => {
@@ -313,6 +354,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       aiClient,
       actionClient,
       anchorClient,
+      vault,
     } = createService();
 
     prisma.emailConnectionIntent.create.mockResolvedValue({
@@ -332,6 +374,8 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       requestedScopes: ['SecurityAlert.Read.All'],
     });
     expect(intent.intentId).toBe('int-1');
+    expect(intent.authorizationUrl).toContain('https://login.example/');
+    expect(intent).not.toHaveProperty('oauthState');
 
     prisma.emailConnectionIntent.findFirst.mockResolvedValue({
       id: 'int-1',
@@ -339,6 +383,8 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       provider: 'MICROSOFT_365',
       requested_mode: 'READ_ONLY_TELEMETRY',
       oauth_state: 'state-123',
+      pkce_verifier_ref: 'sec-pkce',
+      status: 'CONSENT_PENDING',
       requested_scopes: ['SecurityAlert.Read.All'],
       residency_code: 'eu-west-1',
       expires_at: new Date(Date.now() + 60000),
@@ -347,24 +393,31 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
     prisma.emailSourceConnection.create.mockResolvedValue({
       id: 'conn-1',
       provider: 'MICROSOFT_365',
-      status: 'DEGRADED',
+      status: 'VALIDATING',
+    });
+    prisma.emailSourceConnection.update.mockResolvedValue({
+      id: 'conn-1',
+      provider: 'MICROSOFT_365',
+      status: 'VALIDATING',
+      credential_ref: 'sec-1',
     });
     prisma.emailConnectionIntent.update.mockResolvedValue({
       id: 'int-1',
-      status: 'ACTIVATED',
+      status: 'VERIFIED',
     });
-    const verified = await service.verifyConnectionIntent(
+    const verified = await service.handleOAuthCallback(tenantId, adminActor, {
+      state: 'state-123',
+      code: 'auth-code',
+    });
+    expect(verified.status).toBe('VERIFIED');
+    // Never ACTIVE from the OAuth handshake alone (WF-03).
+    expect(verified.connection?.status).toBe('VALIDATING');
+    expect(verified.connection).not.toHaveProperty('credential_ref');
+    expect(vault.reveal).toHaveBeenCalledWith(
       tenantId,
-      adminActor,
-      'int-1',
-      {
-        oauthState: 'state-123',
-        consentGranted: true,
-        grantedScopes: ['SecurityAlert.Read.All'],
-        defenderLicenceVerified: false,
-      },
+      'sec-pkce',
+      'PKCE_VERIFIER',
     );
-    expect(verified.connection?.status).toBe('DEGRADED');
 
     prisma.emailSourceConnection.findFirst.mockResolvedValue({
       id: 'conn-1',
@@ -373,14 +426,28 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       status: 'ACTIVE',
       environment_id: 'prod',
       residency_code: 'eu-west-1',
+      credential_ref: 'sec-1',
     });
     await service.getSourceCoverage(tenantId);
     await service.listConnectors(tenantId);
     await service.getSourceHealth(tenantId, 'conn-1');
     ingestClient.testEmailSource.mockResolvedValue({
-      data: { status: 'HEALTHY_SYNCED' },
+      data: {
+        status: 'HEALTHY',
+        capabilityReport: {
+          availableEventTypes: ['email.provider.alert.v1'],
+          unavailableEventTypes: [],
+          limitedCapability: false,
+        },
+      },
     });
-    await service.testConnector(tenantId, adminActor, 'conn-1');
+    const tested = await service.testConnector(tenantId, adminActor, 'conn-1');
+    expect(tested.passed).toBe(true);
+    expect(ingestClient.testEmailSource).toHaveBeenCalledWith(
+      tenantId,
+      'conn-1',
+      { accessToken: 'at-2' },
+    );
 
     prisma.emailThreatFinding.upsert.mockResolvedValue({ id: 'f-1' });
     prisma.sourceCoverageWindow.create.mockResolvedValue({ id: 'w-1' });
@@ -388,21 +455,29 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       id: 'conn-1',
       status: 'REVOKED',
     });
+    ingestClient.syncEmailSource.mockResolvedValueOnce({
+      data: {
+        status: 'RATE_LIMITED',
+        normalizedRecords: [],
+        expectedCount: null,
+        gaps: [{ reason: 'PROVIDER_429_RATE_LIMITED' }],
+      },
+    });
     const rateLimited = await service.syncConnector(
       tenantId,
       adminActor,
       'conn-1',
-      {
-        events: [],
-        expectedCount: 3,
-        simulateRateLimit: true,
-      },
     );
     expect(rateLimited.status).toBe('DEGRADED');
+    // No provider total -> completeness cannot be asserted.
+    expect(rateLimited.completenessGrade).toBe('UNKNOWN');
 
     ingestClient.syncEmailSource.mockResolvedValue({
       data: {
-        status: 'HEALTHY_SYNCED',
+        status: 'SYNCED',
+        expectedCount: 1,
+        completenessGrade: 'COMPLETE',
+        nextCursor: '2026-11-24T00:00:00Z',
         normalizedRecords: [
           {
             sourceEventRef: 'evt-1',
@@ -414,9 +489,14 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
         ],
       },
     });
-    const synced = await service.syncConnector(tenantId, adminActor, 'conn-1', {
-      events: [{ id: 'evt-1' }],
-    });
+    prisma.sourceCoverageWindow.create.mockImplementation(
+      async ({ data }: any) => ({
+        id: 'w-2',
+        ...data,
+      }),
+    );
+    const synced = await service.syncConnector(tenantId, adminActor, 'conn-1');
+    expect(synced.completenessGrade).toBe('COMPLETE');
     expect(synced.ingestedCount).toBe(1);
 
     await expect(
@@ -446,6 +526,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       threat_class: 'BEC',
       severity: 'HIGH',
       subject_ref: 'hash-1',
+      version: 1,
     });
     prisma.emailThreatAdjudication.findFirst.mockResolvedValue(null);
     prisma.emailThreatAdjudication.create.mockResolvedValue({ id: 'adj-1' });
@@ -457,6 +538,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       decision: 'CONFIRMED',
       rationale: 'Verified spoofing',
       idempotencyKey: 'k-1',
+      expectedVersion: 1,
     });
     await service.getThreatDetail(tenantId, adminActor, 'f-1');
     aiClient.evaluateEmailFinding.mockResolvedValue({
@@ -530,7 +612,10 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
       data: { totalEvaluated: 0 },
     });
     await service.getBehaviourOverview(tenantId);
-    prisma.emailDetectionDecision.findFirst.mockResolvedValue({ id: 'dec-1' });
+    prisma.emailDetectionDecision.findFirst.mockResolvedValue({
+      id: 'dec-1',
+      version: 1,
+    });
     prisma.emailDetectionDecision.update.mockResolvedValue({ id: 'dec-1' });
     await service.recordBehaviourLabel(tenantId, adminActor, {
       findingId: 'f-1',
@@ -540,6 +625,7 @@ describe('EmailSecurityService (ZoikoShield Email Security)', () => {
     await service.decideAnalysis(tenantId, reviewerActor, 'dec-1', {
       decision: 'CONFIRMED',
       rationale: 'Confirmed',
+      expectedVersion: 1,
     });
 
     prisma.emailActionProposal.create.mockResolvedValue({ id: 'prop-1' });

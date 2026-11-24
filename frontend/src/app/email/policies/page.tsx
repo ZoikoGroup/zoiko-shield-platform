@@ -3,7 +3,15 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
-import { EmailWorkspaceHeader } from "@/components/email/EmailSecurityUi";
+import {
+  EmailErrorNotice,
+  EmailLoadingNotice,
+  EmailNotice,
+  EmailTime,
+  EmailWorkspaceHeader,
+  classifyEmailError,
+  type ClassifiedEmailError,
+} from "@/components/email/EmailSecurityUi";
 
 export default function EmailPoliciesPage() {
   const [policies, setPolicies] = useState<any[]>([]);
@@ -13,15 +21,19 @@ export default function EmailPoliciesPage() {
     "Align Microsoft 365 and Google Workspace high-severity BEC alerts to CRITICAL queue.",
   );
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const loadPolicies = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const list = await ZoikoShieldApiClient.listEmailPolicies();
       setPolicies(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load email policies.");
+      setError(classifyEmailError(err, "Failed to load email policies."));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -45,7 +57,7 @@ export default function EmailPoliciesPage() {
       setMessage("Draft policy version created. Requires an independent second approver (E10).");
       await loadPolicies();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create draft policy.");
+      setError(classifyEmailError(err, "Failed to create draft policy."));
     }
   };
 
@@ -59,10 +71,16 @@ export default function EmailPoliciesPage() {
       if (action === "approve") await ZoikoShieldApiClient.approveEmailPolicy(id);
       if (action === "activate") await ZoikoShieldApiClient.activateEmailPolicy(id);
       if (action === "rollback") await ZoikoShieldApiClient.rollbackEmailPolicy(id);
-      setMessage(`Policy ${id} ${action}d cleanly.`);
+      setMessage(
+        action === "approve"
+          ? `Policy ${id} approved by an independent reviewer.`
+          : action === "activate"
+            ? `Policy ${id} activated as a new immutable version.`
+            : `Rollback recorded for policy ${id}; historical verdicts keep their original policy version.`,
+      );
       await loadPolicies();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${action} policy.`);
+      setError(classifyEmailError(err, `Failed to ${action} policy.`));
     }
   };
 
@@ -74,19 +92,8 @@ export default function EmailPoliciesPage() {
         activeHref="/email/policies"
       />
 
-      {message && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div
-          role="alert"
-          className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200"
-        >
-          {error}
-        </div>
-      )}
+      {message && <EmailNotice tone="success">{message}</EmailNotice>}
+      <EmailErrorNotice error={error} onRetry={error?.kind === "DENIED" ? undefined : loadPolicies} />
 
       <form
         onSubmit={handleDraft}
@@ -127,6 +134,16 @@ export default function EmailPoliciesPage() {
         </div>
       </form>
 
+      {loading && policies.length === 0 && !error && (
+        <EmailLoadingNotice label="Loading policy versions…" />
+      )}
+      {!loading && policies.length === 0 && !error && (
+        <EmailNotice tone="info">
+          No detection policy versions exist yet. Findings are evaluated against provider verdicts
+          only until a policy is approved and activated.
+        </EmailNotice>
+      )}
+
       <div className="space-y-3 text-xs">
         {policies.map((p) => (
           <div
@@ -141,9 +158,15 @@ export default function EmailPoliciesPage() {
                 </span>
               </div>
               <div className="text-slate-400">{p.rationale}</div>
-              <div className="font-mono text-[11px] text-slate-500">
+              <div className="font-mono text-[11px] text-slate-400">
                 Status: {p.status} · Author: {p.authored_by} · Approver:{" "}
                 {p.approved_by || "Pending independent reviewer"}
+                {p.effective_from ? (
+                  <>
+                    {" "}
+                    · Effective from <EmailTime iso={p.effective_from} />
+                  </>
+                ) : null}
               </div>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">

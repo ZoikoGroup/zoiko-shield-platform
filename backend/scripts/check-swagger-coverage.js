@@ -275,7 +275,11 @@ for (const route of publicRoutes) {
   if (route.file.includes('apps/shield-ingest/')) {
     if (
       route.file.endsWith('ingestion/webhook-ingest.controller.ts') ||
-      route.file.endsWith('ingestion/high-throughput-ingest.controller.ts')
+      route.file.endsWith('ingestion/high-throughput-ingest.controller.ts') ||
+      // Zoiko Mail SecurityEventEnvelope intake: public ingress authenticated by
+      // HMAC over the canonical envelope (ZS-ZM-ENG-003 07.3 / ZS-UX-EMTI-001 EW06).
+      (route.publicIngress &&
+        route.file.endsWith('email-security/email-ingest.controller.ts'))
     ) {
       expected.add('WebhookHmacAuth');
     } else if (!route.publicIngress) {

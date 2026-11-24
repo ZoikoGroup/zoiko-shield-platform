@@ -123,6 +123,17 @@ describe('ZoikoShield Email Security & Commercial Fix Workflows (WF-01..WF-14)',
     vi.spyOn(ZoikoShieldApiClient, 'getEmailSettings').mockResolvedValue({
       recentAudit: [],
     });
+    // Endpoints added for ZS-UX-EMTI-001; mocked so no real request outlives the test.
+    vi.spyOn(ZoikoShieldApiClient, 'listEmailProviders').mockResolvedValue([]);
+    vi.spyOn(ZoikoShieldApiClient, 'listEmailAccessGrants').mockResolvedValue({ grants: [] });
+    vi.spyOn(ZoikoShieldApiClient, 'getEmailThreatProvenance').mockResolvedValue({
+      findingId: 'threat-1',
+      timeline: [],
+      coverageExceptions: [],
+      detectorDecisions: [],
+    } as any);
+    vi.spyOn(ZoikoShieldApiClient, 'getEmailConnectorCapabilities').mockResolvedValue({} as any);
+    vi.spyOn(ZoikoShieldApiClient, 'getEmailControlEvidence').mockResolvedValue({} as any);
     vi.spyOn(ZoikoShieldApiClient, 'getEmailPrivacyInventory').mockResolvedValue({
       dataMinimizationMode: 'METADATA_AND_HASHED_INDICATORS_ONLY',
       rawBodyStorageEnabled: false,

@@ -60,6 +60,19 @@ import {
   OfflineVerificationReport,
   PolicyVersionRecord,
 } from "./types";
+import type {
+  EmailAccessGrant,
+  EmailConnectionCallbackResponse,
+  EmailConnectionIntentResponse,
+  EmailConnectorCapabilities,
+  EmailConnectorSyncResult,
+  EmailConnectorTestResult,
+  EmailControlEvidence,
+  EmailMailBindingResponse,
+  EmailOAuthProviderType,
+  EmailProviderCatalogueEntry,
+  EmailThreatProvenance,
+} from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
 import type {
@@ -72,7 +85,13 @@ import type {
 async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const body = await res.json();
-    return body?.message || fallback;
+    // Nest sends an array of validation messages for 400s; keep it readable.
+    const message = Array.isArray(body?.message) ? body.message.join("; ") : body?.message;
+    // Machine-readable codes (e.g. STALE_VERSION) are surfaced so callers can
+    // branch on them even when the human message omits the code.
+    const code = typeof body?.code === "string" ? body.code : null;
+    if (code && message && !String(message).includes(code)) return `${code}: ${message}`;
+    return message || code || fallback;
   } catch {
     return fallback;
   }
@@ -6608,13 +6627,24 @@ resource "aws_iam_policy" "least_privilege" {
     });
   }
 
+  /** GET /email/providers — which sources this tenant may connect, and why one is unavailable. */
+  static async listEmailProviders(): Promise<EmailProviderCatalogueEntry[]> {
+    return this.safeFetch('/api/v1/email/providers', { method: 'GET' }, null, {
+      confirmed: true,
+    });
+  }
+
+  /**
+   * Starts the OAuth consent flow. The server generates `state` and the PKCE
+   * verifier; the client only follows `authorizationUrl`.
+   */
   static async createEmailConnectionIntent(payload: {
-    provider: 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+    provider: EmailOAuthProviderType;
     displayName: string;
     requestedMode?: 'READ_ONLY_TELEMETRY' | 'PHASE1_METADATA_SCOPED' | 'PHASE2_ACTIONS';
     requestedScopes: string[];
     residencyCode?: string;
-  }): Promise<any> {
+  }): Promise<EmailConnectionIntentResponse> {
     return this.safeFetch(
       '/api/v1/email/connection-intents',
       { method: 'POST', body: JSON.stringify(payload) },
@@ -6623,25 +6653,31 @@ resource "aws_iam_policy" "least_privilege" {
     );
   }
 
-  static async verifyEmailConnectionIntent(
-    intentId: string,
-    payload: {
-      oauthState: string;
-      consentGranted: boolean;
-      grantedScopes: string[];
-      defenderLicenceVerified?: boolean;
-      exchangeAppRbacVerified?: boolean;
-    },
-  ): Promise<any> {
+  static async getEmailConnectionIntent(intentId: string): Promise<EmailConnectionIntentResponse> {
     return this.safeFetch(
-      `/api/v1/email/connection-intents/${encodeURIComponent(intentId)}/verify`,
+      `/api/v1/email/connection-intents/${encodeURIComponent(intentId)}`,
+      { method: 'GET' },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  /** Relays the provider redirect (code/state or error) to the backend, which owns the exchange. */
+  static async completeEmailConnectionCallback(payload: {
+    state: string;
+    code?: string;
+    error?: string;
+    errorDescription?: string;
+  }): Promise<EmailConnectionCallbackResponse> {
+    return this.safeFetch(
+      '/api/v1/email/connection-intents/callback',
       { method: 'POST', body: JSON.stringify(payload) },
       null,
       { confirmed: true },
     );
   }
 
-  static async testEmailConnector(connectionId: string): Promise<any> {
+  static async testEmailConnector(connectionId: string): Promise<EmailConnectorTestResult> {
     return this.safeFetch(
       `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/test`,
       { method: 'POST', body: JSON.stringify({}) },
@@ -6650,16 +6686,41 @@ resource "aws_iam_policy" "least_privilege" {
     );
   }
 
-  static async syncEmailConnector(
+  static async activateEmailConnector(connectionId: string): Promise<any> {
+    return this.safeFetch(
+      `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/activate`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async getEmailConnectorCapabilities(
     connectionId: string,
-    payload: {
-      events: Record<string, unknown>[];
-      expectedCount?: number;
-      simulateRateLimit?: boolean;
-    },
-  ): Promise<any> {
+  ): Promise<EmailConnectorCapabilities> {
+    return this.safeFetch(
+      `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/capabilities`,
+      { method: 'GET' },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  /** Server pulls from the provider; the client never supplies events or counts. */
+  static async syncEmailConnector(connectionId: string): Promise<EmailConnectorSyncResult> {
     return this.safeFetch(
       `/api/v1/email/connectors/${encodeURIComponent(connectionId)}/sync`,
+      { method: 'POST', body: JSON.stringify({}) },
+      null,
+      { confirmed: true },
+    );
+  }
+
+  static async createEmailMailBinding(payload: {
+    displayName: string;
+  }): Promise<EmailMailBindingResponse> {
+    return this.safeFetch(
+      '/api/v1/email/mail-bindings',
       { method: 'POST', body: JSON.stringify(payload) },
       null,
       { confirmed: true },
@@ -6724,6 +6785,15 @@ resource "aws_iam_policy" "least_privilege" {
     );
   }
 
+  static async getEmailThreatProvenance(threatId: string): Promise<EmailThreatProvenance> {
+    return this.safeFetch(
+      `/api/v1/email/threats/${encodeURIComponent(threatId)}/provenance`,
+      { method: 'GET' },
+      null,
+      { confirmed: true },
+    );
+  }
+
   static async promoteEmailThreatToCase(
     threatId: string,
     payload: { title?: string; severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' } = {},
@@ -6742,6 +6812,8 @@ resource "aws_iam_policy" "least_privilege" {
       decision: 'CONFIRMED' | 'BENIGN' | 'FALSE_POSITIVE' | 'INSUFFICIENT_EVIDENCE';
       rationale: string;
       idempotencyKey: string;
+      /** Version of the finding the analyst reviewed; 409 STALE_VERSION if it moved (E07). */
+      expectedVersion: number;
     },
   ): Promise<any> {
     return this.safeFetch(
@@ -6768,6 +6840,22 @@ resource "aws_iam_policy" "least_privilege" {
     return this.safeFetch('/api/v1/email/controls/coverage', { method: 'GET' }, null, {
       confirmed: true,
     });
+  }
+
+  static async getEmailControlEvidence(
+    controlId: string,
+    window?: { windowStart?: string; windowEnd?: string },
+  ): Promise<EmailControlEvidence> {
+    const qs = new URLSearchParams();
+    if (window?.windowStart) qs.set('windowStart', window.windowStart);
+    if (window?.windowEnd) qs.set('windowEnd', window.windowEnd);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return this.safeFetch(
+      `/api/v1/email/controls/${encodeURIComponent(controlId)}/evidence${suffix}`,
+      { method: 'GET' },
+      null,
+      { confirmed: true },
+    );
   }
 
   static async listEmailEvidenceManifests(): Promise<any[]> {
@@ -6884,6 +6972,8 @@ resource "aws_iam_policy" "least_privilege" {
     payload: {
       decision: 'CONFIRMED' | 'BENIGN' | 'INSUFFICIENT_EVIDENCE';
       rationale?: string;
+      /** Version of the analysis the reviewer saw; 409 STALE_VERSION if it moved (E07). */
+      expectedVersion: number;
     },
   ): Promise<any> {
     return this.safeFetch(
@@ -6902,7 +6992,7 @@ resource "aws_iam_policy" "least_privilege" {
 
   static async proposeEmailAction(payload: {
     findingId?: string;
-    provider: 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+    provider: EmailOAuthProviderType;
     requestedAction:
       | 'QUARANTINE_MESSAGE'
       | 'PULL_BACK_MESSAGE'
@@ -6968,9 +7058,11 @@ resource "aws_iam_policy" "least_privilege" {
     });
   }
 
+  /** Grants apply only to the expressly shared manifests (WF-09 / T09). */
   static async grantEmailAuditorAccess(payload: {
     auditorPrincipalId: string;
     expiresInHours: number;
+    manifestIds: string[];
   }): Promise<any> {
     return this.safeFetch(
       '/api/v1/email/access-grants',
@@ -6978,6 +7070,12 @@ resource "aws_iam_policy" "least_privilege" {
       null,
       { confirmed: true },
     );
+  }
+
+  static async listEmailAccessGrants(): Promise<{ grants: EmailAccessGrant[] }> {
+    return this.safeFetch('/api/v1/email/access-grants', { method: 'GET' }, null, {
+      confirmed: true,
+    });
   }
 
   static async revokeEmailAccess(payload: {

@@ -1,4 +1,7 @@
-import { EmailBecAdjudicationService } from './email-bec-adjudication.service';
+import {
+  EmailBecAdjudicationService,
+  wilsonInterval95,
+} from './email-bec-adjudication.service';
 import type { EmailLlmReviewPort } from './email-llm-review.port';
 
 describe('EmailBecAdjudicationService (T23, T24, S03, S04, E12)', () => {
@@ -138,5 +141,29 @@ describe('EmailBecAdjudicationService (T23, T24, S03, S04, E12)', () => {
     expect(bench.incrementalDetectionsMissedByNative).toBe(1);
     expect(bench.falsePositives).toBe(1);
     expect(bench.totalFalsePositiveCostUsd).toBe(42.5);
+  });
+
+  it('reports Wilson 95% intervals with denominators (E11 / S03)', () => {
+    const ci = wilsonInterval95(8, 10);
+    expect(ci.point).toBe(0.8);
+    expect(ci.lower).toBeCloseTo(0.4902, 3);
+    expect(ci.upper).toBeCloseTo(0.9433, 3);
+    expect(wilsonInterval95(0, 0)).toEqual({
+      point: null,
+      lower: null,
+      upper: null,
+      n: 0,
+    });
+    const bench = service.computeNativeBaselineComparison([
+      { nativeBaselineVerdict: 'CLEAN', adjudicatedLabel: 'TRUE_POSITIVE' },
+      {
+        nativeBaselineVerdict: 'SUSPICIOUS',
+        adjudicatedLabel: 'TRUE_POSITIVE',
+      },
+    ]);
+    expect(bench.precisionDenominator).toBe(2);
+    expect(bench.precisionCi95.n).toBe(2);
+    expect(bench.nativeBaselineRecallDenominator).toBe(2);
+    expect(bench.nativeBaselineRecallOfConfirmed).toBe(0.5);
   });
 });

@@ -62810,12 +62810,48 @@ paths:
       responses:
         '201':
           description: Connection onboarding intent created.
-  /api/v1/email/connection-intents/{id}/verify:
+  /api/v1/email/providers:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List supported email security providers and whether each is enabled
+      operationId: getEmailProviders
+      description: Zoiko Mail is listed as disabled with a reason until ADR-ZSSEC-01 / D05 is approved.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: List supported email security providers and whether each is enabled.
+  /api/v1/email/connection-intents/callback:
     post:
       tags:
         - EmailSecurity
-      summary: Verify admin OAuth consent and activate email source connection (WF-03)
-      operationId: postEmailConnectionIntentVerify
+      summary: Complete provider OAuth consent (state + PKCE, server-side code exchange)
+      operationId: postEmailConnectionIntentCallback
+      description: Replaces the removed caller-asserted /verify route. The new connection starts in VALIDATING; it is never ACTIVE from the handshake alone.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Complete provider OAuth consent (state + PKCE, server-side code exchange).
+  /api/v1/email/connection-intents/{id}:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get a connection intent status (no secrets)
+      operationId: getEmailConnectionIntent
       security:
         - CookieAuth: []
         - BearerAuth: []
@@ -62826,6 +62862,126 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        '200':
+          description: Get a connection intent status (no secrets).
+  /api/v1/email/connectors/{id}/capabilities:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get provider capability inventory for a connector
+      operationId: getEmailConnectorCapabilities
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Get provider capability inventory for a connector.
+  /api/v1/email/connectors/{id}/activate:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Activate a connector after a recent passing provider test
+      operationId: postEmailConnectorActivate
+      description: 409 ACTIVATION_REQUIRES_PASSING_TEST or CONSENT_EXPIRED.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activate a connector after a recent passing provider test.
+  /api/v1/email/mail-bindings:
+    post:
+      tags:
+        - EmailSecurity
+      summary: Create a Zoiko Mail tenant binding (feature-gated)
+      operationId: postEmailMailBinding
+      description: 403 when the Zoiko Mail integration is not enabled.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Create a Zoiko Mail tenant binding (feature-gated).
+  /api/v1/email/threats/{id}/provenance:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get threat provenance rail and timeline (WF-06)
+      operationId: getEmailThreatProvenance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Get threat provenance rail and timeline (WF-06).
+  /api/v1/email/controls/{controlId}/evidence:
+    get:
+      tags:
+        - EmailSecurity
+      summary: Get control evidence with coverage numerator, denominator and exclusions (WF-08)
+      operationId: getEmailControlEvidence
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: controlId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: windowStart
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: windowEnd
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Get control evidence with coverage numerator, denominator and exclusions (WF-08).
+  /internal/v1/email/mail-events:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Hand off a verified Zoiko Mail security event to shield-core
+      operationId: postInternalEmailMailEvent
+      description: Called by shield-ingest after signature, registry, freshness and replay checks. Tenant is resolved from the opaque binding; 403 UNKNOWN_TENANT_BINDING otherwise.
+      security:
+        - InternalServiceAuth: []
       requestBody:
         required: true
         content:
@@ -62834,7 +62990,25 @@ paths:
               type: object
       responses:
         '200':
-          description: Verification outcome and connection activation status.
+          description: Hand off a verified Zoiko Mail security event to shield-core.
+  /api/v1/email-ingest/mail-events:
+    post:
+      tags:
+        - EmailSecurityIngest
+      summary: Receive a signed Zoiko Mail SecurityEventEnvelope (shield-ingest)
+      operationId: postEmailIngestMailEvent
+      description: Authenticated by HMAC signature over the canonical envelope, producer allowlist, freshness window, payload hash and event_id replay receipt. Feature-gated by EMAIL_ZOIKO_MAIL_INTEGRATION_ENABLED.
+      security:
+        - WebhookHmacAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Receive a signed Zoiko Mail SecurityEventEnvelope (shield-ingest).
   /api/v1/email/connectors/{id}/test:
     post:
       tags:
@@ -63473,6 +63647,19 @@ paths:
         '200':
           description: Chain verification result (valid flag, rows checked, unchained legacy rows, first broken sequence).
   /api/v1/email/access-grants:
+    get:
+      tags:
+        - EmailSecurity
+      summary: List manifest-scoped auditor access grants (WF-14)
+      operationId: getEmailAccessGrants
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: List manifest-scoped auditor access grants (WF-14).
     post:
       tags:
         - EmailSecurity

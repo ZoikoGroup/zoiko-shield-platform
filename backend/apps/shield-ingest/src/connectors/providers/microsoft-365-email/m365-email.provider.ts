@@ -110,8 +110,9 @@ export class Microsoft365EmailProvider
     accessToken?: string,
   ): Promise<HealthResult> {
     const started = Date.now();
-    const token =
-      accessToken || process.env.MS_GRAPH_TEST_ACCESS_TOKEN || undefined;
+    // Only the per-tenant token resolved by shield-core is accepted. A global
+    // env-var token would let one credential answer for every tenant.
+    const token = accessToken || undefined;
     if (!token) {
       return {
         status: 'UNVERIFIED',
@@ -177,23 +178,47 @@ export class Microsoft365EmailProvider
     }
   }
 
+  /**
+   * Fetch one page of Graph `/security/alerts_v2`. The first page is built
+   * from `sinceIso` (createdDateTime watermark) with `$count=true` so the
+   * provider-reported total becomes the coverage denominator; later pages
+   * follow `@odata.nextLink` verbatim. The token is never logged.
+   */
   async fetchAlertsPage(
     accessToken: string,
     nextLink?: string,
+    options: { sinceIso?: string | null; pageSize?: number } = {},
   ): Promise<{
     alerts: M365SecurityAlertV2[];
     nextLink?: string;
+    count?: number;
     rateLimited?: boolean;
     retryAfterSeconds?: number;
     httpStatus: number;
   }> {
-    const url =
-      nextLink || 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50';
+    let url = nextLink;
+    if (!url) {
+      const params = [
+        `$top=${Math.min(Math.max(options.pageSize ?? 50, 1), 999)}`,
+        '$count=true',
+      ];
+      if (options.sinceIso) {
+        params.push(
+          `$filter=${encodeURIComponent(`createdDateTime gt ${options.sinceIso}`)}`,
+        );
+      }
+      url = `https://graph.microsoft.com/v1.0/security/alerts_v2?${params.join('&')}`;
+    }
+    if (!url.startsWith('https://graph.microsoft.com/')) {
+      // Never follow a nextLink off the Graph host with a bearer token.
+      return { alerts: [], httpStatus: 400 };
+    }
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: 'application/json',
+        ConsistencyLevel: 'eventual',
       },
     });
     if (response.status === 429) {
@@ -211,10 +236,16 @@ export class Microsoft365EmailProvider
     const payload = (await response.json()) as {
       value?: M365SecurityAlertV2[];
       '@odata.nextLink'?: string;
+      '@odata.count'?: number;
     };
+    const count = payload['@odata.count'];
     return {
       alerts: Array.isArray(payload.value) ? payload.value : [],
       nextLink: payload['@odata.nextLink'],
+      count:
+        typeof count === 'number' && Number.isFinite(count) && count >= 0
+          ? count
+          : undefined,
       httpStatus: response.status,
     };
   }

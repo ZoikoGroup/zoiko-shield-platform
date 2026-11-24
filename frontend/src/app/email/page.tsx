@@ -2,23 +2,29 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowRight, RefreshCw } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import type { EmailOverviewResponse } from "@/lib/types";
-import { formatTimestamp } from "@/lib/utils";
+import { EMAIL_COPY, EMAIL_STATE_COPY } from "@/lib/email-copy";
 import { Button } from "@/components/ui/Button";
 import {
+  ConnectorStatusBadge,
+  EmailErrorNotice,
+  EmailLoadingNotice,
+  EmailTime,
   EmailTruthBanner,
   EmailWorkspaceHeader,
   ProtectionStateBadge,
   ProviderBadge,
+  classifyEmailError,
+  type ClassifiedEmailError,
 } from "@/components/email/EmailSecurityUi";
 
 export default function EmailOverviewPage() {
   const [overview, setOverview] = useState<EmailOverviewResponse | null>(null);
   const [windowHours, setWindowHours] = useState<number>(24);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -29,9 +35,10 @@ export default function EmailOverviewPage() {
     } catch (err) {
       setOverview(null);
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load email security posture from ZoikoShield backend.",
+        classifyEmailError(
+          err,
+          "Unable to load email security posture from ZoikoShield backend.",
+        ),
       );
     } finally {
       setLoading(false);
@@ -75,19 +82,13 @@ export default function EmailOverviewPage() {
         }
       />
 
-      {error && (
-        <div
-          role="alert"
-          className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200 flex items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{error}</span>
-          </div>
-          <Button variant="secondary" onClick={loadOverview}>
-            Retry
-          </Button>
-        </div>
+      <EmailErrorNotice
+        error={error}
+        onRetry={error?.kind === "DENIED" ? undefined : loadOverview}
+      />
+
+      {loading && !overview && !error && (
+        <EmailLoadingNotice label="Loading email security posture…" />
       )}
 
       {overview && (
@@ -165,8 +166,8 @@ export default function EmailOverviewPage() {
               </div>
               {overview.providers.length === 0 ? (
                 <div className="p-6 rounded-lg bg-surface border border-line text-center space-y-2">
-                  <p className="text-xs text-slate-400">
-                    No Microsoft 365 or Google Workspace email source connected yet.
+                  <p className="text-xs text-slate-300">
+                    {EMAIL_COPY.NO_CONNECTED_SOURCE}
                   </p>
                   <Link
                     href="/email/connectors/setup"
@@ -192,10 +193,16 @@ export default function EmailOverviewPage() {
                         </div>
                         <div className="text-[11px] font-mono text-slate-400">
                           Residency: {p.residencyCode} · Last sync:{" "}
-                          {p.lastSyncAt ? formatTimestamp(p.lastSyncAt) : "Never"}
+                          <EmailTime iso={p.lastSyncAt} />
                         </div>
                       </div>
-                      <ProtectionStateBadge state={p.status} />
+                      <ConnectorStatusBadge
+                        status={p.status}
+                        statusReason={(p as { statusReason?: string | null }).statusReason}
+                        consentExpiresAt={
+                          (p as { consentExpiresAt?: string | null }).consentExpiresAt
+                        }
+                      />
                     </li>
                   ))}
                 </ul>
@@ -215,8 +222,16 @@ export default function EmailOverviewPage() {
                 </Link>
               </div>
               {overview.recentThreats.length === 0 ? (
-                <div className="p-6 rounded-lg bg-surface border border-line text-center text-xs text-slate-400">
-                  No open email findings recorded in the selected window.
+                <div
+                  role="status"
+                  className="p-6 rounded-lg bg-surface border border-line text-center text-xs text-slate-300"
+                >
+                  {overview.protectionState === "NO_COVERAGE" ||
+                  overview.providers.length === 0
+                    ? EMAIL_COPY.NO_CONNECTED_SOURCE
+                    : overview.protectionState === "HEALTHY_SYNCED"
+                      ? EMAIL_STATE_COPY.NO_DATA_FOR_WINDOW
+                      : EMAIL_COPY.SOURCE_LAG}
                 </div>
               ) : (
                 <ul className="space-y-2">
@@ -233,7 +248,7 @@ export default function EmailOverviewPage() {
                           {t.threatClass} ({t.providerVerdict})
                         </Link>
                         <div className="text-[11px] font-mono text-slate-400">
-                          {t.severity} · {t.status} · {formatTimestamp(t.observedAt)}
+                          {t.severity} · {t.status} · <EmailTime iso={t.observedAt} />
                         </div>
                       </div>
                       <ProviderBadge provider={t.provider} />
