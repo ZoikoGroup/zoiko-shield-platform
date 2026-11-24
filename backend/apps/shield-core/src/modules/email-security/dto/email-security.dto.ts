@@ -307,6 +307,17 @@ export class EvaluateEmailAiDto {
   llmProposedCitations?: string[];
 }
 
+export class ExecuteEmailActionDto {
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  idempotencyKey?: string;
+}
+
 export class RollbackEmailActionDto {
   @IsOptional()
   @IsString()

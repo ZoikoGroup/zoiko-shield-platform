@@ -13,7 +13,11 @@ export interface SignedCommandEnvelope {
     | 'REVOKE_IAM_SESSION'
     | 'ISOLATE_ENDPOINT'
     | 'DISABLE_USER_ACCOUNT'
-    | 'QUARANTINE_SUBNET';
+    | 'QUARANTINE_SUBNET'
+    | 'QUARANTINE_MESSAGE'
+    | 'PULL_BACK_MESSAGE'
+    | 'REMOVE_FORWARDING_RULE'
+    | 'REVOKE_MAILBOX_SESSIONS';
   targetRef: string;
   authorityLevel: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
   approvalRef: string;

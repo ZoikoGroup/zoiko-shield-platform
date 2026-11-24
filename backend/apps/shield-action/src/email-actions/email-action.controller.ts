@@ -3,6 +3,7 @@ import { InternalAuthGuard } from '../internal-client/internal-auth.guard';
 import {
   EmailActionAdapterService,
   type EmailActionProposalInput,
+  type EmailActionRollbackInput,
 } from './email-action-adapter.service';
 
 @Controller('internal/v1/email-actions')
@@ -11,11 +12,9 @@ export class EmailActionController {
   constructor(private readonly adapterService: EmailActionAdapterService) {}
 
   @Post('simulate')
-  simulate(@Body() body: EmailActionProposalInput) {
-    return {
-      statusCode: HttpStatus.OK,
-      data: this.adapterService.simulate(body),
-    };
+  async simulate(@Body() body: EmailActionProposalInput) {
+    const data = await this.adapterService.simulate(body);
+    return { statusCode: HttpStatus.OK, data };
   }
 
   @Post('execute')
@@ -25,18 +24,8 @@ export class EmailActionController {
   }
 
   @Post('rollback')
-  rollback(
-    @Body()
-    body: {
-      proposalId: string;
-      tenantId: string;
-      requestedBy: string;
-      targetRefs: string[];
-    },
-  ) {
-    return {
-      statusCode: HttpStatus.OK,
-      data: this.adapterService.rollback(body),
-    };
+  async rollback(@Body() body: EmailActionRollbackInput) {
+    const data = await this.adapterService.rollback(body);
+    return { statusCode: HttpStatus.OK, data };
   }
 }

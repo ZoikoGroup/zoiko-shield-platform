@@ -94,6 +94,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Respond",
     items: [
       { label: "Incident Command", href: "/cases/incidents/command", icon: Flame },
+      { label: "Freeze Center", href: "/freeze", icon: Lock, tag: "KILL-SW", tagVariant: "critical" },
       { label: "Response Proposals", href: "/response-proposals", icon: AlertOctagon },
       { label: "Playbook Runs", href: "/playbooks", icon: Terminal },
       { label: "SOAR Actions & Freeze", href: "/actions", icon: Zap, tag: "R0-R4", tagVariant: "anchored" },

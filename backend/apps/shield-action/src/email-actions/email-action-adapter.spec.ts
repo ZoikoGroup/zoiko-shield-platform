@@ -63,13 +63,17 @@ describe('EmailActionAdapterService (T18, T26, T27, T28, E13)', () => {
     expect(port.mutate).not.toHaveBeenCalled();
   });
 
-  it('always permits safe simulation without mutating mailboxes (E13)', () => {
+  it('always permits safe simulation without mutating mailboxes (E13)', async () => {
     delete process.env.ENABLE_EMAIL_PHASE2_ACTIONS;
-    const sim = service.simulate(baseInput({ targetRefs: ['msg-1', 'msg-2'] }));
+    const sim = await service.simulate(
+      baseInput({ targetRefs: ['msg-1', 'msg-2'] }),
+    );
     expect(sim.mutatedMailbox).toBe(false);
     expect(sim.affectedCount).toBe(2);
     expect(sim.proposedRollbackPlan.reversible).toBe(true);
     expect(sim.blastRadius.blockedTargets).toEqual([]);
+    expect(sim.cedarAuthorization.reasonCode).toBe('PERMITTED_BY_POLICY');
+    expect(sim.signedCommand.signingKeyId).toContain('tenant-1');
     expect(port.mutate).not.toHaveBeenCalled();
   });
 
@@ -188,8 +192,8 @@ describe('EmailActionAdapterService (T18, T26, T27, T28, E13)', () => {
     ).rejects.toBeInstanceOf(EmailProviderMutationNotConfiguredError);
   });
 
-  it('rollback is a compensation request with no fabricated provider receipt', () => {
-    const rb = service.rollback({
+  it('rollback is a compensation request with no fabricated provider receipt', async () => {
+    const rb = await service.rollback({
       proposalId: 'p',
       tenantId: 't',
       requestedBy: 'u',
@@ -198,5 +202,7 @@ describe('EmailActionAdapterService (T18, T26, T27, T28, E13)', () => {
     expect(rb.status).toBe('COMPENSATION_REQUESTED');
     expect(rb.providerReceipt).toBeNull();
     expect(rb.reconciliationRequired).toBe(true);
+    expect(rb.cedarAuthorization.reasonCode).toBe('PERMITTED_BY_POLICY');
+    expect(rb.signedCommand.executionMode).toBe('COMPENSATION');
   });
 });

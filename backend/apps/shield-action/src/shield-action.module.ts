@@ -21,6 +21,7 @@ import { DevSimulationSigner } from './command-signing/dev-simulation-signer.ser
 import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
 import { cloudHsmSignerProvider } from './command-signing/cloud-hsm-signer.provider';
 import { governedCommandSignerProvider } from './command-signing/governed-command-signer.provider';
+import { PerTenantCommandSignerService } from './command-signing/per-tenant-command-signer.service';
 import { DispatcherService } from './dispatcher/dispatcher.service';
 import { PolicyReauthorizationService } from './policy/policy-reauthorization.service';
 import { ApprovalReauthorizationService } from './approval/approval-reauthorization.service';
@@ -69,9 +70,13 @@ import { LiveOktaExecutor } from './executors/live/live-okta.executor';
 import { EmailActionController } from './email-actions/email-action.controller';
 import { EmailActionAdapterService } from './email-actions/email-action-adapter.service';
 import {
+  EMAIL_PROVIDER_CREDENTIAL_RESOLVER,
   EMAIL_PROVIDER_MUTATION_PORT,
-  NotConfiguredEmailProviderMutationPort,
 } from './email-actions/email-provider-mutation.port';
+import {
+  EnvEmailProviderCredentialResolver,
+  GraphGmailMutationClient,
+} from './email-actions/graph-gmail-mutation.client';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -90,6 +95,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     DevSimulationSigner,
     cloudHsmSignerProvider,
     governedCommandSignerProvider,
+    PerTenantCommandSignerService,
     DispatcherService,
     PolicyReauthorizationService,
     ActionAuthorityService,
@@ -133,9 +139,15 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     LiveCrowdstrikeExecutor,
     LiveOktaExecutor,
     EmailActionAdapterService,
+    EnvEmailProviderCredentialResolver,
+    GraphGmailMutationClient,
+    {
+      provide: EMAIL_PROVIDER_CREDENTIAL_RESOLVER,
+      useExisting: EnvEmailProviderCredentialResolver,
+    },
     {
       provide: EMAIL_PROVIDER_MUTATION_PORT,
-      useClass: NotConfiguredEmailProviderMutationPort,
+      useExisting: GraphGmailMutationClient,
     },
   ],
   exports: [
@@ -173,6 +185,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     LiveCrowdstrikeExecutor,
     LiveOktaExecutor,
     EmailActionAdapterService,
+    PerTenantCommandSignerService,
   ],
 })
 export class ShieldActionModule implements NestModule {

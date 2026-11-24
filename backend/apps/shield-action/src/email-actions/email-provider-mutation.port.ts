@@ -2,16 +2,35 @@ export const EMAIL_PROVIDER_MUTATION_PORT = Symbol(
   'EMAIL_PROVIDER_MUTATION_PORT',
 );
 
+export const EMAIL_PROVIDER_CREDENTIAL_RESOLVER = Symbol(
+  'EMAIL_PROVIDER_CREDENTIAL_RESOLVER',
+);
+
+export type EmailMutationProvider = 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+
+export type EmailMutationAction =
+  | 'QUARANTINE_MESSAGE'
+  | 'PULL_BACK_MESSAGE'
+  | 'REMOVE_FORWARDING_RULE'
+  | 'REVOKE_MAILBOX_SESSIONS';
+
 export interface EmailProviderMutationRequest {
   tenantId: string;
   proposalId: string;
-  provider: 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
-  requestedAction:
-    | 'QUARANTINE_MESSAGE'
-    | 'PULL_BACK_MESSAGE'
-    | 'REMOVE_FORWARDING_RULE'
-    | 'REVOKE_MAILBOX_SESSIONS';
+  provider: EmailMutationProvider;
+  requestedAction: EmailMutationAction;
   targetRef: string;
+  /** When true, validates target and constructs provider request without mutating mailboxes. */
+  dryRun?: boolean;
+  /** Caller-supplied idempotency key; defaults to a deterministic hash of tenant/proposal/action/target. */
+  idempotencyKey?: string;
+}
+
+export interface EmailProviderDryRunPlan {
+  method: 'POST' | 'DELETE' | 'PATCH';
+  endpoint: string;
+  action: EmailMutationAction;
+  mailboxUser: string;
 }
 
 /**
@@ -20,17 +39,34 @@ export interface EmailProviderMutationRequest {
  */
 export interface EmailProviderTargetOutcome {
   targetRef: string;
-  status: 'VERIFIED' | 'FAILED' | 'UNKNOWN';
+  status: 'VERIFIED' | 'DRY_RUN' | 'FAILED' | 'UNKNOWN';
   providerReceiptId?: string;
+  idempotentReplay?: boolean;
+  httpStatus?: number;
+  retryAfterSeconds?: number;
+  dryRunPlan?: EmailProviderDryRunPlan;
   error?: string;
 }
 
+export interface EmailProviderWriteCredential {
+  accessToken: string;
+  quarantineFolderId?: string;
+  defaultMailbox?: string;
+}
+
+export interface EmailProviderCredentialResolver {
+  resolve(
+    tenantId: string,
+    provider: EmailMutationProvider,
+  ): Promise<EmailProviderWriteCredential | null>;
+}
+
 /**
- * The only seam through which a mailbox can be mutated. A real Microsoft Graph /
- * Gmail implementation is bound to this token once the write-credential and
- * connector-certification gates (ADR-22) are closed. Until then
- * {@link NotConfiguredEmailProviderMutationPort} is bound and execution reports
- * NOT_EXECUTED rather than inventing success.
+ * The only seam through which a mailbox can be mutated. Backed by
+ * {@link GraphGmailMutationClient} in Shield Action; fails closed with
+ * {@link EmailProviderMutationNotConfiguredError} when no tenant write
+ * credential is configured so execution reports NOT_EXECUTED rather than
+ * inventing success.
  */
 export interface EmailProviderMutationPort {
   mutate(
@@ -39,10 +75,11 @@ export interface EmailProviderMutationPort {
 }
 
 export class EmailProviderMutationNotConfiguredError extends Error {
-  constructor() {
-    super(
-      'EMAIL_PROVIDER_MUTATION_NOT_CONFIGURED: no certified provider mutation client is bound; nothing was executed',
-    );
+  constructor(
+    message = 'EMAIL_PROVIDER_MUTATION_NOT_CONFIGURED: no certified provider mutation client is bound; nothing was executed',
+  ) {
+    super(message);
+    this.name = 'EmailProviderMutationNotConfiguredError';
   }
 }
 

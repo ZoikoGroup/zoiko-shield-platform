@@ -105,6 +105,92 @@ export class CedarPolicyEvaluatorService {
         },
         description: 'Permit all actions in simulation mode (R0)',
       },
+      {
+        policyId: 'cedar-pol-email-forbid-ai-live',
+        effect: 'forbid',
+        principal: 'Principal::"AI_AGENT"',
+        action: '*',
+        resource: '*',
+        conditions: {
+          unless: { 'context.isSimulation': true },
+        },
+        description:
+          'Forbid AI agents from executing live or compensating email actions',
+      },
+      {
+        policyId: 'cedar-pol-email-001',
+        effect: 'permit',
+        principal: '*',
+        action: 'Action::"QUARANTINE_MESSAGE"',
+        resource: '*',
+        conditions: {
+          when: {
+            'context.hasDedicatedWriteCredential': true,
+            'context.approverCount': { gte: 1 },
+          },
+        },
+        description:
+          'Permit post-delivery message quarantine with write credential and human approval',
+      },
+      {
+        policyId: 'cedar-pol-email-002',
+        effect: 'permit',
+        principal: '*',
+        action: 'Action::"PULL_BACK_MESSAGE"',
+        resource: '*',
+        conditions: {
+          when: {
+            'context.hasDedicatedWriteCredential': true,
+            'context.approverCount': { gte: 1 },
+          },
+        },
+        description:
+          'Permit post-delivery message pull-back with write credential and human approval',
+      },
+      {
+        policyId: 'cedar-pol-email-003',
+        effect: 'permit',
+        principal: '*',
+        action: 'Action::"REMOVE_FORWARDING_RULE"',
+        resource: '*',
+        conditions: {
+          when: {
+            'context.hasDedicatedWriteCredential': true,
+            'context.approverCount': { gte: 1 },
+          },
+        },
+        description:
+          'Permit inbox forwarding-rule removal with write credential and human approval',
+      },
+      {
+        policyId: 'cedar-pol-email-004',
+        effect: 'permit',
+        principal: '*',
+        action: 'Action::"REVOKE_MAILBOX_SESSIONS"',
+        resource: '*',
+        conditions: {
+          when: {
+            'context.hasDedicatedWriteCredential': true,
+            'context.approverCount': { gte: 1 },
+          },
+        },
+        description:
+          'Permit mailbox session revocation with write credential and human approval',
+      },
+      {
+        policyId: 'cedar-pol-email-005',
+        effect: 'permit',
+        principal: '*',
+        action: 'Action::"EMAIL_ACTION_ROLLBACK"',
+        resource: '*',
+        conditions: {
+          when: {
+            'context.isCompensation': true,
+          },
+        },
+        description:
+          'Permit governed compensation request for an email action proposal',
+      },
     ];
 
     for (const pol of defaultPolicies) {

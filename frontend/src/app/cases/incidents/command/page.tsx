@@ -132,14 +132,20 @@ function Section({
   requirement: string;
   children: React.ReactNode;
 }) {
+  const headingId = `incident-section-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
-    <div className="surface-card rounded-2xl bg-raised/90 border border-slate-800/80 p-5 shadow-lg space-y-4">
+    <section
+      aria-labelledby={headingId}
+      className="surface-card rounded-2xl bg-raised/90 border border-slate-800/80 p-5 shadow-lg space-y-4"
+    >
       <div className="border-b border-slate-800/80 pb-3">
-        <h2 className="text-sm font-bold text-white tracking-wide">{title}</h2>
+        <h2 id={headingId} className="text-sm font-bold text-white tracking-wide">
+          {title}
+        </h2>
         <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
       </div>
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -247,10 +253,14 @@ export default function IncidentCommandPage() {
 
   const selector = (
     <div className="flex flex-wrap items-center gap-2">
+      <label htmlFor="incident-command-selector" className="sr-only">
+        Incident under command
+      </label>
       <select
+        id="incident-command-selector"
         value={activeId ?? ""}
         onChange={(e) => setSelectedId(e.target.value || null)}
-        className="rounded border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-200"
+        className="rounded border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
         aria-label="Incident under command"
       >
         {activeIncidents.length === 0 && <option value="">No open incidents</option>}
@@ -260,18 +270,25 @@ export default function IncidentCommandPage() {
           </option>
         ))}
       </select>
+      <Link
+        href="/freeze"
+        className="inline-flex items-center gap-1.5 rounded border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+      >
+        <span>Freeze Center</span>
+      </Link>
       {activeId && (
         <Link
           href={`/copilot?mode=INVESTIGATION&caseId=${encodeURIComponent(activeId)}`}
-          className="inline-flex items-center gap-1.5 rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
         >
-          <span>🤖 AI Copilot Investigation →</span>
+          <span aria-hidden="true">🤖</span>
+          <span>AI Copilot Investigation →</span>
         </Link>
       )}
       {activeId && (
         <Link
           href={`/cases/${encodeURIComponent(activeId)}`}
-          className="inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
         >
           <span>Case Workspace →</span>
         </Link>
@@ -514,7 +531,7 @@ export default function IncidentCommandPage() {
             <Field label="Evidence linked" value={String(evidenceLinks.length)} />
           </div>
           {unreconciled.length > 0 ? (
-            <div className="rounded border border-rose-500/40 bg-rose-500/5 p-3">
+            <div role="alert" className="rounded border border-rose-500/40 bg-rose-500/5 p-3">
               <p className="text-xs font-semibold text-rose-200">
                 {unreconciled.length} cited reference
                 {unreconciled.length === 1 ? "" : "s"} not linked to this case
@@ -532,24 +549,25 @@ export default function IncidentCommandPage() {
               </p>
             </div>
           ) : citedRefs.length === 0 ? (
-            <p className="text-xs font-mono text-amber-300">
+            <p role="status" className="text-xs font-mono text-amber-300">
               No timeline entry cites evidence, so there is nothing to reconcile — that is
               an absence, not a clean reconciliation.
             </p>
           ) : (
-            <p className="text-xs font-mono text-emerald-300">
+            <p role="status" className="text-xs font-mono text-emerald-300">
               All {citedRefs.length} cited references are linked to this case.
             </p>
           )}
           {evidenceLinks.length > 0 && (
             <div className="overflow-x-auto">
             <table className="mt-3 w-full text-xs font-mono">
+              <caption className="sr-only">Linked incident evidence items</caption>
               <thead>
                 <tr className="border-b border-slate-800 text-left text-slate-500">
-                  <th className="py-1">Evidence</th>
-                  <th className="py-1">Relationship</th>
-                  <th className="py-1">Added by</th>
-                  <th className="py-1">Added</th>
+                  <th scope="col" className="py-1">Evidence</th>
+                  <th scope="col" className="py-1">Relationship</th>
+                  <th scope="col" className="py-1">Added by</th>
+                  <th scope="col" className="py-1">Added</th>
                 </tr>
               </thead>
               <tbody>
