@@ -28,6 +28,11 @@ import EmailAnalysisDetailPage from '@/app/email/analyses/[analysisId]/page';
 import EmailActionsPage from '@/app/email/actions/page';
 import EmailSettingsGovernancePage from '@/app/email/settings/page';
 
+/** Escape every RegExp metacharacter (incl. backslash) so copy is matched literally. */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function runAxe(container: HTMLElement) {
   return axe.run(container, {
     rules: {
@@ -454,14 +459,14 @@ describe('ZS-UX-EMTI-001 email spec gaps (frontend)', () => {
     await waitFor(() => expect(screen.getByText(EMAIL_COPY.UNVERIFIED_PROOF)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Verify Pack' }));
     await waitFor(() =>
-      expect(screen.getAllByText(new RegExp(EMAIL_COPY.VALID_PROOF_WITH_GAP.replace(/\./g, '\\.'))).length).toBeGreaterThan(1),
+      expect(screen.getAllByText(new RegExp(escapeRegExp(EMAIL_COPY.VALID_PROOF_WITH_GAP))).length).toBeGreaterThan(1),
     );
   });
 
   it('shows the response-gate copy when Phase 2 is locked', async () => {
     render(<EmailActionsPage />);
     await waitFor(() =>
-      expect(screen.getByText(new RegExp(EMAIL_COPY.RESPONSE_GATE.replace(/\./g, '\\.')))).toBeInTheDocument(),
+      expect(screen.getByText(new RegExp(escapeRegExp(EMAIL_COPY.RESPONSE_GATE)))).toBeInTheDocument(),
     );
   });
 
