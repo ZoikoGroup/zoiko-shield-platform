@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Lock } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import type { EmailProviderType } from "@/lib/types";
@@ -12,8 +13,10 @@ import {
 
 /** Non-success outcomes must never read as success (spec: no assertion without evidence). */
 const STATUS_NOTES: Record<string, string> = {
+  DRY_RUN:
+    "Dry-run completed: provider endpoint and target reference were validated without mutating any mailbox.",
   NOT_EXECUTED:
-    "Nothing was executed: no certified provider mutation client is bound. The mailbox is unchanged.",
+    "Nothing was executed: no tenant write credential is configured for this provider. The mailbox is unchanged.",
   UNKNOWN:
     "Outcome unknown: the provider did not confirm. Reconcile against the mailbox before assuming any change.",
   PARTIAL:
@@ -99,8 +102,17 @@ export default function EmailActionsPage() {
     <div className="space-y-6">
       <EmailWorkspaceHeader
         title="Post-Delivery Email Actions (Phase 2 Gated)"
-        subtitle="Propose, dry-run simulate, and dual-custody approve post-delivery email remediation actions with partial failure reconciliation."
+        subtitle="Propose, dry-run simulate, and dual-custody approve post-delivery email remediation actions with Cedar policy enforcement, per-tenant command signing, and partial failure reconciliation."
         activeHref="/email/actions"
+        actions={
+          <Link
+            href="/freeze"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+          >
+            <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Freeze Center</span>
+          </Link>
+        }
       />
 
       {phase2Locked && (

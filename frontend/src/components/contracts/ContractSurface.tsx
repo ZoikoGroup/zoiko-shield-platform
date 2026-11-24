@@ -73,13 +73,14 @@ function ProvenanceTable({ evidence }: { evidence: ContractEvidence }) {
       </summary>
       <div className="overflow-x-auto px-4 pb-3">
         <table className="w-full text-xs font-mono">
+          <caption className="sr-only">Contract source provenance</caption>
           <thead>
             <tr className="text-left text-slate-400 border-b border-line">
-              <th className="py-1 pr-3">Source</th>
-              <th className="py-1 pr-3">Endpoint</th>
-              <th className="py-1 pr-3">Result</th>
-              <th className="py-1 pr-3">Read at</th>
-              <th className="py-1">Reported</th>
+              <th scope="col" className="py-1 pr-3">Source</th>
+              <th scope="col" className="py-1 pr-3">Endpoint</th>
+              <th scope="col" className="py-1 pr-3">Result</th>
+              <th scope="col" className="py-1 pr-3">Read at</th>
+              <th scope="col" className="py-1">Reported</th>
             </tr>
           </thead>
           <tbody>

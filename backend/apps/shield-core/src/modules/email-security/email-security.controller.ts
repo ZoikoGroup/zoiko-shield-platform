@@ -30,6 +30,7 @@ import {
   DisconnectEmailConnectorDto,
   DraftEmailPolicyDto,
   EvaluateEmailAiDto,
+  ExecuteEmailActionDto,
   GrantEmailAuditorAccessDto,
   LabelEmailBehaviourDto,
   PromoteEmailThreatToCaseDto,
@@ -583,6 +584,7 @@ export class EmailSecurityController {
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') proposalId: string,
+    @Body() dto?: ExecuteEmailActionDto,
   ) {
     const tenantId = requireTenantId(headerTenantId);
     const actor = await this.buildActor(tenantId, user);
@@ -590,6 +592,7 @@ export class EmailSecurityController {
       tenantId,
       actor,
       proposalId,
+      dto,
     );
     return { statusCode: HttpStatus.OK, data };
   }
