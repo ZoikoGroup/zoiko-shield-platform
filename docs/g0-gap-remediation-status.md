@@ -67,3 +67,36 @@
 - **Migration verified (2026-11-23):** the full migration chain, including `20261123010000`, applied cleanly to a throwaway PostgreSQL 16 cluster, then `apply-database-access.js` ran. Tested on real rows: UPDATE, DELETE and TRUNCATE are rejected; a duplicate `(tenant_id, seq)` is rejected; DELETE succeeds only inside a transaction that sets `zoiko.tenant_erasure` and only for the targeted tenant; the flag does not leak to the next statement. All 10 `email_security` tables have RLS enabled and forced with a policy (confirms gap #1 was a false alarm).
 - **Workflow action tags verified** to exist on GitHub (`trivy-action` is `v0.28.0`; the earlier `0.28.0` tag did not exist and was corrected). `@cyclonedx/cyclonedx-npm@1.19.3` exists on npm.
 - **Not verified:** the new workflows have not been run on GitHub, so first-run failures from Trivy findings or `tofu fmt -check` are still possible; `tofu` is not installed locally. The mailbox-mutation, LLM-gateway and Cedar items remain open as stated above.
+
+## E. ZS-ZM-ENG-003 v3.0 and ZS-UX-EMTI-001 v1.0 gaps (branch `feat/email-spec-gaps`, 2026-11-24)
+
+| Gap | Status | Evidence |
+| --- | --- | --- |
+| A. OAuth was caller-asserted (no PKCE exchange, no token custody) | Fixed in code | `email-oauth.service.ts` (server-side state + PKCE S256, code exchange, provider-reported scopes), `email-credential-vault.service.ts` (AES-256-GCM, KMS-wrapped data keys, tenant-bound AAD, crypto-shred), `POST /email/connection-intents/callback`; old `/verify` removed |
+| B. Appendix A microcopy not used | Fixed in code | `frontend/src/lib/email-copy.ts` |
+| C. STALE / denied / partial states missing in UI | Fixed in code | backend `effectiveSourceHealth`; frontend state notices and badges |
+| D. Connector state machine and consent expiry | Fixed in code | `status_reason`, `consent_expires_at`; expired consent presented as SUSPENDED; activation requires a passing provider test |
+| E. Six missing read/lifecycle endpoints | Fixed in code | `providers`, `connection-intents/:id`, `connectors/:id/capabilities`, `connectors/:id/activate`, `threats/:id/provenance`, `controls/:controlId/evidence`, `GET access-grants` |
+| F. Zoiko Mail provider / Mail→Shield events | Fixed in code, **feature-gated off** | ingest `POST /email-ingest/mail-events` (HMAC, freshness, payload hash, replay receipt) → core `POST /internal/v1/email/mail-events` (binding-resolved tenant). Enable only after ADR-ZSSEC-01 / D05 |
+| G. Accessibility and mobile coverage | Fixed in code (jsdom) | axe checks on all 14 `/email` pages in `email-spec-gaps.spec.tsx`; real responsive layout not browser-tested |
+| H. UTC/local toggle | Fixed in code | shared email header toggle |
+| I. Concurrent analyst edits | Fixed in code | `version` columns, compare-and-set, 409 `STALE_VERSION` |
+| J. Caller-fed sync, caller-supplied `expectedCount`, `simulateRateLimit` flag, global write-credential flag | Fixed in code | ingest pulls from Graph/Alert Center itself; completeness `UNKNOWN` without a provider total; flag removed; Phase 2 needs a per-tenant `PHASE2_WRITE` vault entry |
+| Extra: auditor grants applied to all manifests | Fixed in code | grants require `manifestIds`; auditors list only live, expressly shared manifests |
+| Extra: threat search filtered after pagination | Fixed in code | search moved into the tenant-scoped query |
+| Extra: BEC benchmark without confidence intervals | Fixed in code | Wilson 95% intervals with denominators |
+| Extra: envelope replay/freshness | Fixed in code | `security-event-envelope.ts` freshness checks; replay receipts in `ingest.webhook_replay_nonces` |
+| Phase 2 action-side credential still read from env in shield-action | **Open** | core now gates on a per-tenant vault entry, but `graph-gmail-mutation.client.ts` still resolves write tokens from environment variables |
+| WF-01 "Export summary" CTA | **Open** | not built |
+
+### Configuration required before these flows work
+
+| Variable | Purpose |
+| --- | --- |
+| `EMAIL_OAUTH_REDIRECT_URI` | Frontend callback URL, e.g. `https://<app>/email/connectors/callback` (must be registered with each provider) |
+| `EMAIL_OAUTH_MS_CLIENT_ID` / `EMAIL_OAUTH_MS_CLIENT_SECRET` | Microsoft Entra app (delegated `SecurityAlert.Read.All`, `offline_access`) |
+| `EMAIL_OAUTH_GOOGLE_CLIENT_ID` / `EMAIL_OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client (`apps.alerts`) |
+| `EMAIL_CREDENTIAL_KMS_KEY` | Cloud KMS crypto key for wrapping credential data keys (required in production; fails closed without it) |
+| `EMAIL_CREDENTIAL_DEV_KEY` | Non-production only: 32-byte base64 key |
+| `EMAIL_CONSENT_TTL_DAYS` (default 90), `EMAIL_SOURCE_STALE_MINUTES` (default 30) | Consent review period and STALE threshold |
+| `EMAIL_ZOIKO_MAIL_INTEGRATION_ENABLED`, `ZOIKO_MAIL_EVENT_HMAC_SECRET`, `ZOIKO_MAIL_ALLOWED_PRODUCERS` | Zoiko Mail intake (off by default) |
