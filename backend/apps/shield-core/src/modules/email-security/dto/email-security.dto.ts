@@ -1,7 +1,10 @@
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
@@ -31,31 +34,67 @@ export class CreateEmailConnectionIntentDto {
   @IsString()
   @MaxLength(64)
   residencyCode?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(256)
-  pkceChallengeHash?: string;
 }
 
-export class VerifyEmailConnectionIntentDto {
+/**
+ * Provider redirect result, posted by the frontend callback page. `state` is the
+ * server-generated anti-CSRF value; the code is exchanged server-side with the
+ * server-held PKCE verifier. Granted scopes come from the provider, never here.
+ */
+export class EmailOAuthCallbackDto {
   @IsString()
-  oauthState!: string;
-
-  @IsBoolean()
-  consentGranted!: boolean;
-
-  @IsArray()
-  @IsString({ each: true })
-  grantedScopes!: string[];
+  @MaxLength(256)
+  state!: string;
 
   @IsOptional()
-  @IsBoolean()
-  defenderLicenceVerified?: boolean;
+  @IsString()
+  @MaxLength(4096)
+  code?: string;
 
   @IsOptional()
-  @IsBoolean()
-  exchangeAppRbacVerified?: boolean;
+  @IsString()
+  @MaxLength(200)
+  error?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  errorDescription?: string;
+}
+
+export class CreateMailBindingDto {
+  @IsString()
+  @MaxLength(200)
+  displayName!: string;
+}
+
+/** Internal (shield-ingest -> shield-core) after envelope signature, registry, freshness and replay checks. */
+export class InternalMailEventDto {
+  @IsString() @MaxLength(256) tenantBindingId!: string;
+  @IsString() @MaxLength(128) eventId!: string;
+  @IsString() @MaxLength(128) eventType!: string;
+  @IsString() @MaxLength(128) producer!: string;
+  @IsString() @MaxLength(256) sourceEventId!: string;
+  @IsString() occurredAt!: string;
+  @IsString() observedAt!: string;
+  @IsString() @MaxLength(256) subjectRef!: string;
+  @IsOptional() @IsString() @MaxLength(128) threatClass?: string;
+  @IsOptional() @IsString() @MaxLength(64) sourceVerdict?: string;
+  @IsOptional() @IsString() @MaxLength(64) actionState?: string;
+  @IsOptional() @IsString() @MaxLength(128) policyId?: string;
+  @IsOptional() @IsString() @MaxLength(128) policyVersion?: string;
+  @IsString() @MaxLength(64) dataClass!: string;
+  @IsOptional() @IsString() @MaxLength(64) residencyCode?: string;
+  @IsString() @MaxLength(32) coverageState!: string;
+  @IsOptional() @IsString() @MaxLength(512) evidenceRef?: string;
+  @IsString() @MaxLength(256) payloadHash!: string;
+  @IsOptional() @IsObject() coverage?: {
+    windowStart: string;
+    windowEnd: string;
+    expectedCount: number;
+    observedCount: number;
+    gaps?: Array<{ reason: string; detail?: string }>;
+  };
 }
 
 export class DisconnectEmailConnectorDto {
@@ -64,19 +103,11 @@ export class DisconnectEmailConnectorDto {
   reason!: string;
 }
 
-export class SyncEmailConnectorDto {
-  @IsArray()
-  events!: Record<string, unknown>[];
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  expectedCount?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  simulateRateLimit?: boolean;
-}
+/**
+ * Sync pulls from the provider server-side. Events, expected counts and fault
+ * flags are deliberately NOT accepted from the caller (T02/T06).
+ */
+export class SyncEmailConnectorDto {}
 
 export class RequestEmailBackfillDto {
   @IsString()
@@ -113,6 +144,11 @@ export class RecordEmailAdjudicationDto {
   @IsString()
   @MaxLength(128)
   idempotencyKey!: string;
+
+  /** Optimistic concurrency (E07): version of the finding the analyst reviewed. */
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
 }
 
 export class BuildEmailEvidenceExportDto {
@@ -145,6 +181,13 @@ export class GrantEmailAuditorAccessDto {
   @IsNumber()
   @Min(1)
   expiresInHours!: number;
+
+  /** Only these manifests are shared (WF-09 "expressly shared evidence", T09). */
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  manifestIds!: string[];
 }
 
 export class DraftEmailPolicyDto {
@@ -210,6 +253,11 @@ export class DecideEmailAnalysisDto {
   @IsString()
   @MaxLength(2000)
   rationale?: string;
+
+  /** Optimistic concurrency (E07). */
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
 }
 
 export class ProposeEmailActionDto {

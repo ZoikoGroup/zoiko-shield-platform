@@ -9,6 +9,9 @@ import { ShieldActionClient } from '../../internal-client/shield-action.client';
 import { ShieldAnchorClient } from '../../internal-client/shield-anchor.client';
 import { EmailSecurityService } from './email-security.service';
 import { EmailSecurityController } from './email-security.controller';
+import { EmailSecurityInternalController } from './email-security-internal.controller';
+import { EmailCredentialVaultService } from './email-credential-vault.service';
+import { EmailOAuthService } from './email-oauth.service';
 
 @Module({
   imports: [
@@ -17,9 +20,11 @@ import { EmailSecurityController } from './email-security.controller';
     AuthorizationModule,
     AuthorizationDecisionModule,
   ],
-  controllers: [EmailSecurityController],
+  controllers: [EmailSecurityController, EmailSecurityInternalController],
   providers: [
     EmailSecurityService,
+    EmailCredentialVaultService,
+    EmailOAuthService,
     ShieldIngestClient,
     ShieldAiClient,
     ShieldActionClient,

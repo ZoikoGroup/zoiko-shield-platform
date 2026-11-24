@@ -23,6 +23,14 @@ model EmailSourceConnection {
   last_heartbeat_at     DateTime?
   revoked_at            DateTime?
   revoked_by            String?
+  status_reason         String? // CONSENT_EXPIRED | LIMITED_CAPABILITY | PERMISSION_REVOKED | AWAITING_FIRST_EVENT
+  consent_expires_at    DateTime?
+  credential_ref        String? // EmailCredentialSecret.id (OAuth refresh token, vault-encrypted)
+  last_tested_at        DateTime?
+  last_test_status      String?
+  last_test_report      Json?
+  sync_cursor           String?
+  mail_binding_id       String?   @unique // ZOIKO_MAIL tenant binding (opaque, server-issued)
   created_by            String?
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
@@ -42,6 +50,8 @@ model EmailConnectionIntent {
   requested_mode      String    @default("READ_ONLY_TELEMETRY")
   oauth_state         String    @unique
   pkce_challenge_hash String?
+  pkce_verifier_ref   String? // EmailCredentialSecret.id holding the PKCE code_verifier
+  failure_reason      String?
   requested_scopes    String[]
   residency_code      String    @default("eu-west-1")
   status              String    @default("DRAFT") // DRAFT | CONSENT_PENDING | VERIFIED | ACTIVATED | EXPIRED | DENIED
@@ -109,6 +119,7 @@ model EmailThreatFinding {
   case_id            String?
   assigned_analyst_id String?
   metadata           Json                  @default("{}")
+  version            Int                   @default(1)
   created_at         DateTime              @default(now())
   updated_at         DateTime              @updatedAt
 
@@ -162,6 +173,7 @@ model EmailDetectionDecision {
   reviewer_outcome        String?
   reviewer_rationale      String?
   reviewed_at             DateTime?
+  version                 Int                @default(1)
   created_at              DateTime           @default(now())
   updated_at              DateTime           @updatedAt
 
@@ -213,6 +225,7 @@ model EmailEvidenceManifest {
   status                   String    @default("COLLECTING") // COLLECTING | SEALED | VERIFIED | VERIFICATION_FAILED
   auditor_principal_id     String?
   auditor_grant_expires_at DateTime?
+  auditor_grant_revoked_at DateTime?
   created_by               String
   created_at               DateTime  @default(now())
   updated_at               DateTime  @updatedAt
@@ -263,5 +276,28 @@ model EmailAccessAuditEvent {
 
   @@unique([tenant_id, seq])
   @@index([tenant_id, created_at])
+  @@schema("email_security")
+}
+
+/// Vault-encrypted provider secrets (OAuth refresh tokens, PKCE verifiers, Phase 2
+/// write credentials). AES-256-GCM with a per-record data key wrapped by Cloud KMS
+/// (or a dev key outside production). Plaintext never leaves EmailCredentialVaultService.
+model EmailCredentialSecret {
+  id            String    @id @default(uuid())
+  tenant_id     String
+  connection_id String?
+  intent_id     String?
+  provider      String
+  purpose       String // OAUTH_REFRESH_TOKEN | PKCE_VERIFIER | PHASE2_WRITE
+  ciphertext    String?
+  iv            String?
+  auth_tag      String?
+  wrapped_key   String?
+  key_ref       String
+  expires_at    DateTime?
+  revoked_at    DateTime?
+  created_at    DateTime  @default(now())
+
+  @@index([tenant_id, connection_id, purpose])
   @@schema("email_security")
 }

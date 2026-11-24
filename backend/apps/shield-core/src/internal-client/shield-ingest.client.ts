@@ -179,23 +179,28 @@ export class ShieldIngestClient {
   }
 
   // --- Email Security Telemetry (shield-ingest) ---
-  async testEmailSource(tenantId: string, connectionId: string): Promise<any> {
+  /** The access token is short-lived and minted by core from its vault; ingest never stores it. */
+  async testEmailSource(
+    tenantId: string,
+    connectionId: string,
+    payload: { accessToken: string },
+  ): Promise<any> {
     return this.post(
       `/api/v1/email-ingest/sources/${encodeURIComponent(connectionId)}/test`,
-      {},
+      payload,
       { 'x-tenant-id': tenantId },
     );
   }
 
+  /** Provider pull. Events and expected counts come from the provider, never from a caller. */
   async syncEmailSource(
     tenantId: string,
     connectionId: string,
-    events: unknown[],
-    expectedCount?: number,
+    payload: { accessToken: string; cursor?: string | null; maxPages?: number },
   ): Promise<any> {
     return this.post(
       `/api/v1/email-ingest/sources/${encodeURIComponent(connectionId)}/sync`,
-      { events, ...(expectedCount !== undefined ? { expectedCount } : {}) },
+      payload,
       { 'x-tenant-id': tenantId },
     );
   }

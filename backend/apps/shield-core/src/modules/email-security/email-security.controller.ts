@@ -26,6 +26,8 @@ import {
   ApproveOrActivateEmailPolicyDto,
   BuildEmailEvidenceExportDto,
   CreateEmailConnectionIntentDto,
+  CreateMailBindingDto,
+  EmailOAuthCallbackDto,
   DecideEmailAnalysisDto,
   DisconnectEmailConnectorDto,
   DraftEmailPolicyDto,
@@ -39,8 +41,6 @@ import {
   RequestEmailBackfillDto,
   RevokeEmailAccessDto,
   RollbackEmailActionDto,
-  SyncEmailConnectorDto,
-  VerifyEmailConnectionIntentDto,
 } from './dto/email-security.dto';
 
 /**
@@ -139,23 +139,94 @@ export class EmailSecurityController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
-  @Post('connection-intents/:id/verify')
+  @Get('providers')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_VIEW)
+  listProviders(@Headers('x-tenant-id') headerTenantId: string) {
+    requireTenantId(headerTenantId);
+    return {
+      statusCode: HttpStatus.OK,
+      data: this.emailService.listProviders(),
+    };
+  }
+
+  // Static route declared before the ':id' route so it is not shadowed.
+  @Post('connection-intents/callback')
   @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_MANAGE)
-  async verifyConnectionIntent(
+  async handleOAuthCallback(
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') intentId: string,
-    @Body() dto: VerifyEmailConnectionIntentDto,
+    @Body() dto: EmailOAuthCallbackDto,
   ) {
     const tenantId = requireTenantId(headerTenantId);
     const actor = await this.buildActor(tenantId, user);
-    const data = await this.emailService.verifyConnectionIntent(
+    const data = await this.emailService.handleOAuthCallback(
       tenantId,
       actor,
-      intentId,
       dto,
     );
     return { statusCode: HttpStatus.OK, data };
+  }
+
+  @Get('connection-intents/:id')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_MANAGE)
+  async getConnectionIntent(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') intentId: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const data = await this.emailService.getConnectionIntent(
+      tenantId,
+      intentId,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
+  @Get('connectors/:id/capabilities')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_VIEW)
+  async getConnectorCapabilities(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') connectionId: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const data = await this.emailService.getConnectorCapabilities(
+      tenantId,
+      connectionId,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
+  @Post('connectors/:id/activate')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_MANAGE)
+  async activateConnector(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') connectionId: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const actor = await this.buildActor(tenantId, user);
+    const data = await this.emailService.activateConnector(
+      tenantId,
+      actor,
+      connectionId,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
+  @Post('mail-bindings')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_MANAGE)
+  async createMailBinding(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateMailBindingDto,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const actor = await this.buildActor(tenantId, user);
+    const data = await this.emailService.createMailBinding(
+      tenantId,
+      actor,
+      dto,
+    );
+    return { statusCode: HttpStatus.CREATED, data };
   }
 
   @Post('connectors/:id/test')
@@ -181,7 +252,6 @@ export class EmailSecurityController {
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') connectionId: string,
-    @Body() dto: SyncEmailConnectorDto,
   ) {
     const tenantId = requireTenantId(headerTenantId);
     const actor = await this.buildActor(tenantId, user);
@@ -189,7 +259,6 @@ export class EmailSecurityController {
       tenantId,
       actor,
       connectionId,
-      dto,
     );
     return { statusCode: HttpStatus.OK, data };
   }
@@ -282,6 +351,23 @@ export class EmailSecurityController {
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @Get('threats/:id/provenance')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_THREAT_READ)
+  async getThreatProvenance(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') findingId: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const actor = await this.buildActor(tenantId, user);
+    const data = await this.emailService.getThreatProvenance(
+      tenantId,
+      actor,
+      findingId,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
   @Post('threats/:id/promote-case')
   @RequirePermissions(PERMISSION_CODES.EMAIL_CASE_INVESTIGATE)
   async promoteThreatToCase(
@@ -347,11 +433,35 @@ export class EmailSecurityController {
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @Get('controls/:controlId/evidence')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_COVERAGE_READ)
+  async getControlEvidence(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('controlId') controlId: string,
+    @Query('windowStart') windowStart?: string,
+    @Query('windowEnd') windowEnd?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const data = await this.emailService.getControlEvidence(
+      tenantId,
+      controlId,
+      {
+        windowStart,
+        windowEnd,
+      },
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
   @Get('evidence/manifests')
   @RequirePermissions(PERMISSION_CODES.EMAIL_EVIDENCE_EXPORT)
-  async listEvidenceManifests(@Headers('x-tenant-id') headerTenantId: string) {
+  async listEvidenceManifests(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const tenantId = requireTenantId(headerTenantId);
-    const data = await this.emailService.listEvidenceManifests(tenantId);
+    const actor = await this.buildActor(tenantId, user);
+    const data = await this.emailService.listEvidenceManifests(tenantId, actor);
     return { statusCode: HttpStatus.OK, data };
   }
 
@@ -631,6 +741,14 @@ export class EmailSecurityController {
   async verifyAuditChain(@Headers('x-tenant-id') headerTenantId: string) {
     const tenantId = requireTenantId(headerTenantId);
     const data = await this.emailService.verifyAuditChain(tenantId);
+    return { statusCode: HttpStatus.OK, data };
+  }
+
+  @Get('access-grants')
+  @RequirePermissions(PERMISSION_CODES.EMAIL_CONNECTOR_VIEW)
+  async listAccessGrants(@Headers('x-tenant-id') headerTenantId: string) {
+    const tenantId = requireTenantId(headerTenantId);
+    const data = await this.emailService.listAccessGrants(tenantId);
     return { statusCode: HttpStatus.OK, data };
   }
 
