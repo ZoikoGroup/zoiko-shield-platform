@@ -6,6 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'crypto';
+import {
+  computeEmailAuditHash,
+  EMAIL_AUDIT_GENESIS_HASH,
+  verifyEmailAuditChain,
+} from './email-audit-chain';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CaseService } from '../case-management/services/case.service';
 import { ShieldIngestClient } from '../../internal-client/shield-ingest.client';
@@ -114,6 +119,12 @@ export class EmailSecurityService {
     }
   }
 
+  /**
+   * Append one tamper-evident audit event. Events form a per-tenant hash chain
+   * (seq, prev_hash, event_hash); the DB additionally rejects UPDATE/DELETE
+   * (migration 20261123010000). A per-tenant advisory lock serialises writers so
+   * the chain cannot fork.
+   */
   private async appendAudit(
     tenantId: string,
     actorId: string,
@@ -121,15 +132,49 @@ export class EmailSecurityService {
     targetId: string | null,
     detail: Record<string, unknown>,
   ) {
-    await this.prisma.emailAccessAuditEvent.create({
-      data: {
-        tenant_id: tenantId,
-        actor_id: actorId,
-        event_type: eventType,
-        target_id: targetId,
-        detail: detail as any,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`email_audit:${tenantId}`}))`;
+      const head = await tx.emailAccessAuditEvent.findFirst({
+        where: { tenant_id: tenantId, seq: { not: null } },
+        orderBy: { seq: 'desc' },
+        select: { seq: true, event_hash: true },
+      });
+      const seq = (head?.seq ?? 0) + 1;
+      const prevHash = head?.event_hash ?? EMAIL_AUDIT_GENESIS_HASH;
+      const createdAt = new Date();
+      const eventHash = computeEmailAuditHash({
+        tenantId,
+        seq,
+        actorId,
+        eventType,
+        targetId,
+        detail,
+        createdAt,
+        prevHash,
+      });
+      await tx.emailAccessAuditEvent.create({
+        data: {
+          tenant_id: tenantId,
+          actor_id: actorId,
+          event_type: eventType,
+          target_id: targetId,
+          detail: detail as any,
+          created_at: createdAt,
+          seq,
+          prev_hash: prevHash,
+          event_hash: eventHash,
+        },
+      });
     });
+  }
+
+  /** Recompute the tenant's audit chain and report any tampering or gap. */
+  async verifyAuditChain(tenantId: string) {
+    const rows = await this.prisma.emailAccessAuditEvent.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'asc' },
+    });
+    return verifyEmailAuditChain(rows as any);
   }
 
   private isAuditorOnly(roleCodes: string[]): boolean {
