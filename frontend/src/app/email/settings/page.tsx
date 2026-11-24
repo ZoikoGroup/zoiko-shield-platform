@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import type { EmailAccessGrant } from "@/lib/types";
@@ -33,12 +33,23 @@ export default function EmailSettingsGovernancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ClassifiedEmailError | null>(null);
 
+  // Requests can settle after the page unmounts; never update state then.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const loadGrants = useCallback(async () => {
     try {
       const res = await ZoikoShieldApiClient.listEmailAccessGrants();
+      if (!mountedRef.current) return;
       setGrants(Array.isArray(res?.grants) ? res.grants : []);
       setGrantsError(null);
     } catch (err) {
+      if (!mountedRef.current) return;
       setGrants(null);
       setGrantsError(classifyEmailError(err, "Failed to load access grants."));
     }
@@ -52,19 +63,23 @@ export default function EmailSettingsGovernancePage() {
         ZoikoShieldApiClient.getEmailSettings(),
         ZoikoShieldApiClient.getEmailPrivacyInventory(),
       ]);
+      if (!mountedRef.current) return;
       setSettings(s);
       setPrivacy(p);
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(classifyEmailError(err, "Failed to load governance inventory."));
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
+    if (!mountedRef.current) return;
     await loadGrants();
+    if (!mountedRef.current) return;
     try {
       const list = await ZoikoShieldApiClient.listEmailEvidenceManifests();
-      setManifests(Array.isArray(list) ? list : []);
+      if (mountedRef.current) setManifests(Array.isArray(list) ? list : []);
     } catch {
-      setManifests([]);
+      if (mountedRef.current) setManifests([]);
     }
   }, [loadGrants]);
 
