@@ -77,7 +77,7 @@ export class EmailSecurityService {
     private readonly aiClient: ShieldAiClient,
     private readonly actionClient: ShieldActionClient,
     private readonly anchorClient: ShieldAnchorClient,
-  ) { }
+  ) {}
 
   isPhase2ActionsEnabled(): boolean {
     return process.env.ENABLE_EMAIL_PHASE2_ACTIONS === 'true';
@@ -225,7 +225,8 @@ export class EmailSecurityService {
         : 24;
     const since = new Date(Date.now() - windowHours * 3600 * 1000);
 
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         ...(filters.environmentId
@@ -239,7 +240,8 @@ export class EmailSecurityService {
     const degradedConnections = connections.filter(
       (c) => c.status === 'DEGRADED',
     );
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         window_end: { gte: since },
@@ -248,7 +250,8 @@ export class EmailSecurityService {
       take: 100,
     });
 
-    const openFindings = await this.prisma.emailThreatFinding.findMany({ // tenant_id
+    const openFindings = await this.prisma.emailThreatFinding.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         status: { in: ['OBSERVED', 'TRIAGED', 'CASE_OPENED', 'CONFIRMED'] },
@@ -310,7 +313,8 @@ export class EmailSecurityService {
       protectionState = 'HEALTHY_SYNCED';
     }
 
-    const activePolicies = await this.prisma.emailPolicyVersion.findMany({ // tenant_id
+    const activePolicies = await this.prisma.emailPolicyVersion.findMany({
+      // tenant_id
       where: { tenant_id: tenantId, status: 'ACTIVE' },
       orderBy: { version: 'desc' },
     });
@@ -374,7 +378,8 @@ export class EmailSecurityService {
   }
 
   async getSourceCoverage(tenantId: string) {
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       include: {
         coverageWindows: {
@@ -398,23 +403,24 @@ export class EmailSecurityService {
         lastSyncAt: c.last_sync_at?.toISOString() ?? null,
         latestWindow: c.coverageWindows[0]
           ? {
-            id: c.coverageWindows[0].id,
-            windowStart: c.coverageWindows[0].window_start.toISOString(),
-            windowEnd: c.coverageWindows[0].window_end.toISOString(),
-            expectedCount: c.coverageWindows[0].expected_count,
-            ingestedCount: c.coverageWindows[0].ingested_count,
-            rejectedCount: c.coverageWindows[0].rejected_count,
-            missingCount: c.coverageWindows[0].missing_count,
-            completenessGrade: c.coverageWindows[0].completeness_grade,
-            sourceHealth: c.coverageWindows[0].source_health,
-          }
+              id: c.coverageWindows[0].id,
+              windowStart: c.coverageWindows[0].window_start.toISOString(),
+              windowEnd: c.coverageWindows[0].window_end.toISOString(),
+              expectedCount: c.coverageWindows[0].expected_count,
+              ingestedCount: c.coverageWindows[0].ingested_count,
+              rejectedCount: c.coverageWindows[0].rejected_count,
+              missingCount: c.coverageWindows[0].missing_count,
+              completenessGrade: c.coverageWindows[0].completeness_grade,
+              sourceHealth: c.coverageWindows[0].source_health,
+            }
           : null,
       })),
     };
   }
 
   async listConnectors(tenantId: string) {
-    return this.prisma.emailSourceConnection.findMany({ // tenant_id
+    return this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { created_at: 'desc' },
     });
@@ -631,7 +637,8 @@ export class EmailSecurityService {
       throw new NotFoundException(`Email source '${connectionId}' not found`);
     }
 
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId, connection_id: connection.id },
       orderBy: { window_end: 'desc' },
       take: 24,
@@ -694,38 +701,38 @@ export class EmailSecurityService {
 
     const syncRes = dto.simulateRateLimit
       ? {
-        status: 'DEGRADED',
-        ingestedCount: 0,
-        expectedCount: dto.expectedCount ?? dto.events.length,
-        rejectedCount: 0,
-        normalizedRecords: [],
-        gaps: [
-          {
-            reason: 'PROVIDER_429_RATE_LIMITED',
-            detail:
-              'Simulated upstream throttling backoff recorded honestly.',
-          },
-        ],
-        windowStart: new Date(
-          Math.floor(Date.now() / 3600000) * 3600000,
-        ).toISOString(),
-        windowEnd: new Date(
-          Math.floor(Date.now() / 3600000) * 3600000 + 3600000,
-        ).toISOString(),
-      }
+          status: 'DEGRADED',
+          ingestedCount: 0,
+          expectedCount: dto.expectedCount ?? dto.events.length,
+          rejectedCount: 0,
+          normalizedRecords: [],
+          gaps: [
+            {
+              reason: 'PROVIDER_429_RATE_LIMITED',
+              detail:
+                'Simulated upstream throttling backoff recorded honestly.',
+            },
+          ],
+          windowStart: new Date(
+            Math.floor(Date.now() / 3600000) * 3600000,
+          ).toISOString(),
+          windowEnd: new Date(
+            Math.floor(Date.now() / 3600000) * 3600000 + 3600000,
+          ).toISOString(),
+        }
       : ((
-        await this.ingestClient.syncEmailSource(
-          tenantId,
-          connectionId,
-          dto.events,
-          dto.expectedCount,
-        )
-      )?.data ?? {
-        status: 'UNAVAILABLE',
-        normalizedRecords: [],
-        gaps: [],
-        rejectedCount: 0,
-      });
+          await this.ingestClient.syncEmailSource(
+            tenantId,
+            connectionId,
+            dto.events,
+            dto.expectedCount,
+          )
+        )?.data ?? {
+          status: 'UNAVAILABLE',
+          normalizedRecords: [],
+          gaps: [],
+          rejectedCount: 0,
+        });
 
     const normalized = Array.isArray(syncRes.normalizedRecords)
       ? syncRes.normalizedRecords
@@ -875,7 +882,8 @@ export class EmailSecurityService {
   }
 
   async listReconciliations(tenantId: string) {
-    return this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    return this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       include: {
         connection: {
@@ -997,7 +1005,8 @@ export class EmailSecurityService {
       ...(query.threatClass ? { threat_class: query.threatClass } : {}),
     };
 
-    const items = await this.prisma.emailThreatFinding.findMany({ // tenant_id
+    const items = await this.prisma.emailThreatFinding.findMany({
+      // tenant_id
       where: where as any,
       orderBy: { observed_at: 'desc' },
       take: limit,
@@ -1005,16 +1014,17 @@ export class EmailSecurityService {
 
     const filtered = query.search
       ? items.filter((item) => {
-        const term = query.search!.toLowerCase();
-        return (
-          item.subject_ref.toLowerCase().includes(term) ||
-          item.source_event_ref.toLowerCase().includes(term) ||
-          item.threat_class.toLowerCase().includes(term)
-        );
-      })
+          const term = query.search!.toLowerCase();
+          return (
+            item.subject_ref.toLowerCase().includes(term) ||
+            item.source_event_ref.toLowerCase().includes(term) ||
+            item.threat_class.toLowerCase().includes(term)
+          );
+        })
       : items;
 
-    const latestWindows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const latestWindows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { window_end: 'desc' },
       take: 10,
@@ -1026,7 +1036,7 @@ export class EmailSecurityService {
       activeFilters: query,
       completenessDisclaimer:
         latestWindows.some((w) => w.completeness_grade !== 'COMPLETE') ||
-          latestWindows.length === 0
+        latestWindows.length === 0
           ? 'Coverage completeness for the selected window is incomplete or degraded; verify reconciliation gaps before drawing negative conclusions (T03).'
           : 'All configured sources report complete coverage for the latest window.',
     };
@@ -1265,15 +1275,18 @@ export class EmailSecurityService {
   }
 
   async getControlsCoverage(tenantId: string) {
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
     });
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { window_end: 'desc' },
       take: 25,
     });
-    const activePolicies = await this.prisma.emailPolicyVersion.findMany({ // tenant_id
+    const activePolicies = await this.prisma.emailPolicyVersion.findMany({
+      // tenant_id
       where: { tenant_id: tenantId, status: 'ACTIVE' },
     });
     const latestManifest = await this.prisma.emailEvidenceManifest.findFirst({
@@ -1307,8 +1320,8 @@ export class EmailSecurityService {
           missingPrerequisites: hasActiveSource
             ? []
             : [
-              'Connect and verify Microsoft 365 or Google Workspace read-only source',
-            ],
+                'Connect and verify Microsoft 365 or Google Workspace read-only source',
+              ],
           latestManifestId: latestManifest?.id ?? null,
         },
         {
@@ -1335,8 +1348,8 @@ export class EmailSecurityService {
               : []),
             ...(hasDegradedWindow
               ? [
-                'One or more reconciliation windows show missing/delayed events',
-              ]
+                  'One or more reconciliation windows show missing/delayed events',
+                ]
               : []),
           ],
           latestManifestId: latestManifest?.id ?? null,
@@ -1358,7 +1371,8 @@ export class EmailSecurityService {
   }
 
   async listEvidenceManifests(tenantId: string) {
-    return this.prisma.emailEvidenceManifest.findMany({ // tenant_id
+    return this.prisma.emailEvidenceManifest.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { created_at: 'desc' },
       take: 50,
@@ -1385,20 +1399,23 @@ export class EmailSecurityService {
     const startDate = new Date(startMs);
     const endDate = new Date(endMs);
 
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         ...(dto.sourceProvider ? { provider: dto.sourceProvider } : {}),
         ...(dto.jurisdiction ? { residency_code: dto.jurisdiction } : {}),
       },
     });
-    const windows = await this.prisma.sourceCoverageWindow.findMany({ // tenant_id
+    const windows = await this.prisma.sourceCoverageWindow.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         window_end: { gte: startDate, lte: endDate },
       },
     });
-    const findings = await this.prisma.emailThreatFinding.findMany({ // tenant_id
+    const findings = await this.prisma.emailThreatFinding.findMany({
+      // tenant_id
       where: {
         tenant_id: tenantId,
         observed_at: { gte: startDate, lte: endDate },
@@ -1442,11 +1459,11 @@ export class EmailSecurityService {
 
     const exclusions = dto.sourceProvider
       ? [
-        {
-          type: 'PROVIDER_FILTER',
-          excludedOtherProviders: dto.sourceProvider,
-        },
-      ]
+          {
+            type: 'PROVIDER_FILTER',
+            excludedOtherProviders: dto.sourceProvider,
+          },
+        ]
       : [];
 
     const manifestId = randomUUID();
@@ -1481,9 +1498,9 @@ export class EmailSecurityService {
         verifier_version: String(anchored?.verifierVersion || '1.0.0'),
         detached_checksum: String(
           anchored?.detachedChecksum ||
-          createHash('sha256')
-            .update(canonicalEventHashes.join('|'))
-            .digest('hex'),
+            createHash('sha256')
+              .update(canonicalEventHashes.join('|'))
+              .digest('hex'),
         ),
         status: 'SEALED',
         created_by: actor.userId,
@@ -1556,7 +1573,8 @@ export class EmailSecurityService {
   }
 
   async listPolicies(tenantId: string) {
-    return this.prisma.emailPolicyVersion.findMany({ // tenant_id
+    return this.prisma.emailPolicyVersion.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: [{ policy_key: 'asc' }, { version: 'desc' }],
     });
@@ -1728,7 +1746,8 @@ export class EmailSecurityService {
   }
 
   async getBehaviourOverview(tenantId: string) {
-    const decisions = await this.prisma.emailDetectionDecision.findMany({ // tenant_id
+    const decisions = await this.prisma.emailDetectionDecision.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       include: { finding: true },
       orderBy: { created_at: 'desc' },
@@ -1770,26 +1789,26 @@ export class EmailSecurityService {
 
     const record = latestDecision
       ? await this.prisma.emailDetectionDecision.update({
-        where: { id: latestDecision.id },
-        data: {
-          adjudicated_label: dto.label,
-          native_baseline_verdict:
-            dto.nativeBaselineVerdict ?? finding.provider_verdict,
-          false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
-        },
-      })
+          where: { id: latestDecision.id },
+          data: {
+            adjudicated_label: dto.label,
+            native_baseline_verdict:
+              dto.nativeBaselineVerdict ?? finding.provider_verdict,
+            false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
+          },
+        })
       : await this.prisma.emailDetectionDecision.create({
-        data: {
-          tenant_id: tenantId,
-          finding_id: finding.id,
-          detector_tier: 'DETERMINISTIC',
-          detector_version: '1.0.0',
-          adjudicated_label: dto.label,
-          native_baseline_verdict:
-            dto.nativeBaselineVerdict ?? finding.provider_verdict,
-          false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
-        },
-      });
+          data: {
+            tenant_id: tenantId,
+            finding_id: finding.id,
+            detector_tier: 'DETERMINISTIC',
+            detector_version: '1.0.0',
+            adjudicated_label: dto.label,
+            native_baseline_verdict:
+              dto.nativeBaselineVerdict ?? finding.provider_verdict,
+            false_positive_cost_usd: dto.falsePositiveCostUsd ?? null,
+          },
+        });
 
     await this.appendAudit(
       tenantId,
@@ -1862,7 +1881,8 @@ export class EmailSecurityService {
   }
 
   async listActions(tenantId: string) {
-    const proposals = await this.prisma.emailActionProposal.findMany({ // tenant_id
+    const proposals = await this.prisma.emailActionProposal.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
       orderBy: { created_at: 'desc' },
       take: 50,
@@ -2152,16 +2172,19 @@ export class EmailSecurityService {
 
   async getSettingsAndGovernance(tenantId: string) {
     const [connections, recentAudit, manifests] = await Promise.all([
-      this.prisma.emailSourceConnection.findMany({ // tenant_id
+      this.prisma.emailSourceConnection.findMany({
+        // tenant_id
         where: { tenant_id: tenantId },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.emailAccessAuditEvent.findMany({ // tenant_id
+      this.prisma.emailAccessAuditEvent.findMany({
+        // tenant_id
         where: { tenant_id: tenantId },
         orderBy: { created_at: 'desc' },
         take: 50,
       }),
-      this.prisma.emailEvidenceManifest.findMany({ // tenant_id
+      this.prisma.emailEvidenceManifest.findMany({
+        // tenant_id
         where: {
           tenant_id: tenantId,
           auditor_principal_id: { not: null },
@@ -2239,7 +2262,8 @@ export class EmailSecurityService {
   }
 
   async getPrivacyInventory(tenantId: string) {
-    const connections = await this.prisma.emailSourceConnection.findMany({ // tenant_id
+    const connections = await this.prisma.emailSourceConnection.findMany({
+      // tenant_id
       where: { tenant_id: tenantId },
     });
 
