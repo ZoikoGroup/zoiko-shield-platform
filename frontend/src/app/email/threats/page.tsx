@@ -2,14 +2,19 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Search, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import type { EmailThreatFindingRecord } from "@/lib/types";
-import { formatTimestamp } from "@/lib/utils";
+import { EMAIL_COPY, EMAIL_STATE_COPY } from "@/lib/email-copy";
 import { Button } from "@/components/ui/Button";
 import {
+  EmailErrorNotice,
+  EmailNotice,
+  EmailTime,
   EmailWorkspaceHeader,
   ProviderBadge,
+  classifyEmailError,
+  type ClassifiedEmailError,
 } from "@/components/email/EmailSecurityUi";
 
 export default function EmailThreatQueuePage() {
@@ -19,21 +24,28 @@ export default function EmailThreatQueuePage() {
   const [provider, setProvider] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
+  /** null = unknown (connector inventory could not be read). */
+  const [sourceCount, setSourceCount] = useState<number | null>(null);
 
   const loadThreats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await ZoikoShieldApiClient.listEmailThreats({
-        severity: severity || undefined,
-        provider: provider || undefined,
-        search: search || undefined,
-      });
+      const [res, connectors] = await Promise.all([
+        ZoikoShieldApiClient.listEmailThreats({
+          severity: severity || undefined,
+          provider: provider || undefined,
+          search: search || undefined,
+        }),
+        ZoikoShieldApiClient.listEmailConnectors().catch(() => null),
+      ]);
       setItems(Array.isArray(res?.items) ? res.items : []);
       setDisclaimer(res?.completenessDisclaimer || "");
+      setSourceCount(Array.isArray(connectors) ? connectors.length : null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load email threats.");
+      setItems([]);
+      setError(classifyEmailError(err, "Failed to load email threats."));
     } finally {
       setLoading(false);
     }
@@ -42,6 +54,15 @@ export default function EmailThreatQueuePage() {
   useEffect(() => {
     loadThreats();
   }, [loadThreats]);
+
+  const filtersActive = Boolean(severity || provider || search);
+  const emptyMessage = loading
+    ? "Loading verified email threat findings…"
+    : sourceCount === 0
+      ? EMAIL_COPY.NO_CONNECTED_SOURCE
+      : filtersActive
+        ? "No email threat findings match the active filters."
+        : EMAIL_STATE_COPY.NO_DATA_FOR_WINDOW;
 
   return (
     <div className="space-y-6">
@@ -61,15 +82,21 @@ export default function EmailThreatQueuePage() {
         </div>
       )}
 
-      {error && (
-        <div
-          role="alert"
-          className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200 flex items-center gap-2"
-        >
-          <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-          <span>{error}</span>
-        </div>
+      <EmailErrorNotice
+        error={error}
+        onRetry={error?.kind === "DENIED" ? undefined : loadThreats}
+      />
+
+      {sourceCount === 0 && !error && (
+        <EmailNotice tone="warning" title="No coverage">
+          {EMAIL_COPY.NO_CONNECTED_SOURCE}
+        </EmailNotice>
       )}
+
+      <p className="text-[11px] text-slate-400">
+        Phase 0 bulk actions are limited to assignment and investigation. Deleting, pulling back or
+        quarantining messages is not available from this queue.
+      </p>
 
       <div className="p-4 rounded-xl bg-raised border border-line flex flex-col md:flex-row gap-3 items-stretch md:items-center">
         <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-lg bg-surface border border-line text-xs">
@@ -77,7 +104,7 @@ export default function EmailThreatQueuePage() {
           <input
             type="text"
             aria-label="Search threats"
-            placeholder="Filter by subject token, threat class, or source ref..."
+            placeholder="Search by safe reference: subject token, threat class or source ref"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-transparent outline-none text-slate-100"
@@ -127,9 +154,7 @@ export default function EmailThreatQueuePage() {
             {items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-6 text-center text-slate-400">
-                  {loading
-                    ? "Loading verified email threat findings..."
-                    : "No email threat findings match the active filter criteria."}
+                  {emptyMessage}
                 </td>
               </tr>
             ) : (
@@ -151,7 +176,7 @@ export default function EmailThreatQueuePage() {
                   </td>
                   <td className="p-3 font-mono text-cyan-300">{item.status}</td>
                   <td className="p-3 font-mono text-[11px] text-slate-400">
-                    {formatTimestamp(item.observed_at)}
+                    <EmailTime iso={item.observed_at} />
                   </td>
                   <td className="p-3">
                     <Link
@@ -168,21 +193,52 @@ export default function EmailThreatQueuePage() {
         </table>
       </div>
 
-      {/* Responsive mobile disclosure cards */}
-      <div className="md:hidden space-y-3">
+      {/* Responsive mobile disclosure cards (T21): severity, time, confidence and provenance stay visible */}
+      <ul className="md:hidden space-y-3" aria-label="Email threat findings">
+        {items.length === 0 && (
+          <li className="p-4 rounded-xl bg-raised border border-line text-xs text-slate-300">
+            {emptyMessage}
+          </li>
+        )}
         {items.map((item) => (
-          <div
+          <li
             key={item.id}
             className="p-4 rounded-xl bg-raised border border-line space-y-2 text-xs"
+            data-testid="threat-card"
           >
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-100">{item.threat_class}</span>
-              <span className="font-mono font-bold text-cyan-300">{item.severity}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-bold text-slate-100 break-all">{item.threat_class}</span>
+              <span className="font-mono font-bold text-cyan-300">
+                Severity: {item.severity}
+              </span>
             </div>
-            <div className="text-[11px] font-mono text-slate-400">
-              {item.subject_ref}
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t border-line">
+            <dl className="grid grid-cols-1 gap-1 text-[11px] font-mono text-slate-400">
+              <div>
+                <dt className="inline">Observed: </dt>
+                <dd className="inline text-slate-200">
+                  <EmailTime iso={item.observed_at} />
+                </dd>
+              </div>
+              <div>
+                <dt className="inline">Provider verdict: </dt>
+                <dd className="inline text-slate-200">{item.provider_verdict}</dd>
+              </div>
+              <div>
+                <dt className="inline">Source confidence: </dt>
+                <dd className="inline text-slate-200">{item.source_confidence || "Not stated"}</dd>
+              </div>
+              <div>
+                <dt className="inline">Provenance: </dt>
+                <dd className="inline text-slate-200 break-all">
+                  {item.source_event_ref} · policy {item.policy_version || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="inline">Status: </dt>
+                <dd className="inline text-slate-200">{item.status}</dd>
+              </div>
+            </dl>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line">
               <ProviderBadge provider={item.provider} />
               <Link
                 href={`/email/threats/${item.id}`}
@@ -191,9 +247,9 @@ export default function EmailThreatQueuePage() {
                 Investigate →
               </Link>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

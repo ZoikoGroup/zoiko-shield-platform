@@ -4,11 +4,17 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import type { EmailProviderType } from "@/lib/types";
+import type { EmailOAuthProviderType } from "@/lib/types";
+import { EMAIL_COPY } from "@/lib/email-copy";
 import { Button } from "@/components/ui/Button";
 import {
+  EmailErrorNotice,
+  EmailLoadingNotice,
+  EmailNotice,
   EmailWorkspaceHeader,
   ProviderBadge,
+  classifyEmailError,
+  type ClassifiedEmailError,
 } from "@/components/email/EmailSecurityUi";
 
 /** Non-success outcomes must never read as success (spec: no assertion without evidence). */
@@ -27,7 +33,7 @@ const STATUS_NOTES: Record<string, string> = {
 export default function EmailActionsPage() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [phase2Locked, setPhase2Locked] = useState(true);
-  const [provider, setProvider] = useState<EmailProviderType>("MICROSOFT_365");
+  const [provider, setProvider] = useState<EmailOAuthProviderType>("MICROSOFT_365");
   const [requestedAction, setRequestedAction] = useState<
     | "QUARANTINE_MESSAGE"
     | "PULL_BACK_MESSAGE"
@@ -36,16 +42,20 @@ export default function EmailActionsPage() {
   >("QUARANTINE_MESSAGE");
   const [targetRef, setTargetRef] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const loadActions = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const res = await ZoikoShieldApiClient.listEmailActions();
       setPhase2Locked(res?.phase2ActionsLocked !== false);
       setProposals(Array.isArray(res?.proposals) ? res.proposals : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load email action proposals.");
+      setError(classifyEmailError(err, "Failed to load email action proposals."));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -74,7 +84,7 @@ export default function EmailActionsPage() {
       setMessage("Action proposal created. Pre-flight simulation is mandatory before approval (E13).");
       await loadActions();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to propose action.");
+      setError(classifyEmailError(err, "Failed to propose action."));
     }
   };
 
@@ -91,10 +101,14 @@ export default function EmailActionsPage() {
       if (step === "execute") await ZoikoShieldApiClient.executeEmailAction(id);
       if (step === "rollback")
         await ZoikoShieldApiClient.rollbackEmailAction(id, "Operator requested compensation");
-      setMessage(`Action step '${step}' completed cleanly.`);
+      setMessage(
+        step === "execute"
+          ? "Execution request submitted. Check the outcome below; only provider-confirmed targets count as changed."
+          : `Action step '${step}' recorded.`,
+      );
       await loadActions();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Action '${step}' blocked.`);
+      setError(classifyEmailError(err, `Action '${step}' blocked.`));
     }
   };
 
@@ -116,30 +130,19 @@ export default function EmailActionsPage() {
       />
 
       {phase2Locked && (
-        <div
-          role="status"
-          className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 text-xs text-amber-200 flex items-center gap-2.5"
-        >
-          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>
-            Phase 2 Gate Locked (T18): Proposals and non-mutating dry-run simulations work cleanly, while live mailbox execution remains disabled until ENABLE_EMAIL_PHASE2_ACTIONS=true.
+        <EmailNotice tone="warning" title="Phase 2 gate locked (T18)">
+          <span className="inline-flex items-start gap-2">
+            <Lock className="w-3.5 h-3.5 mt-0.5" aria-hidden="true" />
+            <span>
+              {EMAIL_COPY.RESPONSE_GATE} Proposals and non-mutating dry-run simulations remain
+              available.
+            </span>
           </span>
-        </div>
+        </EmailNotice>
       )}
 
-      {message && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div
-          role="alert"
-          className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200"
-        >
-          {error}
-        </div>
-      )}
+      {message && <EmailNotice tone="success">{message}</EmailNotice>}
+      <EmailErrorNotice error={error} onRetry={error?.kind === "DENIED" ? undefined : loadActions} />
 
       <form
         onSubmit={handlePropose}
@@ -149,7 +152,7 @@ export default function EmailActionsPage() {
           <span className="font-mono text-slate-400">Provider</span>
           <select
             value={provider}
-            onChange={(e) => setProvider(e.target.value as EmailProviderType)}
+            onChange={(e) => setProvider(e.target.value as EmailOAuthProviderType)}
             className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100"
           >
             <option value="MICROSOFT_365">Microsoft 365 Defender</option>
@@ -184,6 +187,13 @@ export default function EmailActionsPage() {
           Create Proposal
         </Button>
       </form>
+
+      {loading && proposals.length === 0 && !error && (
+        <EmailLoadingNotice label="Loading action proposals…" />
+      )}
+      {!loading && proposals.length === 0 && !error && (
+        <EmailNotice tone="info">No action proposals have been created.</EmailNotice>
+      )}
 
       <div className="space-y-3 text-xs">
         {proposals.map((p) => (

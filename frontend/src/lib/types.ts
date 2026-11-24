@@ -1331,7 +1331,10 @@ export interface PolicyVersionRecord {
   reversalReason?: string;
 }
 
-export type EmailProviderType = 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
+export type EmailProviderType = 'MICROSOFT_365' | 'GOOGLE_WORKSPACE' | 'ZOIKO_MAIL';
+
+/** Providers that connect through the OAuth wizard (Zoiko Mail uses a tenant binding instead). */
+export type EmailOAuthProviderType = 'MICROSOFT_365' | 'GOOGLE_WORKSPACE';
 
 export interface EmailOverviewResponse {
   protectionState:
@@ -1399,6 +1402,9 @@ export interface EmailSourceConnectionRecord {
   last_heartbeat_at: string | null;
   revoked_at: string | null;
   created_at: string;
+  /** null | CONSENT_EXPIRED | LIMITED_CAPABILITY | PERMISSION_REVOKED | AWAITING_FIRST_EVENT */
+  status_reason?: string | null;
+  consent_expires_at?: string | null;
 }
 
 export interface EmailThreatFindingRecord {
@@ -1423,9 +1429,139 @@ export interface EmailThreatFindingRecord {
   metadata: Record<string, unknown>;
   roleScopedRedacted?: boolean;
   phase2ActionsLocked?: boolean;
+  /** Optimistic-concurrency version (E07); sent back as expectedVersion. */
+  version?: number;
   adjudications?: any[];
   detectionDecisions?: any[];
   actionProposals?: any[];
 }
 
+// --- ZS-UX-EMTI-001 contract additions (WF-02/03/06/08/14) ---
 
+export interface EmailProviderCatalogueEntry {
+  provider: EmailProviderType;
+  displayName: string;
+  enabled: boolean;
+  connectMethod: 'OAUTH' | 'MAIL_BINDING';
+  reasonDisabled?: string;
+}
+
+export interface EmailConnectionIntentResponse {
+  intentId: string;
+  provider: EmailOAuthProviderType;
+  status: 'CONSENT_PENDING' | 'VERIFIED' | 'DENIED' | 'EXPIRED';
+  authorizationUrl?: string;
+  requestedScopes: string[];
+  expiresAt: string;
+  connectionId?: string | null;
+  failureReason?: string | null;
+}
+
+export interface EmailConnectionCallbackResponse {
+  intentId: string;
+  status: 'VERIFIED' | 'DENIED' | 'EXPIRED';
+  connection: {
+    id: string;
+    status: string;
+    provider: EmailProviderType;
+    display_name: string;
+  } | null;
+}
+
+export interface EmailCapabilityReport {
+  availableEventTypes: string[];
+  unavailableEventTypes: string[];
+  limitedCapability: boolean;
+  reason?: string;
+}
+
+export interface EmailConnectorTestResult {
+  passed: boolean;
+  status: 'HEALTHY' | 'RATE_LIMITED' | 'PERMISSION_REVOKED' | 'DEGRADED' | 'UNAVAILABLE' | 'UNVERIFIED';
+  capabilityReport: EmailCapabilityReport;
+  testedAt: string;
+}
+
+export interface EmailConnectorCapabilities {
+  connectionId: string;
+  provider: EmailProviderType;
+  availableEventTypes: string[];
+  unavailableEventTypes: string[];
+  limitedCapability: boolean;
+  licenceAssumptions: Record<string, unknown>;
+  requestedScopes: string[];
+  grantedScopes: string[];
+  lastTestedAt: string | null;
+  lastTestStatus: string | null;
+}
+
+export interface EmailConnectorSyncResult {
+  status: string;
+  ingestedCount: number;
+  rejectedCount: number;
+  duplicateCount: number;
+  expectedCount: number | null;
+  completenessGrade: string;
+  gaps: Array<{ reason: string; detail?: string }>;
+  windowStart: string;
+  windowEnd: string;
+}
+
+export interface EmailMailBindingResponse {
+  bindingId: string;
+  connectionId: string;
+  status: string;
+  status_reason: string | null;
+}
+
+export interface EmailThreatProvenance {
+  findingId: string;
+  sourceEventRef: string;
+  provider: EmailProviderType;
+  providerVerdict: string;
+  policyId: string | null;
+  policyVersion: string;
+  detectorDecisions: Array<{
+    detectorTier: string;
+    detectorVersion: string;
+    modelVersion: string | null;
+    abstained: boolean;
+    createdAt: string;
+  }>;
+  observedAt: string;
+  ingestedAt: string;
+  lastReconciledAt: string | null;
+  sourcePermissionTier: string;
+  licenceAssumptions: Record<string, unknown>;
+  dataFreshness: { lastSyncAt: string | null; sourceHealth: string };
+  coverageExceptions: Array<{
+    windowStart: string;
+    windowEnd: string;
+    completenessGrade: string;
+    missingCount: number;
+  }>;
+  timeline: Array<{
+    stage: 'SOURCE_OBSERVED' | 'INGESTED' | 'CASE_OPENED' | 'ANALYST_DECISION' | 'EVIDENCE_COMMITTED';
+    at: string;
+    ref: string | null;
+  }>;
+}
+
+export interface EmailControlEvidence {
+  controlId: string;
+  windowStart: string;
+  windowEnd: string;
+  numerator: number;
+  denominator: number;
+  excluded: Array<{ connectionId?: string; provider?: string; reason: string }>;
+  manifests: Array<{ id: string; merkleRoot: string | null; createdAt: string; coverageGaps: unknown[] }>;
+  findings: Array<{ id: string; observedAt: string; policyVersion: string }>;
+}
+
+export interface EmailAccessGrant {
+  manifestId: string;
+  auditorPrincipalId: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  active: boolean;
+}

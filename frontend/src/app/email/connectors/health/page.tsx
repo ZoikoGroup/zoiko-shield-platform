@@ -1,16 +1,26 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useId, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import type { EmailSourceConnectionRecord } from "@/lib/types";
-import { formatTimestamp } from "@/lib/utils";
+import { EMAIL_COPY } from "@/lib/email-copy";
 import { Button } from "@/components/ui/Button";
 import {
+  EmailErrorNotice,
+  EmailLoadingNotice,
+  EmailNotice,
+  EmailTime,
   EmailWorkspaceHeader,
   ProtectionStateBadge,
   ProviderBadge,
+  SourceHealthNotice,
+  classifyEmailError,
+  effectiveConnectorStatus,
+  type ClassifiedEmailError,
 } from "@/components/email/EmailSecurityUi";
+
+const UNHEALTHY = ["STALE", "DEGRADED", "RECOVERY_IN_PROGRESS", "UNAVAILABLE"];
 
 export default function EmailConnectorHealthPage() {
   const [windows, setWindows] = useState<any[]>([]);
@@ -24,10 +34,15 @@ export default function EmailConnectorHealthPage() {
   );
   const [reason, setReason] = useState("Reconcile delayed upstream webhook interval");
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
+  const [loading, setLoading] = useState(true);
+  const connectorFieldId = useId();
+  const startFieldId = useId();
+  const endFieldId = useId();
 
   const loadData = useCallback(async () => {
     setError(null);
+    setLoading(true);
     try {
       const [rec, conns] = await Promise.all([
         ZoikoShieldApiClient.listEmailReconciliations(),
@@ -40,7 +55,9 @@ export default function EmailConnectorHealthPage() {
         setConnectionId(connList[0].id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load reconciliations.");
+      setError(classifyEmailError(err, "Failed to load reconciliations."));
+    } finally {
+      setLoading(false);
     }
   }, [connectionId]);
 
@@ -59,12 +76,17 @@ export default function EmailConnectorHealthPage() {
         windowEnd: new Date(windowEnd).toISOString(),
         reason,
       });
-      setMessage("Bounded recovery backfill initiated cleanly (<=90 days validated).");
+      setMessage(
+        "Bounded backfill queued with an immutable audit record. Coverage stays marked as incomplete until the reconciliation finishes.",
+      );
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Backfill request failed.");
+      setError(classifyEmailError(err, "Backfill request failed."));
     }
   };
+
+  const worstHealth =
+    UNHEALTHY.find((h) => windows.some((w) => w.source_health === h)) || null;
 
   return (
     <div className="space-y-6">
@@ -80,18 +102,18 @@ export default function EmailConnectorHealthPage() {
         }
       />
 
-      {message && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div
-          role="alert"
-          className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200"
-        >
-          {error}
-        </div>
+      {message && <EmailNotice tone="success">{message}</EmailNotice>}
+      <EmailErrorNotice
+        error={error}
+        onRetry={error?.kind === "DENIED" ? undefined : loadData}
+      />
+
+      {worstHealth && <SourceHealthNotice health={worstHealth} />}
+
+      {!loading && !error && connectors.length === 0 && (
+        <EmailNotice tone="warning" title="No coverage">
+          {EMAIL_COPY.NO_CONNECTED_SOURCE}
+        </EmailNotice>
       )}
 
       {connectors.length > 0 && (
@@ -99,38 +121,48 @@ export default function EmailConnectorHealthPage() {
           onSubmit={handleBackfill}
           className="p-5 rounded-xl bg-raised border border-line grid grid-cols-1 md:grid-cols-4 gap-3 items-end text-xs"
         >
-          <label className="space-y-1 block">
-            <span className="font-mono text-slate-400">Source Connector</span>
+          <div className="space-y-1">
+            <label htmlFor={connectorFieldId} className="font-mono text-slate-400 block">
+              Source Connector
+            </label>
             <select
+              id={connectorFieldId}
               value={connectionId}
               onChange={(e) => setConnectionId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100"
             >
               {connectors.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.display_name} ({c.status})
+                  {c.display_name} (
+                  {effectiveConnectorStatus(c.status, c.status_reason, c.consent_expires_at).status})
                 </option>
               ))}
             </select>
-          </label>
-          <label className="space-y-1 block">
-            <span className="font-mono text-slate-400">Window Start</span>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={startFieldId} className="font-mono text-slate-400 block">
+              Window Start (local input, stored as UTC)
+            </label>
             <input
+              id={startFieldId}
               type="datetime-local"
               value={windowStart}
               onChange={(e) => setWindowStart(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100"
             />
-          </label>
-          <label className="space-y-1 block">
-            <span className="font-mono text-slate-400">Window End</span>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor={endFieldId} className="font-mono text-slate-400 block">
+              Window End (local input, stored as UTC)
+            </label>
             <input
+              id={endFieldId}
               type="datetime-local"
               value={windowEnd}
               onChange={(e) => setWindowEnd(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100"
             />
-          </label>
+          </div>
           <div className="flex gap-2">
             <input
               type="text"
@@ -141,7 +173,7 @@ export default function EmailConnectorHealthPage() {
               className="flex-1 px-3 py-2 rounded-lg bg-surface border border-line text-slate-100"
             />
             <Button type="submit" variant="cyan">
-              Run Backfill
+              Request Backfill
             </Button>
           </div>
         </form>
@@ -164,8 +196,14 @@ export default function EmailConnectorHealthPage() {
           <tbody className="divide-y divide-line">
             {windows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-6 text-center text-slate-400">
-                  No reconciliation coverage windows recorded yet.
+                <td colSpan={8} className="p-6 text-center text-slate-300">
+                  {loading ? (
+                    <EmailLoadingNotice label="Loading reconciliation windows…" />
+                  ) : connectors.length === 0 ? (
+                    EMAIL_COPY.NO_CONNECTED_SOURCE
+                  ) : (
+                    "No reconciliation windows recorded yet. Missing windows are not evidence that no events occurred."
+                  )}
                 </td>
               </tr>
             ) : (
@@ -184,9 +222,11 @@ export default function EmailConnectorHealthPage() {
                     )}
                   </td>
                   <td className="p-3 font-mono text-[11px] text-slate-300">
-                    {formatTimestamp(w.window_start)} → {formatTimestamp(w.window_end)}
+                    <EmailTime iso={w.window_start} /> → <EmailTime iso={w.window_end} />
                   </td>
-                  <td className="p-3 font-mono tabular-nums">{w.expected_count}</td>
+                  <td className="p-3 font-mono tabular-nums">
+                    {w.expected_count ?? "Unknown"}
+                  </td>
                   <td className="p-3 font-mono tabular-nums text-emerald-300">
                     {w.ingested_count}
                   </td>

@@ -1,23 +1,50 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { EmailWorkspaceHeader } from "@/components/email/EmailSecurityUi";
+import { EMAIL_COPY } from "@/lib/email-copy";
+import {
+  EmailErrorNotice,
+  EmailLoadingNotice,
+  EmailNotice,
+  EmailWorkspaceHeader,
+  classifyEmailError,
+  type ClassifiedEmailError,
+} from "@/components/email/EmailSecurityUi";
+
+/** Backend sends a 95% Wilson interval as `precisionCi95 {point, lower, upper, n}` (E11 / S03). */
+function formatInterval(ci: unknown): string | null {
+  if (!ci || typeof ci !== "object") return null;
+  const { lower, upper, n } = ci as { lower?: number | null; upper?: number | null; n?: number };
+  if (typeof lower !== "number" || typeof upper !== "number") return null;
+  const denom = typeof n === "number" ? ` (n = ${n})` : "";
+  return `95% CI ${(lower * 100).toFixed(1)}%–${(upper * 100).toFixed(1)}%${denom}`;
+}
 
 export default function EmailAiIntelligencePage() {
   const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    ZoikoShieldApiClient.getEmailBehaviourOverview()
-      .then((res) => setData(res))
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load AI benchmark."),
-      );
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await ZoikoShieldApiClient.getEmailBehaviourOverview());
+    } catch (err) {
+      setError(classifyEmailError(err, "Failed to load AI benchmark."));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   const bench = data?.benchmark;
+  const precisionCi = formatInterval(bench?.precisionCi95);
 
   return (
     <div className="space-y-6">
@@ -27,13 +54,18 @@ export default function EmailAiIntelligencePage() {
         activeHref="/email/intelligence"
       />
 
-      {error && (
-        <div
-          role="alert"
-          className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200"
-        >
-          {error}
-        </div>
+      <EmailErrorNotice error={error} onRetry={error?.kind === "DENIED" ? undefined : load} />
+      {loading && !data && !error && <EmailLoadingNotice label="Loading detector benchmark…" />}
+
+      <p className="text-[11px] text-slate-400">
+        Supplemental, explainable detection — not a generic AI risk score. No automated inbox
+        change is made from these results.
+      </p>
+
+      {bench && Number(bench.totalEvaluated || 0) === 0 && (
+        <EmailNotice tone="info">
+          No adjudicated decisions yet, so precision and incremental value cannot be computed.
+        </EmailNotice>
       )}
 
       {bench && (
@@ -56,10 +88,13 @@ export default function EmailAiIntelligencePage() {
             <div className="p-4 rounded-xl bg-raised border border-line">
               <div className="font-mono text-slate-400">Precision / Abstention</div>
               <div className="text-2xl font-black text-slate-100 tabular-nums mt-1">
-                {bench.precision === null
+                {bench.precision === null || bench.precision === undefined
                   ? "—"
                   : `${(bench.precision * 100).toFixed(1)}%`}{" "}
                 / {(Number(bench.abstentionRate || 0) * 100).toFixed(1)}%
+              </div>
+              <div className="font-mono text-[11px] text-slate-400 mt-1">
+                {precisionCi || "Confidence interval not reported"}
               </div>
             </div>
             <div className="p-4 rounded-xl bg-raised border border-line">
@@ -83,9 +118,12 @@ export default function EmailAiIntelligencePage() {
                       Tier: {d.detector_tier} · Native: {d.native_baseline_verdict || "NONE"}
                     </div>
                     <div className="font-mono text-[11px] text-slate-400">
-                      Adjudicated label: {d.adjudicated_label || "PENDING"} · Abstained:{" "}
-                      {String(Boolean(d.abstained))}
+                      Adjudicated label: {d.adjudicated_label || "PENDING"} ·{" "}
+                      {d.abstained ? "Abstained" : "Not abstained"}
                     </div>
+                    {d.abstained && (
+                      <div className="text-[11px] text-amber-200">{EMAIL_COPY.AI_UNCERTAIN}</div>
+                    )}
                   </div>
                   <Link
                     href={`/email/analyses/${d.id}`}

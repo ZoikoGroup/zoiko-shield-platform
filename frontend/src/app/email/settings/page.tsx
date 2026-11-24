@@ -3,23 +3,49 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { formatTimestamp } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
+import type { EmailAccessGrant } from "@/lib/types";
+import { EMAIL_COPY } from "@/lib/email-copy";
+import { AuditorGrantForm, type ShareableManifest } from "@/components/email/AuditorGrantForm";
 import {
+  ConnectorStatusBadge,
+  EmailErrorNotice,
+  EmailLoadingNotice,
+  EmailNotice,
+  EmailTime,
   EmailWorkspaceHeader,
-  ProtectionStateBadge,
   ProviderBadge,
+  classifyEmailError,
+  type ClassifiedEmailError,
 } from "@/components/email/EmailSecurityUi";
+
+function grantState(g: EmailAccessGrant): string {
+  if (g.revokedAt) return "Revoked";
+  if (!g.active || Date.parse(g.expiresAt) <= Date.now()) return "Expired";
+  return "Active";
+}
 
 export default function EmailSettingsGovernancePage() {
   const [settings, setSettings] = useState<any>(null);
   const [privacy, setPrivacy] = useState<any>(null);
-  const [auditorPrincipalId, setAuditorPrincipalId] = useState("auditor-ext-01");
-  const [expiresInHours, setExpiresInHours] = useState(24);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [grants, setGrants] = useState<EmailAccessGrant[] | null>(null);
+  const [grantsError, setGrantsError] = useState<ClassifiedEmailError | null>(null);
+  const [manifests, setManifests] = useState<ShareableManifest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ClassifiedEmailError | null>(null);
+
+  const loadGrants = useCallback(async () => {
+    try {
+      const res = await ZoikoShieldApiClient.listEmailAccessGrants();
+      setGrants(Array.isArray(res?.grants) ? res.grants : []);
+      setGrantsError(null);
+    } catch (err) {
+      setGrants(null);
+      setGrantsError(classifyEmailError(err, "Failed to load access grants."));
+    }
+  }, []);
 
   const loadAll = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
       const [s, p] = await Promise.all([
@@ -29,134 +55,133 @@ export default function EmailSettingsGovernancePage() {
       setSettings(s);
       setPrivacy(p);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load governance inventory.");
+      setError(classifyEmailError(err, "Failed to load governance inventory."));
+    } finally {
+      setLoading(false);
     }
-  }, []);
+    await loadGrants();
+    try {
+      const list = await ZoikoShieldApiClient.listEmailEvidenceManifests();
+      setManifests(Array.isArray(list) ? list : []);
+    } catch {
+      setManifests([]);
+    }
+  }, [loadGrants]);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
 
-  const handleGrantAuditor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setMessage(null);
-    try {
-      const res = await ZoikoShieldApiClient.grantEmailAuditorAccess({
-        auditorPrincipalId,
-        expiresInHours,
-      });
-      setMessage(
-        `Time-bounded SECURITY_AUDITOR access granted until ${formatTimestamp(res?.expiresAt)} (T09).`,
-      );
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to grant auditor access.");
-    }
-  };
-
   return (
     <div className="space-y-6">
       <EmailWorkspaceHeader
-        title="Email Access Governance, Privacy & Auditor Grants"
-        subtitle="Manage hashed-indicator data minimization posture, time-limited external auditor grants (1-168 hours), emergency revocation, and immutable access audit trails."
+        title="Email Security Settings, Privacy & Access"
+        subtitle="Review collection scope, retention, permission grants and exports. Auditor grants are time-limited and apply only to the manifests you choose."
         activeHref="/email/settings"
       />
 
-      {message && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-xs text-emerald-200">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div
-          role="alert"
-          className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200"
-        >
-          {error}
-        </div>
-      )}
+      <EmailErrorNotice error={error} onRetry={error?.kind === "DENIED" ? undefined : loadAll} />
+      {loading && !settings && !error && <EmailLoadingNotice label="Loading governance inventory…" />}
 
       {privacy && (
-        <div className="p-5 rounded-xl bg-raised border border-cyan-500/30 text-xs space-y-2">
-          <div className="flex items-center gap-2 font-bold text-cyan-300">
-            <ShieldCheck className="w-4 h-4" />
+        <section className="p-5 rounded-xl bg-raised border border-cyan-500/30 text-xs space-y-2">
+          <h2 className="flex items-center gap-2 font-bold text-cyan-300">
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" />
             <span>
-              Privacy Posture: {privacy.dataMinimizationMode} (Raw Mailbox Body Storage:{" "}
-              {String(Boolean(privacy.rawBodyStorageEnabled))})
+              Privacy posture: {privacy.dataMinimizationMode} · Raw message body storage:{" "}
+              {privacy.rawBodyStorageEnabled ? "enabled" : "disabled"}
             </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-            {(privacy.sources || []).map((s: any) => (
-              <div
-                key={s.connectionId}
-                className="p-3 rounded-lg bg-surface border border-line space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-100">{s.displayName}</span>
-                  <ProtectionStateBadge state={s.status} />
-                </div>
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                  <ProviderBadge provider={s.provider} />
-                  <span>
-                    {s.residencyCode} · {s.retentionDays}d
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+          </h2>
+          <p className="text-slate-300">
+            Investigation evidence is retained for the configured retention period and any legal
+            hold; deletion follows the approved retention schedule.
+          </p>
+          {(privacy.sources || []).length === 0 ? (
+            <p className="text-slate-300">{EMAIL_COPY.NO_CONNECTED_SOURCE}</p>
+          ) : (
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              {(privacy.sources || []).map((s: any) => (
+                <li key={s.connectionId} className="p-3 rounded-lg bg-surface border border-line space-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-100">{s.displayName}</span>
+                    <ConnectorStatusBadge
+                      status={s.status}
+                      statusReason={s.statusReason ?? s.status_reason}
+                      consentExpiresAt={s.consentExpiresAt ?? s.consent_expires_at}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+                    <ProviderBadge provider={s.provider} />
+                    <span>
+                      {s.residencyCode} · {s.retentionDays}d retention
+                      {s.legalHold ? " · legal hold" : ""}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
-      <form
-        onSubmit={handleGrantAuditor}
-        className="p-5 rounded-xl bg-raised border border-line grid grid-cols-1 md:grid-cols-3 gap-3 items-end text-xs"
-      >
-        <label className="space-y-1 block">
-          <span className="font-mono text-slate-400">External Auditor Principal ID</span>
-          <input
-            type="text"
-            required
-            value={auditorPrincipalId}
-            onChange={(e) => setAuditorPrincipalId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100 font-mono"
-          />
-        </label>
-        <label className="space-y-1 block">
-          <span className="font-mono text-slate-400">Expiry Window (1-168 hours)</span>
-          <input
-            type="number"
-            min={1}
-            max={168}
-            value={expiresInHours}
-            onChange={(e) => setExpiresInHours(Number(e.target.value))}
-            className="w-full px-3 py-2 rounded-lg bg-surface border border-line text-slate-100 font-mono"
-          />
-        </label>
-        <Button type="submit" variant="cyan">
-          Grant Bounded Auditor Access
-        </Button>
-      </form>
+      <section className="p-5 rounded-xl bg-raised border border-line space-y-2 text-xs">
+        <h2 className="text-sm font-bold text-slate-100">External Auditor Access Grants</h2>
+        <EmailErrorNotice error={grantsError} onRetry={grantsError?.kind === "DENIED" ? undefined : loadGrants} />
+        {grants && grants.length === 0 && (
+          <p className="text-slate-400">No auditor grants have been issued.</p>
+        )}
+        {grants && grants.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <caption className="sr-only">Auditor access grants by manifest</caption>
+              <thead className="font-mono text-[11px] text-slate-400 uppercase">
+                <tr>
+                  <th scope="col" className="p-2">Manifest</th>
+                  <th scope="col" className="p-2">Auditor</th>
+                  <th scope="col" className="p-2">Expires</th>
+                  <th scope="col" className="p-2">State</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {grants.map((g) => (
+                  <tr key={`${g.manifestId}-${g.auditorPrincipalId}`}>
+                    <td className="p-2 font-mono break-all">{g.manifestId}</td>
+                    <td className="p-2 font-mono">{g.auditorPrincipalId}</td>
+                    <td className="p-2">
+                      <EmailTime iso={g.expiresAt} />
+                    </td>
+                    <td className="p-2 font-mono font-bold">{grantState(g)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <AuditorGrantForm manifests={manifests} onGranted={loadGrants} />
 
       {settings?.recentAudit && (
-        <div className="p-5 rounded-xl bg-raised border border-line space-y-2 text-xs">
-          <h2 className="text-sm font-bold text-slate-100">
-            Recent Email Governance Audit Events
-          </h2>
-          <div className="space-y-1.5">
-            {settings.recentAudit.map((evt: any) => (
-              <div
-                key={evt.id}
-                className="p-2.5 rounded-lg bg-surface border border-line flex items-center justify-between font-mono text-[11px]"
-              >
-                <span className="text-cyan-300">{evt.event_type}</span>
-                <span className="text-slate-400">
-                  Actor: {evt.actor_id} · {formatTimestamp(evt.created_at)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <section className="p-5 rounded-xl bg-raised border border-line space-y-2 text-xs">
+          <h2 className="text-sm font-bold text-slate-100">Recent Email Governance Audit Events</h2>
+          {settings.recentAudit.length === 0 ? (
+            <EmailNotice tone="info">No audit events recorded yet.</EmailNotice>
+          ) : (
+            <ul className="space-y-1.5">
+              {settings.recentAudit.map((evt: any) => (
+                <li
+                  key={evt.id}
+                  className="p-2.5 rounded-lg bg-surface border border-line flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]"
+                >
+                  <span className="text-cyan-300">{evt.event_type}</span>
+                  <span className="text-slate-400">
+                    Actor: {evt.actor_id} · <EmailTime iso={evt.created_at} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </div>
   );

@@ -5,6 +5,34 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const TIMEZONE_STORAGE_KEY = "zoiko_timezone_mode";
+export const TIMEZONE_CHANGE_EVENT = "zoiko-timezone-change";
+
+/**
+ * Per-viewer display preference only. Storage can be unavailable (private
+ * mode, blocked site data), so every access is guarded and falls back to LOCAL.
+ */
+export function readStoredTimezoneMode(): "UTC" | "LOCAL" {
+  if (typeof window === "undefined") return "LOCAL";
+  try {
+    return localStorage.getItem(TIMEZONE_STORAGE_KEY) === "UTC" ? "UTC" : "LOCAL";
+  } catch {
+    return "LOCAL";
+  }
+}
+
+export function storeTimezoneMode(mode: "UTC" | "LOCAL"): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(TIMEZONE_STORAGE_KEY, mode);
+  } catch {
+    // Preference simply does not persist; display still switches.
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(TIMEZONE_CHANGE_EVENT, { detail: mode }));
+  } catch {}
+}
+
 export function formatTimestamp(
   isoString?: string,
   timezoneMode?: "UTC" | "LOCAL",
@@ -12,12 +40,7 @@ export function formatTimestamp(
   if (!isoString) return "N/A";
   try {
     const date = new Date(isoString);
-    const resolvedMode =
-      timezoneMode ??
-      (typeof window !== "undefined" &&
-      localStorage.getItem("zoiko_timezone_mode") === "UTC"
-        ? "UTC"
-        : "LOCAL");
+    const resolvedMode = timezoneMode ?? readStoredTimezoneMode();
     const formatted = date.toLocaleString("en-US", {
       month: "short",
       day: "2-digit",
