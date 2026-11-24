@@ -62,6 +62,7 @@ import { M365EmailNormalizerService } from './connectors/providers/microsoft-365
 import { GoogleWorkspaceAlertCenterProvider } from './connectors/providers/google-workspace-alert-center/gw-alert-center.provider';
 import { EmailReconciliationService } from './email-security/email-reconciliation.service';
 import { EmailIngestController } from './email-security/email-ingest.controller';
+import { ZoikoMailEventService } from './email-security/zoiko-mail-event.service';
 import { SnykProvider } from './connectors/providers/snyk-vulnerability/snyk-vulnerability.provider';
 import { SnykNormalizerService } from './connectors/providers/snyk-vulnerability/snyk-vulnerability.normalizer';
 import { JiraTicketingProvider } from './connectors/providers/jira-ticketing/jira-ticketing.provider';
@@ -204,6 +205,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     M365EmailNormalizerService,
     GoogleWorkspaceAlertCenterProvider,
     EmailReconciliationService,
+    ZoikoMailEventService,
     SnykProvider,
     SnykNormalizerService,
     JiraTicketingProvider,

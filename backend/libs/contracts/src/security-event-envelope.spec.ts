@@ -1,4 +1,5 @@
 import {
+  ZOIKO_MAIL_INBOUND_EVENT_TYPES,
   computeEnvelopePayloadHash,
   mapSecurityEventEnvelopeToCanonicalEvent,
   signSecurityEventEnvelope,
@@ -8,6 +9,9 @@ import {
 
 describe('SecurityEventEnvelopeV1 Contract (ZoikoShield Email Security)', () => {
   const secret = 'test-shield-email-hmac-secret';
+  // Fixture timestamps are 2026-11-22T00:00:0xZ; validate against a receiver
+  // clock two minutes later so the freshness window is deterministic.
+  const NOW = new Date('2026-11-22T00:02:00Z');
 
   function buildValidEnvelope(
     overrides: Partial<SecurityEventEnvelopeV1> = {},
@@ -46,6 +50,7 @@ describe('SecurityEventEnvelopeV1 Contract (ZoikoShield Email Security)', () => 
   it('validates a well-formed signed envelope and adapts it to CanonicalEvent', () => {
     const envelope = buildValidEnvelope();
     const res = validateSecurityEventEnvelopeV1(envelope, {
+      now: NOW,
       hmacSecret: secret,
       requireSignatureVerification: true,
     });
@@ -67,6 +72,7 @@ describe('SecurityEventEnvelopeV1 Contract (ZoikoShield Email Security)', () => 
       schema_version: '2.0' as any,
     });
     const res = validateSecurityEventEnvelopeV1(envelope, {
+      now: NOW,
       hmacSecret: secret,
     });
     expect(res.valid).toBe(false);
@@ -79,7 +85,7 @@ describe('SecurityEventEnvelopeV1 Contract (ZoikoShield Email Security)', () => 
     const envelope = buildValidEnvelope({
       event_type: 'email.security.dump_all_mailboxes.v1' as any,
     });
-    const res = validateSecurityEventEnvelopeV1(envelope);
+    const res = validateSecurityEventEnvelopeV1(envelope, { now: NOW });
     expect(res.valid).toBe(false);
     if (!res.valid) {
       expect(res.reasonCode).toBe('UNREGISTERED_EVENT_TYPE');
@@ -91,6 +97,7 @@ describe('SecurityEventEnvelopeV1 Contract (ZoikoShield Email Security)', () => 
       signature: 'hmac-sha256:0000000000000000000000000000000000000000',
     });
     const res = validateSecurityEventEnvelopeV1(envelope, {
+      now: NOW,
       hmacSecret: secret,
       requireSignatureVerification: true,
     });
@@ -104,10 +111,94 @@ describe('SecurityEventEnvelopeV1 Contract (ZoikoShield Email Security)', () => 
     const envelope = buildValidEnvelope({
       metadata: { raw_body: 'secret invoice content', oauth_token: 'tok-123' },
     });
-    const res = validateSecurityEventEnvelopeV1(envelope);
+    const res = validateSecurityEventEnvelopeV1(envelope, { now: NOW });
     expect(res.valid).toBe(false);
     if (!res.valid) {
       expect(res.reasonCode).toBe('PROHIBITED_CONTENT_OR_SECRET_LEAK');
     }
+  });
+  it('accepts the Zoiko Mail inbound registry (§07.2) and can narrow to it', () => {
+    for (const eventType of ZOIKO_MAIL_INBOUND_EVENT_TYPES) {
+      const res = validateSecurityEventEnvelopeV1(
+        buildValidEnvelope({ event_type: eventType as any }),
+        {
+          now: NOW,
+          hmacSecret: secret,
+          requireSignatureVerification: true,
+          allowedEventTypes: new Set(ZOIKO_MAIL_INBOUND_EVENT_TYPES),
+        },
+      );
+      expect(res.valid).toBe(true);
+    }
+    const outbound = validateSecurityEventEnvelopeV1(
+      buildValidEnvelope({ event_type: 'mail.security.action_proposal.v1' }),
+      { now: NOW, allowedEventTypes: new Set(ZOIKO_MAIL_INBOUND_EVENT_TYPES) },
+    );
+    expect(outbound.valid).toBe(false);
+    if (!outbound.valid) {
+      expect(outbound.reasonCode).toBe('UNREGISTERED_EVENT_TYPE');
+    }
+  });
+
+  it('rejects envelopes outside the replay window (stale) or from the future (T03)', () => {
+    const stale = validateSecurityEventEnvelopeV1(buildValidEnvelope(), {
+      now: new Date('2026-11-23T00:00:03Z'),
+    });
+    expect(stale.valid).toBe(false);
+    if (!stale.valid) {
+      expect(stale.reasonCode).toBe('ENVELOPE_STALE_REPLAY_WINDOW');
+    }
+
+    const future = validateSecurityEventEnvelopeV1(buildValidEnvelope(), {
+      now: new Date('2026-11-21T23:50:00Z'),
+    });
+    expect(future.valid).toBe(false);
+    if (!future.valid) {
+      expect(future.reasonCode).toBe('ENVELOPE_TIMESTAMP_IN_FUTURE');
+    }
+
+    const custom = validateSecurityEventEnvelopeV1(buildValidEnvelope(), {
+      now: NOW,
+      maxEventAgeMs: 30_000,
+    });
+    expect(custom.valid).toBe(false);
+  });
+
+  it('rejects observed_at earlier than occurred_at', () => {
+    const res = validateSecurityEventEnvelopeV1(
+      buildValidEnvelope({ observed_at: '2026-11-21T23:59:00Z' }),
+      { now: NOW },
+    );
+    expect(res.valid).toBe(false);
+  });
+
+  it('detects a payload_hash that does not match the envelope body', () => {
+    const envelope = buildValidEnvelope();
+    const tampered = {
+      ...envelope,
+      threat_class: 'BENIGN',
+    };
+    // Re-sign so only the hash (not the signature) is inconsistent.
+    const resigned = {
+      ...tampered,
+      signature: signSecurityEventEnvelope(tampered, secret),
+    };
+    const res = validateSecurityEventEnvelopeV1(resigned, {
+      now: NOW,
+      hmacSecret: secret,
+      requireSignatureVerification: true,
+      verifyPayloadHash: true,
+    });
+    expect(res.valid).toBe(false);
+    if (!res.valid) {
+      expect(res.reasonCode).toBe('PAYLOAD_HASH_MISMATCH');
+    }
+    const ok = validateSecurityEventEnvelopeV1(envelope, {
+      now: NOW,
+      hmacSecret: secret,
+      requireSignatureVerification: true,
+      verifyPayloadHash: true,
+    });
+    expect(ok.valid).toBe(true);
   });
 });

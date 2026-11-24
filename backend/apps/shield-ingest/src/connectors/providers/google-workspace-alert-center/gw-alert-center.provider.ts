@@ -106,8 +106,8 @@ export class GoogleWorkspaceAlertCenterProvider
     accessToken?: string,
   ): Promise<HealthResult> {
     const started = Date.now();
-    const token =
-      accessToken || process.env.GOOGLE_ALERT_CENTER_ACCESS_TOKEN || undefined;
+    // Only the per-tenant token resolved by shield-core is accepted.
+    const token = accessToken || undefined;
     if (!token) {
       return {
         status: 'UNVERIFIED',
@@ -172,6 +172,66 @@ export class GoogleWorkspaceAlertCenterProvider
         reason: `Google Alert Center unreachable: ${(err as Error).message}`,
       };
     }
+  }
+
+  /**
+   * Fetch one page of Alert Center `alerts.list`. Alert Center returns no
+   * total count, so callers must treat completeness as UNKNOWN. The token is
+   * never logged.
+   */
+  async fetchAlertsPage(
+    accessToken: string,
+    pageToken?: string,
+    options: { sinceIso?: string | null; pageSize?: number } = {},
+  ): Promise<{
+    alerts: GoogleAlertCenterAlert[];
+    nextPageToken?: string;
+    rateLimited?: boolean;
+    retryAfterSeconds?: number;
+    httpStatus: number;
+  }> {
+    const params = [
+      `pageSize=${Math.min(Math.max(options.pageSize ?? 100, 1), 1000)}`,
+    ];
+    if (options.sinceIso) {
+      params.push(
+        `filter=${encodeURIComponent(`createTime > "${options.sinceIso}"`)}`,
+      );
+    }
+    if (pageToken) {
+      params.push(`pageToken=${encodeURIComponent(pageToken)}`);
+    }
+    const response = await fetch(
+      `https://alertcenter.googleapis.com/v1beta1/alerts?${params.join('&')}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get('retry-after') || '60');
+      return {
+        alerts: [],
+        rateLimited: true,
+        retryAfterSeconds: Number.isFinite(retryAfter) ? retryAfter : 60,
+        httpStatus: 429,
+      };
+    }
+    if (!response.ok) {
+      return { alerts: [], httpStatus: response.status };
+    }
+    const payload = (await response.json()) as {
+      alerts?: GoogleAlertCenterAlert[];
+      nextPageToken?: string;
+    };
+    return {
+      alerts: Array.isArray(payload.alerts) ? payload.alerts : [],
+      nextPageToken: payload.nextPageToken || undefined,
+      httpStatus: response.status,
+    };
   }
 
   normalizeAlert(
