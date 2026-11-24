@@ -312,6 +312,17 @@ export class EmailBecAdjudicationService {
             ).toFixed(4),
           )
         : null;
+    // E11 / S03: proportions are reported with a 95% Wilson score interval and
+    // their denominators, so small pilot corpora are not presented as precise.
+    const precisionCi95 = wilsonInterval95(
+      zoikoConfirmedTruePositives,
+      precisionDenominator,
+    );
+    const nativeRecallDenominator = zoikoConfirmedTruePositives;
+    const nativeRecallCi95 = wilsonInterval95(
+      zoikoConfirmedTruePositives - incrementalMissedByNative,
+      nativeRecallDenominator,
+    );
     const abstentionRate =
       totalEvaluated > 0
         ? Number((abstainedCount / totalEvaluated).toFixed(4))
@@ -338,10 +349,43 @@ export class EmailBecAdjudicationService {
       falsePositives,
       totalFalsePositiveCostUsd,
       precision,
+      precisionCi95,
+      precisionDenominator,
       recall,
+      nativeBaselineRecallOfConfirmed: nativeRecallCi95.point,
+      nativeBaselineRecallCi95: nativeRecallCi95,
+      nativeBaselineRecallDenominator: nativeRecallDenominator,
       abstentionRate,
       methodologyNote:
         'Blinded comparison separates genuine incremental detections missed by Microsoft/Google native verdicts from duplicate alerts (S03 / T24 / T25).',
     };
   }
+}
+
+/** 95% Wilson score interval for k successes out of n; null bounds when n = 0. */
+export function wilsonInterval95(
+  k: number,
+  n: number,
+): {
+  point: number | null;
+  lower: number | null;
+  upper: number | null;
+  n: number;
+} {
+  if (!Number.isFinite(n) || n <= 0) {
+    return { point: null, lower: null, upper: null, n: 0 };
+  }
+  const z = 1.959963984540054;
+  const p = k / n;
+  const denom = 1 + (z * z) / n;
+  const centre = (p + (z * z) / (2 * n)) / denom;
+  const half =
+    (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / denom;
+  const round = (x: number) => Number(Math.min(1, Math.max(0, x)).toFixed(4));
+  return {
+    point: round(p),
+    lower: round(centre - half),
+    upper: round(centre + half),
+    n,
+  };
 }
