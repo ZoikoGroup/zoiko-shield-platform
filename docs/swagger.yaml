@@ -53625,6 +53625,218 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getConnectorsByConnectorIdHealth
+  /api/v1/connectors/{connectorId}/webhook-secret:
+    get:
+      tags:
+        - ConnectorCatalog
+      summary: Get the webhook signing secret status
+      description: >-
+        Reports which per-connector webhook signing secret is active. Never contains the secret itself. Requires
+        tenant read access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+        - InternalServiceAuth: []
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Active secret metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - statusCode
+                  - data
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                        description: False for a connector that has no per-connector secret yet
+                      version:
+                        type: integer
+                      hint:
+                        type: string
+                        description: Last four characters of the active secret
+                      createdAt:
+                        type: string
+                        format: date-time
+                      revealed:
+                        type: boolean
+                        description: True once the plaintext has been shown; it cannot be shown again
+                      previousValidUntil:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        description: Set while a rotated-out secret is still accepted
+        '403':
+          description: The session lacks tenant read permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getConnectorsByConnectorIdWebhookSecret
+  /api/v1/connectors/{connectorId}/webhook-secret/reveal:
+    post:
+      tags:
+        - ConnectorCatalog
+      summary: Reveal the webhook signing secret once
+      description: >-
+        Returns the connector's signing secret exactly once. The claim is atomic: a second call, including a
+        simultaneous one, receives 409 and the only way to obtain a new secret is to rotate. The response is not
+        cacheable. Requires tenant write access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+        - InternalServiceAuth: []
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: The secret, shown once
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - statusCode
+                  - data
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                        description: The signing secret. Returned once and never again.
+                      version:
+                        type: integer
+                      hint:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+        '403':
+          description: The session lacks tenant write permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Connector not found in tenant, or it has no secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The secret has already been shown; rotate to get a new one
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postConnectorsByConnectorIdWebhookSecretReveal
+  /api/v1/connectors/{connectorId}/webhook-secret/rotate:
+    post:
+      tags:
+        - ConnectorCatalog
+      summary: Rotate the webhook signing secret
+      description: >-
+        Issues a new signing secret and returns it once. The previous secret keeps verifying for a grace window
+        (WEBHOOK_SECRET_ROTATION_GRACE_HOURS, default 24) unless `immediate` is true, which ends it at once. Also
+        creates the first secret for a connector that has none. Requires tenant write access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+        - InternalServiceAuth: []
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                immediate:
+                  type: boolean
+                  description: End the previous secret immediately instead of after the grace window
+      responses:
+        '200':
+          description: The new secret, shown once
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - statusCode
+                  - data
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                        description: The signing secret. Returned once and never again.
+                      version:
+                        type: integer
+                      hint:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      previousValidUntil:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        description: When the previous secret stops being accepted
+        '403':
+          description: The session lacks tenant write permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postConnectorsByConnectorIdWebhookSecretRotate
   /api/v1/connectors/{connectorId}/heartbeat:
     post:
       tags:
