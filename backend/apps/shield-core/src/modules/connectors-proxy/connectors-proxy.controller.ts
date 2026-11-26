@@ -14,6 +14,8 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { ShieldIngestClient } from '../../internal-client/shield-ingest.client';
@@ -102,6 +104,49 @@ export class ConnectorsProxyController {
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
     return this.shieldIngestClient.syncConnector(tenantId, id);
+  }
+
+  /**
+   * Webhook signing secret. Status never contains the secret; reveal returns
+   * it once; rotate issues a new one. Both of the latter mutate a credential,
+   * so they need write access on tenant resources, not just membership.
+   */
+  @Get('connectors/:id/webhook-secret')
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
+  async getWebhookSecretStatus(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.getWebhookSecretStatus(tenantId, id);
+  }
+
+  @Post('connectors/:id/webhook-secret/reveal')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  async revealWebhookSecret(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.revealWebhookSecret(tenantId, id);
+  }
+
+  @Post('connectors/:id/webhook-secret/rotate')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  async rotateWebhookSecret(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() body: { immediate?: boolean },
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.rotateWebhookSecret(tenantId, id, {
+      immediate: body?.immediate === true,
+    });
   }
 
   @Get('connectors/:id/health')

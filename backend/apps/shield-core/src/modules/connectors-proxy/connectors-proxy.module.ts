@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConnectorsProxyController } from './connectors-proxy.controller';
+import { IngestionWebhookGatewayController } from './ingestion-webhook-gateway.controller';
 import { ShieldIngestClient } from '../../internal-client/shield-ingest.client';
 
 @Module({
-  controllers: [ConnectorsProxyController],
+  controllers: [ConnectorsProxyController, IngestionWebhookGatewayController],
   providers: [ShieldIngestClient],
   exports: [ShieldIngestClient],
 })

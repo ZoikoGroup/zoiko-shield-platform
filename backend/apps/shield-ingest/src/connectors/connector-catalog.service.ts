@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  Optional,
   NotFoundException,
   BadRequestException,
   ServiceUnavailableException,
@@ -18,6 +19,7 @@ import {
 import { ConnectorRegistry } from './core/connector-registry';
 import { ConnectorSyncService } from './services/sync.service';
 import { randomUUID } from 'crypto';
+import { ConnectorWebhookSecretService } from './services/connector-webhook-secret.service';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateConnectorDto {
@@ -101,6 +103,8 @@ export class ConnectorCatalogService {
     private readonly registry: ConnectorRegistry,
     private readonly syncService: ConnectorSyncService,
     private readonly shieldCore: ShieldCoreClient,
+    @Optional()
+    private readonly webhookSecrets?: ConnectorWebhookSecretService,
   ) {}
 
   /**
@@ -253,6 +257,20 @@ export class ConnectorCatalogService {
       sourceRegion,
     );
 
+    // A webhook connector must get its own signing secret. In production an
+    // unconfigured vault fails the create before anything is written, rather
+    // than leaving a connector that could only be verified by a shared secret.
+    const needsWebhookSecret = dto.authenticationType === 'WEBHOOK_SECRET';
+    if (
+      needsWebhookSecret &&
+      process.env.NODE_ENV === 'production' &&
+      !this.webhookSecrets?.isConfigured()
+    ) {
+      throw new ServiceUnavailableException(
+        'CONNECTOR_SECRET_VAULT_NOT_CONFIGURED: webhook connectors cannot be created until CONNECTOR_SECRET_KMS_KEY is set',
+      );
+    }
+
     // Ensure definition exists or create default definition
     let definition = await this.prisma.connectorDefinition.findUnique({
       where: { provider: dto.provider },
@@ -283,6 +301,16 @@ export class ConnectorCatalogService {
         definition: true,
       },
     });
+
+    if (needsWebhookSecret && this.webhookSecrets) {
+      if (this.webhookSecrets.isConfigured()) {
+        await this.webhookSecrets.issue(dto.tenantId, connector.id);
+      } else {
+        this.logger.warn(
+          `Connector ${connector.id} has no per-connector webhook secret: CONNECTOR_SECRET_DEV_KEY is not set. It will verify against the shared development secret only.`,
+        );
+      }
+    }
 
     if (dto.credentialReference) {
       await this.prisma.connectorCredentialReference.create({
@@ -420,10 +448,14 @@ export class ConnectorCatalogService {
         .get(instance.definition.provider)
         .disconnect(this.context(instance));
     }
-    return this.prisma.connectorInstance.update({
+    const retired = await this.prisma.connectorInstance.update({
       where: { id: connectorId },
       data: { state: 'NOT_CONNECTED', deletedAt: new Date() },
     });
+    // A retired connector must stop accepting events: end its signing secrets
+    // so a sender still holding one cannot keep delivering to it.
+    await this.webhookSecrets?.revokeAll(tenantId, connectorId);
+    return retired;
   }
 
   async testConnector(tenantId: string, connectorId: string) {

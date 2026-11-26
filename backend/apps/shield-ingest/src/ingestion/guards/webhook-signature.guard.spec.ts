@@ -3,6 +3,7 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { WebhookSignatureGuard } from './webhook-signature.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ConnectorWebhookSecretService } from '../../connectors/services/connector-webhook-secret.service';
 
 describe('WebhookSignatureGuard', () => {
   let guard: WebhookSignatureGuard;
@@ -213,6 +214,141 @@ describe('WebhookSignatureGuard', () => {
       await expect(guard.canActivate(context)).rejects.toThrow(
         'Webhook delivery has already been processed',
       );
+    });
+  });
+
+  describe('per-connector secrets', () => {
+    const CONNECTOR_SECRET = 'whsec_connector-own-secret';
+    const OLD_SECRET = 'whsec_rotated-out-secret';
+    let verificationSecrets: jest.Mock;
+    let scoped: WebhookSignatureGuard;
+
+    async function build(): Promise<WebhookSignatureGuard> {
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          WebhookSignatureGuard,
+          { provide: PrismaService, useValue: mockPrisma },
+          {
+            provide: ConnectorWebhookSecretService,
+            useValue: { verificationSecrets },
+          },
+        ],
+      }).compile();
+      return moduleRef.get(WebhookSignatureGuard);
+    }
+
+    function signed(secret: string, nonce: string, rawBody = '{"event":"x"}') {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const hash = crypto
+        .createHmac('sha256', secret)
+        .update(`${timestamp}.${nonce}.${rawBody}`)
+        .digest('hex');
+      return createMockContext(
+        {
+          'x-webhook-signature': `sha256=${hash}`,
+          'x-timestamp': timestamp,
+          'x-webhook-nonce': nonce,
+        },
+        { connectorId: 'conn-1' },
+        rawBody,
+      );
+    }
+
+    beforeEach(async () => {
+      verificationSecrets = jest.fn().mockResolvedValue([CONNECTOR_SECRET]);
+      scoped = await build();
+    });
+
+    it("accepts a delivery signed with the connector's own secret", async () => {
+      await expect(
+        scoped.canActivate(signed(CONNECTOR_SECRET, 'n-1')),
+      ).resolves.toBe(true);
+    });
+
+    it('accepts a rotated-out secret while it is still being returned (grace window)', async () => {
+      verificationSecrets.mockResolvedValue([CONNECTOR_SECRET, OLD_SECRET]);
+      await expect(
+        scoped.canActivate(signed(OLD_SECRET, 'n-2')),
+      ).resolves.toBe(true);
+    });
+
+    it('rejects a secret that belongs to nobody', async () => {
+      await expect(
+        scoped.canActivate(signed('whsec_guess', 'n-3')),
+      ).rejects.toThrow('Invalid webhook HMAC signature');
+    });
+
+    it('re-reads secrets once when the cached ones do not match (just rotated)', async () => {
+      verificationSecrets
+        .mockResolvedValueOnce([OLD_SECRET])
+        .mockResolvedValueOnce([CONNECTOR_SECRET]);
+      await expect(
+        scoped.canActivate(signed(CONNECTOR_SECRET, 'n-4')),
+      ).resolves.toBe(true);
+      expect(verificationSecrets).toHaveBeenLastCalledWith('conn-1', {
+        fresh: true,
+      });
+    });
+
+    it('does not grow the list the service returns', async () => {
+      const cached = [CONNECTOR_SECRET];
+      verificationSecrets.mockResolvedValue(cached);
+      await scoped.canActivate(signed(CONNECTOR_SECRET, 'n-5'));
+      expect(cached).toEqual([CONNECTOR_SECRET]);
+    });
+
+    it('accepts GitHub-native signing with the connector secret', async () => {
+      const rawBody = '{"zen":"keep it logically awesome"}';
+      const sig =
+        'sha256=' +
+        crypto.createHmac('sha256', CONNECTOR_SECRET).update(rawBody).digest('hex');
+      const ctx = createMockContext(
+        { 'x-hub-signature-256': sig, 'x-github-delivery': 'gh-uuid-1' },
+        { connectorId: 'conn-1' },
+        rawBody,
+      );
+      await expect(scoped.canActivate(ctx)).resolves.toBe(true);
+    });
+
+    it('still honours the shared dev secret outside production (browser proxy)', async () => {
+      await expect(
+        scoped.canActivate(signed('super-secret-key-123', 'n-6')),
+      ).resolves.toBe(true);
+    });
+
+    it('does NOT honour the shared secret in production, even if one is set', async () => {
+      process.env.NODE_ENV = 'production';
+      await expect(
+        scoped.canActivate(signed('super-secret-key-123', 'n-7')),
+      ).rejects.toThrow('Invalid webhook HMAC signature');
+      await expect(
+        scoped.canActivate(signed(CONNECTOR_SECRET, 'n-8')),
+      ).resolves.toBe(true);
+    });
+
+    it('honours an operator-supplied per-connector entry in WEBHOOK_HMAC_SECRETS', async () => {
+      verificationSecrets.mockResolvedValue([]);
+      process.env.WEBHOOK_HMAC_SECRETS = JSON.stringify({
+        'conn-1': 'operator-supplied',
+      });
+      await expect(
+        scoped.canActivate(signed('operator-supplied', 'n-9')),
+      ).resolves.toBe(true);
+    });
+
+    it('rejects when the connector has no secret and nothing else is configured', async () => {
+      verificationSecrets.mockResolvedValue([]);
+      delete process.env.WEBHOOK_HMAC_SECRET;
+      await expect(
+        scoped.canActivate(signed('anything', 'n-10')),
+      ).rejects.toThrow('No signing secret is configured for this connector');
+    });
+
+    it('does not use up the replay nonce on a bad signature', async () => {
+      await scoped
+        .canActivate(signed('whsec_wrong', 'n-11'))
+        .catch(() => undefined);
+      expect(mockPrisma.webhookReplayNonce.create).not.toHaveBeenCalled();
     });
   });
 });

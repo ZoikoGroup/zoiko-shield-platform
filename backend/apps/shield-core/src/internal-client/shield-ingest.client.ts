@@ -140,6 +140,112 @@ export class ShieldIngestClient {
     );
   }
 
+  /**
+   * Hand an inbound signed webhook to shield-ingest unchanged. The signature
+   * covers the exact bytes the sender transmitted, so the body is forwarded as
+   * the raw Buffer, never re-serialised.
+   *
+   * Deliberately carries NO workload token: ingest's webhook route is public
+   * ingress verified by the HMAC alone, so there is nothing to gain by handing
+   * a service credential to a route reachable from the internet.
+   *
+   * Never throws for an upstream answer: the caller relays `status`. A 5xx or
+   * an unreachable ingest is reported as a bare 502/503/504 so internal
+   * detail does not reach an unauthenticated sender.
+   */
+  async forwardWebhook(
+    connectorId: string,
+    rawBody: Buffer,
+    headers: Record<string, string>,
+  ): Promise<{ status: number; body: unknown }> {
+    let res: Response;
+    try {
+      res = await fetch(
+        `${SHIELD_INGEST_BASE_URL}/api/v1/ingestion/webhooks/${encodeURIComponent(connectorId)}`,
+        {
+          method: 'POST',
+          headers,
+          body: new Uint8Array(rawBody),
+          signal: AbortSignal.timeout(SHIELD_INGEST_TIMEOUT_MS),
+        },
+      );
+    } catch (error) {
+      const timedOut =
+        error instanceof Error &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError');
+      this.logger.warn(
+        `Webhook forward to ingest failed (${timedOut ? 'timeout' : 'unreachable'}) for connector ${connectorId}`,
+      );
+      return {
+        status: timedOut ? 504 : 503,
+        body: {
+          statusCode: timedOut ? 504 : 503,
+          message: 'Webhook ingestion is temporarily unavailable',
+        },
+      };
+    }
+
+    let parsed: any = null;
+    try {
+      parsed = await res.json();
+    } catch {
+      /* empty or non-JSON body */
+    }
+
+    if (res.status >= 500) {
+      this.logger.warn(
+        `Ingest answered ${res.status} to webhook for connector ${connectorId}`,
+      );
+      return {
+        status: 502,
+        body: {
+          statusCode: 502,
+          message: 'Webhook ingestion is temporarily unavailable',
+        },
+      };
+    }
+    if (res.status >= 400) {
+      // ingest's decision about this delivery (bad signature, replay, …).
+      // Relay only the fields a sender needs, not whatever else it attached.
+      return {
+        status: res.status,
+        body: {
+          statusCode: res.status,
+          message:
+            typeof parsed?.message === 'string'
+              ? parsed.message
+              : 'Webhook rejected',
+          error: typeof parsed?.error === 'string' ? parsed.error : undefined,
+        },
+      };
+    }
+    return { status: res.status, body: parsed ?? {} };
+  }
+
+  async getWebhookSecretStatus(tenantId: string, id: string): Promise<any> {
+    return this.get(`/api/v1/connectors/${id}/webhook-secret`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  async revealWebhookSecret(tenantId: string, id: string): Promise<any> {
+    return this.post(
+      `/api/v1/connectors/${id}/webhook-secret/reveal`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
+  async rotateWebhookSecret(
+    tenantId: string,
+    id: string,
+    body: { immediate?: boolean },
+  ): Promise<any> {
+    return this.post(`/api/v1/connectors/${id}/webhook-secret/rotate`, body, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
   async heartbeatConnector(
     tenantId: string,
     id: string,
