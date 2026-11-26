@@ -22,6 +22,21 @@ Set these variables in your deployment environment (Kubernetes Secrets / ECS / S
 | `WORKLOAD_IDENTITY_PRIVATE_KEY_PEM` | `-----BEGIN RSA PRIVATE KEY-----...` | Signs workload identity tokens between services |
 | `WORKLOAD_IDENTITY_PUBLIC_KEY_PEM` | `-----BEGIN PUBLIC KEY-----...` | Verifies workload identity tokens |
 | `SERVICE_NAME` | `shield-core` | Identifies service instance in logs and metrics |
+| `CONNECTOR_SECRET_KMS_KEY` | `projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>` | **shield-ingest, required.** Cloud KMS key that wraps the data key of each per-connector webhook signing secret. Without it, webhook connectors cannot be created and existing ones cannot be verified |
+| `WEBHOOK_GATEWAY_RATE_LIMIT_PER_MINUTE` | `1200` | **shield-core.** Per-client-IP limit on the public webhook route (`/api/v1/ingestion/webhooks/*`). Senders such as GitHub share address ranges, so it is higher than the default API limit |
+| `WEBHOOK_SECRET_ROTATION_GRACE_HOURS` | `24` | Hours a rotated-out webhook secret keeps verifying, so senders can be updated |
+
+### Inbound webhooks
+External tools (GitHub, Okta, custom scripts) post signed events to **shield-core**, which relays them to shield-ingest:
+
+```
+POST https://api.zoikoshield.com/api/v1/ingestion/webhooks/<connector id>
+```
+
+- No session is needed; the connector's HMAC signature is the authentication, and shield-ingest verifies it. shield-core forwards the raw body and only the signature headers, never `Authorization`, cookies or `x-tenant-id`.
+- shield-ingest (port 3002) stays private. Do not expose it, and do not add an ingest hostname.
+- Each connector has its own signing secret (see `CONNECTOR_SECRET_KMS_KEY` above), shown once in the connector's panel.
+- Your reverse proxy / WAF must pass the request body and the `x-webhook-*`, `x-signature*`, `x-hub-signature-256` and `x-github-*` headers through unchanged, and must not buffer-and-rewrite the JSON.
 
 ### Frontend (Next.js SSR / App)
 Set these variables before executing `npm run build`:
@@ -33,6 +48,7 @@ Set these variables before executing `npm run build`:
 | `NEXT_PUBLIC_API_URL` | `https://api.zoikoshield.com` | Target API base URL |
 | `NEXT_PUBLIC_DEMO_FALLBACK` | `false` | Disables fabricated mock responses in production |
 | `BACKEND_PROXY_TIMEOUT_MS` | `15000` | Gateway timeout for upstream microservice requests |
+| `NEXT_PUBLIC_INGEST_PUBLIC_URL` | _(unset)_ | Optional. Address shown to users as the webhook URL. Defaults to `NEXT_PUBLIC_API_URL`, so in production webhooks are sent to `https://api.zoikoshield.com/api/v1/ingestion/webhooks/<connector id>` with no extra hostname. Set only to publish on a different address. Build-time |
 
 ---
 

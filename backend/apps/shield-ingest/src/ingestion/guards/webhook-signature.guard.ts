@@ -2,10 +2,12 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ConnectorWebhookSecretService } from '../../connectors/services/connector-webhook-secret.service';
 import {
   bindRequestTenant,
   runWithPlatformScope,
@@ -13,7 +15,11 @@ import {
 
 @Injectable()
 export class WebhookSignatureGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly webhookSecrets?: ConnectorWebhookSecretService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -27,8 +33,8 @@ export class WebhookSignatureGuard implements CanActivate {
     }
     const rawBody = request.rawBody.toString('utf-8');
 
-    const secret = this.resolveSecret(connectorId);
-    if (!secret) {
+    let secrets = await this.resolveSecrets(connectorId);
+    if (secrets.length === 0) {
       throw new UnauthorizedException(
         'No signing secret is configured for this connector',
       );
@@ -42,16 +48,46 @@ export class WebhookSignatureGuard implements CanActivate {
     const githubDeliveryId = headers['x-github-delivery'] as string | undefined;
     const githubSignature = headers['x-hub-signature-256'] as
       string | undefined;
-    if (githubDeliveryId && githubSignature) {
-      await this.verifyGithubDelivery(
+    const isGithub = Boolean(githubDeliveryId && githubSignature);
+
+    const check = (candidates: string[]) =>
+      isGithub
+        ? this.githubSignatureMatches(rawBody, githubSignature!, candidates)
+        : this.internalSignatureMatches(rawBody, headers, candidates);
+
+    let valid = check(secrets);
+    if (!valid && this.webhookSecrets) {
+      // Secrets are cached briefly. If this process just rotated or another
+      // instance did, look again before turning a legitimate sender away.
+      const fresh = await this.resolveSecrets(connectorId, true);
+      if (fresh.join('\u0000') !== secrets.join('\u0000')) {
+        secrets = fresh;
+        valid = check(secrets);
+      }
+    }
+    if (!valid) {
+      throw new UnauthorizedException(
+        isGithub
+          ? 'Invalid GitHub webhook HMAC signature'
+          : 'Invalid webhook HMAC signature',
+      );
+    }
+
+    if (isGithub) {
+      await this.consumeReplayNonce(
         connectorId,
-        rawBody,
-        githubSignature,
-        githubDeliveryId,
-        secret,
+        githubDeliveryId!,
+        new Date(Date.now() + 24 * 60 * 60 * 1000),
       );
     } else {
-      await this.verifyInternalDelivery(connectorId, rawBody, headers, secret);
+      const nonce = headers['x-webhook-nonce'] as string;
+      const requestTime = Number(this.timestampOf(headers));
+      await this.consumeReplayNonce(
+        connectorId,
+        nonce,
+        new Date((requestTime + 300) * 1000),
+        crypto.createHash('sha256').update(nonce).digest('hex'),
+      );
     }
     await this.bindConnectorTenant(connectorId);
     return true;
@@ -74,16 +110,40 @@ export class WebhookSignatureGuard implements CanActivate {
     if (instance) bindRequestTenant(instance.tenant_id);
   }
 
-  private resolveSecret(connectorId: string): string | undefined {
+  /**
+   * Every secret that may sign for this connector, best first:
+   *  1. the connector's own secrets (active, and a rotated one still inside
+   *     its grace window);
+   *  2. an operator-supplied entry in WEBHOOK_HMAC_SECRETS;
+   *  3. outside production only, the shared WEBHOOK_HMAC_SECRET, which the
+   *     Next proxy uses to sign for a signed-in browser session.
+   */
+  private async resolveSecrets(
+    connectorId: string,
+    fresh = false,
+  ): Promise<string[]> {
+    // Copied: the service hands back its cached array, which must not grow.
+    const secrets: string[] = this.webhookSecrets
+      ? [
+          ...(await this.webhookSecrets.verificationSecrets(connectorId, {
+            fresh,
+          })),
+        ]
+      : [];
     const secretMap = process.env.WEBHOOK_HMAC_SECRETS
       ? (JSON.parse(process.env.WEBHOOK_HMAC_SECRETS) as Record<string, string>)
       : {};
-    return (
-      secretMap[connectorId] ??
-      (process.env.NODE_ENV !== 'production'
-        ? process.env.WEBHOOK_HMAC_SECRET
-        : undefined)
-    );
+    if (secretMap[connectorId]) secrets.push(secretMap[connectorId]);
+    if (process.env.NODE_ENV !== 'production' && process.env.WEBHOOK_HMAC_SECRET) {
+      secrets.push(process.env.WEBHOOK_HMAC_SECRET);
+    }
+    return [...new Set(secrets)];
+  }
+
+  private safeEqual(provided: string, expected: string): boolean {
+    const a = Buffer.from(provided);
+    const b = Buffer.from(expected);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
   /**
@@ -92,43 +152,37 @@ export class WebhookSignatureGuard implements CanActivate {
    * alone. Replay protection keys off X-GitHub-Delivery (unique per delivery,
    * including redeliveries) since GitHub provides no timestamp to bound.
    */
-  private async verifyGithubDelivery(
-    connectorId: string,
+  private githubSignatureMatches(
     rawBody: string,
     signature: string,
-    deliveryId: string,
-    secret: string,
-  ): Promise<boolean> {
-    const computedHash = crypto
-      .createHmac('sha256', secret)
-      .update(rawBody)
-      .digest('hex');
-    const expectedSignature = `sha256=${computedHash}`;
-
-    const sigBuffer = Buffer.from(signature);
-    const expectedBuffer = Buffer.from(expectedSignature);
-    if (
-      sigBuffer.length !== expectedBuffer.length ||
-      !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
-    ) {
-      throw new UnauthorizedException('Invalid GitHub webhook HMAC signature');
-    }
-
-    await this.consumeReplayNonce(
-      connectorId,
-      deliveryId,
-      new Date(Date.now() + 24 * 60 * 60 * 1000),
+    secrets: string[],
+  ): boolean {
+    return secrets.some((secret) =>
+      this.safeEqual(
+        signature,
+        `sha256=${crypto.createHmac('sha256', secret).update(rawBody).digest('hex')}`,
+      ),
     );
-    return true;
   }
 
-  /** Our own scheme: signature over `${timestamp}.${nonce}.${rawBody}`. */
-  private async verifyInternalDelivery(
-    connectorId: string,
+  private timestampOf(headers: Record<string, unknown>): string | undefined {
+    return (
+      (headers['x-timestamp'] as string) ||
+      (headers['x-webhook-timestamp'] as string) ||
+      (headers['x-request-timestamp'] as string)
+    );
+  }
+
+  /**
+   * Our own scheme: signature over `${timestamp}.${nonce}.${rawBody}`. The
+   * presence, freshness and shape of the headers are validated first (and
+   * throw their own errors); only the signature itself is a yes/no answer.
+   */
+  private internalSignatureMatches(
     rawBody: string,
     headers: Record<string, unknown>,
-    secret: string,
-  ): Promise<boolean> {
+    secrets: string[],
+  ): boolean {
     const signature =
       (headers['x-hub-signature-256'] as string) ||
       (headers['x-webhook-signature'] as string) ||
@@ -141,10 +195,7 @@ export class WebhookSignatureGuard implements CanActivate {
       );
     }
 
-    const timestampStr =
-      (headers['x-timestamp'] as string) ||
-      (headers['x-webhook-timestamp'] as string) ||
-      (headers['x-request-timestamp'] as string);
+    const timestampStr = this.timestampOf(headers);
     const nonce = headers['x-webhook-nonce'] as string;
     if (!timestampStr || !nonce) {
       throw new UnauthorizedException(
@@ -162,33 +213,14 @@ export class WebhookSignatureGuard implements CanActivate {
       );
     }
 
-    const computedHash = crypto
-      .createHmac('sha256', secret)
-      .update(`${timestampStr}.${nonce}.${rawBody}`)
-      .digest('hex');
-
-    const expectedSignature = signature.startsWith('sha256=')
-      ? `sha256=${computedHash}`
-      : computedHash;
-
-    const sigBuffer = Buffer.from(signature);
-    const expectedBuffer = Buffer.from(expectedSignature);
-
-    if (
-      sigBuffer.length !== expectedBuffer.length ||
-      !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
-    ) {
-      throw new UnauthorizedException('Invalid webhook HMAC signature');
-    }
-
-    const nonceHash = crypto.createHash('sha256').update(nonce).digest('hex');
-    await this.consumeReplayNonce(
-      connectorId,
-      nonce,
-      new Date((requestTime + 300) * 1000),
-      nonceHash,
-    );
-    return true;
+    const prefixed = signature.startsWith('sha256=');
+    return secrets.some((secret) => {
+      const hash = crypto
+        .createHmac('sha256', secret)
+        .update(`${timestampStr}.${nonce}.${rawBody}`)
+        .digest('hex');
+      return this.safeEqual(signature, prefixed ? `sha256=${hash}` : hash);
+    });
   }
 
   private async consumeReplayNonce(

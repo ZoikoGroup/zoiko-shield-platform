@@ -5,6 +5,11 @@ import { randomUUID, createHash } from 'crypto';
 import { Module, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+// The tenant, identity-adapter and authorization modules import each other. The
+// running app resolves that loop because it loads TenantModule first; any other
+// order leaves one of them undefined when Nest reads its `imports`. Load it
+// first here too (side-effect import, so the compiler keeps it).
+import '../apps/shield-core/src/modules/tenant/tenant.module';
 import { PrismaModule } from '../apps/shield-core/src/prisma/prisma.module';
 import { PrismaService } from '../apps/shield-core/src/prisma/prisma.service';
 import { OnboardingModule } from '../apps/shield-core/src/modules/onboarding/onboarding.module';

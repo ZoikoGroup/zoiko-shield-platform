@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
+import WebhookUrlCard from "./WebhookUrlCard";
 import { asList, backend } from "@/lib/backend";
 import {
   customerApi,
@@ -2088,6 +2089,7 @@ export function CustomerIntegrationsSection() {
                       {health.data.lastMessage && <p className="text-slate-400">{health.data.lastMessage}</p>}
                     </div>
                   )}
+                  {selected.authentication_type === "WEBHOOK_SECRET" && <WebhookUrlCard connectorId={selected.id} />}
                   <div className="flex flex-wrap gap-2">
                     <button type="button" disabled={busy !== null} onClick={() => testConnection(selected)} className={PRIMARY_BUTTON}>
                       {busy === "test" ? "Testing…" : "Test connection"}

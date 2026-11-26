@@ -49,6 +49,7 @@ model ConnectorInstance {
   deletedAt            DateTime?
 
   credentials           ConnectorCredentialReference[]
+  webhookSecrets        ConnectorWebhookSecret[]
   checkpoints           ConnectorCheckpoint[]
   syncRuns              ConnectorSynchronizationRun[]
   errors                ConnectorError[]
@@ -97,6 +98,39 @@ model ConnectorCredentialReference {
   createdAt        DateTime          @default(now())
 
   @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+/// Per-connector inbound webhook signing secret. The secret is symmetric (the
+/// ingest guard must recompute the HMAC), so it is stored envelope-encrypted,
+/// never in plaintext: a per-row AES-256-GCM data key wrapped by KMS, with the
+/// tenant and connector bound in as AAD. Only the last four characters are kept
+/// in the clear, as `secret_hint`, so a UI can say which secret is active.
+model ConnectorWebhookSecret {
+  id          String            @id @default(uuid())
+  tenant_id   String
+  instanceId  String
+  instance    ConnectorInstance @relation(fields: [instanceId], references: [id])
+  version     Int
+  /// ACTIVE | ROTATED. A ROTATED secret still verifies until `validUntil`.
+  status      String            @default("ACTIVE")
+  ciphertext  String
+  iv          String
+  auth_tag    String
+  wrapped_key String
+  key_ref     String
+  secret_hint String
+  /// Set once the plaintext has been handed to the user. A secret can be
+  /// revealed exactly once; after that the only way to get one is to rotate.
+  revealedAt  DateTime?
+  validUntil  DateTime?
+  createdAt   DateTime          @default(now())
+  rotatedAt   DateTime?
+
+  @@unique([instanceId, version])
+  @@index([tenant_id])
+  @@index([instanceId, status])
 
   @@schema("ingest")
 }

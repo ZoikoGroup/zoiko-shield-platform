@@ -182,6 +182,7 @@ services:
       # Without this, shield-core falls back to localhost:3002 — which inside
       # this container is shield-core itself, so every ingest call fails.
       SHIELD_INGEST_BASE_URL: http://shield-ingest:3002
+      WEBHOOK_GATEWAY_RATE_LIMIT_PER_MINUTE: ${WEBHOOK_GATEWAY_RATE_LIMIT_PER_MINUTE:-}
       # Optional below: value-less keys are taken from .env when set and
       # omitted when not, so the code's own defaults still apply. An empty
       # "${VAR:-}" would instead override those defaults with "".
@@ -258,6 +259,9 @@ services:
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
       WEBHOOK_HMAC_SECRETS: ${WEBHOOK_HMAC_SECRETS:-}
       WEBHOOK_HMAC_SECRET: ${WEBHOOK_HMAC_SECRET:-}
+      CONNECTOR_SECRET_KMS_KEY: ${CONNECTOR_SECRET_KMS_KEY:-}
+      CONNECTOR_SECRET_DEV_KEY: ${CONNECTOR_SECRET_DEV_KEY:-}
+      WEBHOOK_SECRET_ROTATION_GRACE_HOURS: ${WEBHOOK_SECRET_ROTATION_GRACE_HOURS:-24}
       MPC_THREAT_FEED_OPRF_SEED: ${MPC_THREAT_FEED_OPRF_SEED:-}
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}

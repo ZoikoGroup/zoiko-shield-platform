@@ -11,6 +11,8 @@ import {
   Patch,
   Delete,
   Optional,
+  Header,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   ConnectorCatalogService,
@@ -19,6 +21,7 @@ import {
 import { requireTenantId } from '../security/tenant-context';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { ConnectorHealthService } from './services/health.service';
+import { ConnectorWebhookSecretService } from './services/connector-webhook-secret.service';
 import { DLQReplayWorker } from '../ingestion/dlq-replay.worker';
 import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
 
@@ -31,7 +34,79 @@ export class ConnectorCatalogController {
     private readonly connectorHealthService?: ConnectorHealthService,
     @Optional() private readonly dlqWorker?: DLQReplayWorker,
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
+    @Optional()
+    private readonly webhookSecrets?: ConnectorWebhookSecretService,
   ) {}
+
+  private requireWebhookSecrets(): ConnectorWebhookSecretService {
+    if (!this.webhookSecrets) {
+      throw new ServiceUnavailableException(
+        'Webhook secret management is unavailable',
+      );
+    }
+    return this.webhookSecrets;
+  }
+
+  /**
+   * GET /api/v1/connectors/:connectorId/webhook-secret
+   * Which secret is active. Never contains the secret itself.
+   */
+  @Get('connectors/:connectorId/webhook-secret')
+  async getWebhookSecretStatus(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('connectorId') connectorId: string,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.requireWebhookSecrets().status(
+        requireTenantId(tenantId),
+        connectorId,
+      ),
+    };
+  }
+
+  /**
+   * POST /api/v1/connectors/:connectorId/webhook-secret/reveal
+   * Returns the connector's secret exactly once; later calls get 409.
+   */
+  @Post('connectors/:connectorId/webhook-secret/reveal')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async revealWebhookSecret(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('connectorId') connectorId: string,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.requireWebhookSecrets().reveal(
+        requireTenantId(tenantId),
+        connectorId,
+      ),
+    };
+  }
+
+  /**
+   * POST /api/v1/connectors/:connectorId/webhook-secret/rotate
+   * Issues a new secret (returned once). The old one keeps working for the
+   * grace window unless `immediate` is true.
+   */
+  @Post('connectors/:connectorId/webhook-secret/rotate')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async rotateWebhookSecret(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('connectorId') connectorId: string,
+    @Body() body: { immediate?: boolean } = {},
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.requireWebhookSecrets().rotate(
+        requireTenantId(tenantId),
+        connectorId,
+        { immediate: body?.immediate === true },
+      ),
+    };
+  }
 
   /**
    * GET /api/v1/connector-types
