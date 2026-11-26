@@ -3,6 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import pathModule from "path";
 import { trustedClientIp } from "@/lib/client-ip";
+import { rewriteRefreshCookiePath } from "@/lib/refresh-cookie";
 
 /**
  * ZoikoShield Resilient Multi-Service Browser -> Backend API Proxy & Autonomous Fallback Engine.
@@ -1330,7 +1331,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   if (setCookie.length > 0) {
     responseHeaders.delete("set-cookie");
     for (const cookie of setCookie) {
-      responseHeaders.append("set-cookie", cookie);
+      responseHeaders.append("set-cookie", rewriteRefreshCookiePath(cookie));
     }
   }
 
@@ -1355,6 +1356,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     for (const c of expiredCookies) {
       responseHeaders.append("set-cookie", `${c}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
     }
+    responseHeaders.append("set-cookie", "refresh_token=; Path=/api/v1/auth; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT");
     responseHeaders.set("Cache-Control", "no-store, no-cache, must-revalidate");
   }
 

@@ -32,6 +32,12 @@ const CustomerTopHeader = dynamic(
 );
 
 import { useDemoState } from "@/lib/demo-state";
+import { installSessionRefresh } from "@/lib/session-refresh";
+
+// Installed at module load, not in an effect: child effects run before parent
+// effects, so an effect here would miss the first fetches of every page.
+// No-op on the server.
+installSessionRefresh();
 
 const PUBLIC_PREFIXES = [
   "/login",

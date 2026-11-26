@@ -388,7 +388,7 @@ export class ZoikoShieldApiClient {
 
     if (typeof window !== "undefined") {
       try {
-        const maxAge = 86400 * 7; // 7 days
+        const maxAge = 86400 * 30; // matches the 30-day rolling refresh token
         document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `zoiko_shield_access_token=${resolvedToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `shield_access_token=${resolvedToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
