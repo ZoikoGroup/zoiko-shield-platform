@@ -45,9 +45,16 @@ export class DashboardController {
   async getEventMetrics(
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
+    @Query('hours') hours?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const metrics = await this.dashboardService.getEventMetrics(tenantId);
+    // Absent or blank means the default window; a blank must not read as 0 hours.
+    const parsed =
+      hours === undefined || hours.trim() === '' ? 24 : Number(hours);
+    const metrics = await this.dashboardService.getEventMetrics(
+      tenantId,
+      Number.isFinite(parsed) ? parsed : 24,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: metrics,

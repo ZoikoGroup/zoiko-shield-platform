@@ -329,6 +329,14 @@ export class ShieldIngestClient {
   }
 
   // --- Events & Telemetry ---
+  /** Counts of events received, including how many arrived in the last `hours`. */
+  async getEventMetrics(tenantId: string, hours?: number): Promise<any> {
+    const query = hours ? `?hours=${hours}` : '';
+    return this.get(`/api/v1/dashboard/events${query}`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
   async listEvents(
     tenantId: string,
     query?: Record<string, string>,

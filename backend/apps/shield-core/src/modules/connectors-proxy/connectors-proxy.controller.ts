@@ -235,6 +235,25 @@ export class ConnectorsProxyController {
     );
   }
 
+  /**
+   * How many events arrived, for the dashboard's "Total Events". The window is whole
+   * hours between 1 and 2160 (90 days); anything else falls back to 24 hours.
+   */
+  @Get('dashboard/events')
+  async getEventMetrics(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('hours') hours?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    const n = Number(hours);
+    const bounded =
+      hours !== undefined && Number.isFinite(n) && n >= 1
+        ? Math.min(Math.floor(n), 24 * 90)
+        : undefined;
+    return this.shieldIngestClient.getEventMetrics(tenantId, bounded);
+  }
+
   @Get('control-evaluations')
   async listControlEvaluations(
     @Headers('x-tenant-id') headerTenantId: string,

@@ -152,10 +152,15 @@ export class DashboardService {
   /**
    * GET /api/v1/dashboard/events
    */
-  async getEventMetrics(tenantId: string) {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  async getEventMetrics(tenantId: string, hours = 24) {
+    // The dashboard offers 24 hours and 7 days. Anything else is clamped rather than
+    // trusted: a window is a number of hours between 1 hour and 90 days.
+    const windowHours = Number.isFinite(hours)
+      ? Math.min(Math.max(Math.floor(hours), 1), 24 * 90)
+      : 24;
+    const since = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
 
-    const [totalRaw, totalAccepted, totalQuarantined, raw24h] =
+    const [totalRaw, totalAccepted, totalQuarantined, raw24h, rawInWindow] =
       await Promise.all([
         this.prisma.rawEvent.count({ where: { tenant_id: tenantId } }),
         this.prisma.rawEvent.count({
@@ -165,11 +170,17 @@ export class DashboardService {
           where: { tenant_id: tenantId, processing_status: 'QUARANTINED' },
         }),
         this.prisma.rawEvent.count({
-          where: {
-            tenant_id: tenantId,
-            received_at: { gte: twentyFourHoursAgo },
-          },
+          where: { tenant_id: tenantId, received_at: { gte: since(24) } },
         }),
+        // Same as raw24h when the window is 24 hours; only count again if it differs.
+        windowHours === 24
+          ? Promise.resolve(null)
+          : this.prisma.rawEvent.count({
+              where: {
+                tenant_id: tenantId,
+                received_at: { gte: since(windowHours) },
+              },
+            }),
       ]);
 
     return {
@@ -177,6 +188,9 @@ export class DashboardService {
       accepted: totalAccepted,
       quarantined: totalQuarantined,
       received24h: raw24h,
+      // Events received in the requested window (what the dashboard's "Total Events" shows).
+      windowHours,
+      receivedInWindow: rawInWindow ?? raw24h,
     };
   }
 
