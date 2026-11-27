@@ -106,9 +106,26 @@ describe("webhook-only gate (what ngrok exposes)", () => {
     expect(core.seen).toHaveLength(0);
   });
 
-  it("rejects a body over 1 MB", async () => {
-    const res = await fetch(`${base}/api/v1/ingestion/webhooks/${ID}`, { method: "POST", body: Buffer.alloc(1024 * 1024 + 1, 97) });
-    expect(res.status).toBe(413);
+  it("rejects a body over 1 MB, reliably (the answer is sent after the body has arrived)", async () => {
+    for (let i = 0; i < 5; i++) {
+      const res = await fetch(`${base}/api/v1/ingestion/webhooks/${ID}`, { method: "POST", body: Buffer.alloc(1024 * 1024 + 1, 97) });
+      expect(res.status).toBe(413);
+    }
+    expect(core.seen).toHaveLength(0);
+  });
+
+  it("accepts a body of exactly 1 MB", async () => {
+    const res = await fetch(`${base}/api/v1/ingestion/webhooks/${ID}`, { method: "POST", body: Buffer.alloc(1024 * 1024, 97) });
+    expect(res.status).toBe(202);
+    expect(core.seen[0].body.length).toBe(1024 * 1024);
+  });
+
+  it("cuts the connection on an absurdly large body instead of reading it all", async () => {
+    const outcome = await fetch(`${base}/api/v1/ingestion/webhooks/${ID}`, { method: "POST", body: Buffer.alloc(26 * 1024 * 1024, 97) }).then(
+      (r) => r.status,
+      () => "connection closed",
+    );
+    expect([413, "connection closed"]).toContain(outcome);
     expect(core.seen).toHaveLength(0);
   });
 

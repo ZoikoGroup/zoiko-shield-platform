@@ -94,6 +94,8 @@ const FORWARDED_HEADERS = [
   "x-github-event",
 ];
 const MAX_BODY_BYTES = 1024 * 1024;
+/** GitHub's own cap on a delivery. Past this the connection is cut rather than read to the end. */
+const HARD_LIMIT_BYTES = 25 * 1024 * 1024;
 
 export function createWebhookOnlyProxy(coreUrl: string): http.Server {
   const target = new URL(coreUrl);
@@ -106,15 +108,21 @@ export function createWebhookOnlyProxy(coreUrl: string): http.Server {
     const path = (req.url ?? "").split("?")[0];
     if (!WEBHOOK_PATH.test(path)) return reply(404, "Not found");
     if (req.method !== "POST") return reply(405, "Method not allowed");
-    if (Number(req.headers["content-length"]) > MAX_BODY_BYTES) return reply(413, "Payload too large");
 
+    // An oversized body is read and thrown away, and answered when it has finished arriving.
+    // Replying first would let the client see a connection reset instead of the 413.
     const chunks: Buffer[] = [];
     let size = 0;
     let tooLarge = false;
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
+      if (size > HARD_LIMIT_BYTES) {
+        req.destroy();
+        return;
+      }
       if (size > MAX_BODY_BYTES) {
         tooLarge = true;
+        chunks.length = 0; // nothing past the limit is kept
         return;
       }
       chunks.push(chunk);
