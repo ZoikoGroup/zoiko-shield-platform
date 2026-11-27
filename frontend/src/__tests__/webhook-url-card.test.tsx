@@ -4,7 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 
 const get = vi.fn();
 const post = vi.fn();
-vi.mock("@/lib/backend", () => ({ backend: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) } }));
+const del = vi.fn();
+vi.mock("@/lib/backend", () => ({
+  backend: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a), delete: (...a: unknown[]) => del(...a) },
+}));
 
 import WebhookUrlCard, { webhookUrlFor } from "@/components/customer/WebhookUrlCard";
 
@@ -22,10 +25,20 @@ const configured = (over: object = {}) => ({
   ...over,
 });
 
+/** Answer the signing-secret status call from a queue (last one repeats); the dev-only tunnel status call is declined. */
+function secretStatusQueue(...responses: object[]) {
+  let i = 0;
+  get.mockImplementation(async (path: string) => {
+    if (String(path).startsWith("/api/dev/tunnel")) throw new Error("not available");
+    return responses[Math.min(i++, responses.length - 1)];
+  });
+}
+
 beforeEach(() => {
   cleanup();
   get.mockReset();
   post.mockReset();
+  del.mockReset();
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
 });
 
@@ -66,7 +79,7 @@ describe("WebhookUrlCard — signing secret", () => {
   });
 
   it("reveals the secret once, then discards it when done", async () => {
-    get.mockResolvedValueOnce(configured()).mockResolvedValue(configured({ revealed: true }));
+    secretStatusQueue(configured(), configured({ revealed: true }));
     post.mockResolvedValue({ secret: SECRET, version: 1 });
     const { container } = render(<WebhookUrlCard connectorId={ID} />);
     fireEvent.click(await screen.findByRole("button", { name: /Reveal secret/ }));
@@ -151,5 +164,93 @@ describe("WebhookUrlCard — signing secret", () => {
     get.mockRejectedValue(new Error("The requested operation is not authorized"));
     render(<WebhookUrlCard connectorId={ID} />);
     expect((await screen.findByText(/Signing secret unavailable/)).textContent).toContain("not authorized");
+  });
+});
+
+describe("WebhookUrlCard: dev-only test link (ngrok button)", () => {
+  const TUNNEL = `/api/dev/tunnel?connectorId=${ID}`;
+  const NODE_ENV = process.env.NODE_ENV;
+  const setEnv = (v: string | undefined) => ((process.env as Record<string, string | undefined>).NODE_ENV = v);
+  afterEach(() => setEnv(NODE_ENV));
+
+  /** Route get() by URL: the signing-secret status and the tunnel status are separate calls. */
+  function serve(tunnel: unknown) {
+    get.mockImplementation(async (path: string) => {
+      if (String(path).startsWith("/api/dev/tunnel")) {
+        if (tunnel instanceof Error) throw tunnel;
+        return tunnel;
+      }
+      return unconfigured;
+    });
+  }
+
+  it("offers a Create button when ngrok is not running", async () => {
+    serve({ running: false, url: null, managed: false });
+    render(<WebhookUrlCard connectorId={ID} />);
+    expect(await screen.findByRole("button", { name: "Create test link" })).toBeTruthy();
+    expect(screen.getByText("DEV ONLY")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith(TUNNEL);
+  });
+
+  it("creates the link on one click and shows the finished webhook URL for this connector", async () => {
+    serve({ running: false, url: null, managed: false });
+    post.mockResolvedValue({ running: true, url: "https://abc-1.ngrok-free.app", managed: true });
+    render(<WebhookUrlCard connectorId={ID} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Create test link" }));
+    const field = (await screen.findByLabelText("Test webhook URL")) as HTMLInputElement;
+    expect(field.value).toBe(`https://abc-1.ngrok-free.app/api/v1/ingestion/webhooks/${ID}`);
+    expect(post).toHaveBeenCalledWith(TUNNEL);
+    expect(screen.getByText(/nothing else of the API is exposed/)).toBeTruthy();
+  });
+
+  it("shows a link that is already running, and stops it", async () => {
+    serve({ running: true, url: "https://live.ngrok-free.app", managed: true });
+    del.mockResolvedValue({ running: false, url: null, managed: false });
+    render(<WebhookUrlCard connectorId={ID} />);
+    expect(((await screen.findByLabelText("Test webhook URL")) as HTMLInputElement).value).toContain("https://live.ngrok-free.app/");
+    fireEvent.click(screen.getByRole("button", { name: "Stop test link" }));
+    expect(await screen.findByRole("button", { name: "Create test link" })).toBeTruthy();
+    expect(del).toHaveBeenCalledWith(TUNNEL);
+  });
+
+  it("does not offer Stop for a link it did not start", async () => {
+    serve({ running: true, url: "https://theirs.ngrok-free.app", managed: false });
+    render(<WebhookUrlCard connectorId={ID} />);
+    await screen.findByLabelText("Test webhook URL");
+    expect(screen.queryByRole("button", { name: "Stop test link" })).toBeNull();
+  });
+
+  it("explains a failure, such as ngrok not being installed", async () => {
+    serve({ running: false, url: null, managed: false });
+    post.mockRejectedValue(new Error("ngrok is not installed or not on PATH."));
+    render(<WebhookUrlCard connectorId={ID} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Create test link" }));
+    expect((await screen.findByText(/not installed/)).textContent).toContain("ngrok");
+    expect(screen.getByRole("button", { name: "Create test link" })).toBeTruthy(); // can retry
+  });
+
+  it("shows nothing when the endpoint is unavailable (not a dev server, or not allowed)", async () => {
+    serve(new Error("404"));
+    const { container } = render(<WebhookUrlCard connectorId={ID} />);
+    await screen.findByText(/Signing secret/);
+    expect(screen.queryByText("DEV ONLY")).toBeNull();
+    expect(container.textContent).not.toMatch(/ngrok/i);
+  });
+
+  it("ignores an unexpected answer instead of rendering it", async () => {
+    serve({ configured: false });
+    render(<WebhookUrlCard connectorId={ID} />);
+    await screen.findByText(/Signing secret/);
+    expect(screen.queryByText("DEV ONLY")).toBeNull();
+  });
+
+  it("PRODUCTION: renders no tunnel control and never calls the endpoint", async () => {
+    setEnv("production");
+    serve({ running: false, url: null, managed: false });
+    const { container } = render(<WebhookUrlCard connectorId={ID} />);
+    await screen.findByText(/Signing secret/);
+    expect(screen.queryByText("DEV ONLY")).toBeNull();
+    expect(container.textContent).not.toMatch(/ngrok|test link/i);
+    expect(get.mock.calls.some(([p]) => String(p).startsWith("/api/dev/tunnel"))).toBe(false);
   });
 });

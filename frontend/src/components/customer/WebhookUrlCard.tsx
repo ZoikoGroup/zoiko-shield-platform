@@ -83,6 +83,96 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
+interface TunnelState {
+  running: boolean;
+  url: string | null;
+  managed: boolean;
+}
+
+/**
+ * Development only. In a production build this is false, so the component below is
+ * never rendered and nothing here makes a request: production is untouched.
+ */
+function tunnelControlAllowed(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
+ * One-click temporary public link (ngrok) so a sender such as GitHub can reach the
+ * app on a developer machine. The server side starts ngrok and exposes ONLY this
+ * webhook route, not the rest of the API. If the endpoint is unavailable (not signed
+ * in, or anything other than a dev server) nothing is shown.
+ */
+function TunnelControl({ connectorId }: { connectorId: string }) {
+  const [state, setState] = useState<TunnelState | null>(null);
+  const [busy, setBusy] = useState<"start" | "stop" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const path = `/api/dev/tunnel?connectorId=${encodeURIComponent(connectorId)}`;
+
+  useEffect(() => {
+    let alive = true;
+    setState(null);
+    setError(null);
+    backend
+      .get<TunnelState>(path)
+      .then((s) => {
+        if (alive && s && typeof s.running === "boolean") setState(s);
+      })
+      .catch(() => {
+        /* not a dev server, or not allowed: stay hidden */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [path]);
+
+  if (!state) return null;
+
+  const change = async (kind: "start" | "stop") => {
+    setBusy(kind);
+    setError(null);
+    try {
+      setState(kind === "start" ? await backend.post<TunnelState>(path) : await backend.delete<TunnelState>(path));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The request failed.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const link = state.running && state.url ? `${state.url}/api/v1/ingestion/webhooks/${encodeURIComponent(connectorId)}` : null;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-amber-500/50 bg-[#1a1408] p-2.5">
+      <div className="flex items-center gap-2">
+        <span className="rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-amber-500/20 text-amber-200">DEV ONLY</span>
+        <span className="text-slate-300">Test link (ngrok)</span>
+      </div>
+      {link ? (
+        <>
+          <CopyField label="Test webhook URL" value={link} />
+          <p className="text-slate-400">
+            Temporary public link to this webhook endpoint only; nothing else of the API is exposed. Use it as the Payload URL in GitHub.
+          </p>
+          {state.managed && (
+            <button type="button" disabled={busy !== null} onClick={() => change("stop")} className={BUTTON}>
+              {busy === "stop" ? "Stopping…" : "Stop test link"}
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-slate-400">Creates a temporary public link so GitHub can reach the app running on this machine.</p>
+          <button type="button" disabled={busy !== null} onClick={() => change("start")} className={PRIMARY}>
+            {busy === "start" ? "Starting ngrok…" : "Create test link"}
+          </button>
+        </>
+      )}
+      {error && <p className="text-red-300">{error}</p>}
+    </div>
+  );
+}
+
 function SecretSection({ connectorId }: { connectorId: string }) {
   const [status, setStatus] = useState<SecretStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -255,6 +345,7 @@ export default function WebhookUrlCard({ connectorId }: { connectorId: string })
           </p>
         </div>
       )}
+      {tunnelControlAllowed() && <TunnelControl connectorId={connectorId} />}
       <SecretSection connectorId={connectorId} />
     </div>
   );
