@@ -31,6 +31,7 @@ import {
 import { DataProvenanceBadge } from "@/components/states/mandatory-ui-states";
 import { useDemoState } from "@/lib/demo-state";
 import { backend, asList } from "@/lib/backend";
+import { useEventCount } from "@/lib/use-event-count";
 import {
   DataProvenanceState,
   CustomerViewMode,
@@ -395,6 +396,9 @@ export function CustomerDashboardView() {
   const [viewMode, setViewMode] = useState<CustomerViewMode>("EXECUTIVE_VIEW");
   const [trendWindow, setTrendWindow] = useState("Last 30 days");
   const [activityWindow, setActivityWindow] = useState("Last 24 hours");
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+  // Real count from the backend. null = not known yet (shown as a dash, never as 0).
+  const liveEventCount = useEventCount(activityWindow, !IS_TEST_ENV, eventsRefreshKey);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Interactive & dynamic states
@@ -449,6 +453,7 @@ export function CustomerDashboardView() {
 
   // Query live alerts, cases, overview, and controls from backend
   const fetchLiveDashboardData = async () => {
+    setEventsRefreshKey((k) => k + 1);
     setIsRefreshing(true);
     try {
       const [alertsRes, casesRes, findingsSummaryRes, assetsRes, controlsRes] = await Promise.allSettled([
@@ -653,7 +658,10 @@ export function CustomerDashboardView() {
   const activeActivity = IS_TEST_ENV
     ? staticActivity
     : {
-        totalEvents: state.normalizedEvents?.length || alerts.length,
+        // The real number of events received in this window. It used to be the size of a
+        // browser-only list of test events, falling back to the alert count, so a real
+        // delivery never appeared.
+        totalEvents: liveEventCount as number | null,
         securityAlerts: alerts.length,
         newCases: liveIncidentsCount,
         eventBars: alerts.length > 0 ? staticActivity.eventBars : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1549,7 +1557,7 @@ export function CustomerDashboardView() {
                 >
                   <div>
                     <div className="text-2xl font-extrabold text-white">
-                      {activeActivity.totalEvents}
+                      {activeActivity.totalEvents ?? "—"}
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Total Events

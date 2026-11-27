@@ -18162,11 +18162,19 @@ components:
               type: number
             received24h:
               type: number
+            windowHours:
+              type: number
+              description: The window that receivedInWindow covers, in hours.
+            receivedInWindow:
+              type: number
+              description: Events received in the last windowHours.
           required:
             - totalRaw
             - accepted
             - quarantined
             - received24h
+            - windowHours
+            - receivedInWindow
       required:
         - statusCode
         - data
@@ -44451,8 +44459,9 @@ paths:
         - Dashboard
       summary: Get dashboard event metrics
       description: >-
-        Get dashboard event metrics. Applies the documented path, query, and tenant filters and returns the current
-        persisted or computed result using the response model below.
+        Counts of events received for the tenant: in total, accepted, quarantined, and received in the last 24 hours
+        and in the requested window (`hours`, 1 to 2160, default 24). Backs the dashboard's "Total Events". Reachable
+        by a signed-in session through shield-core, and by shield-core itself with a workload token.
       responses:
         '200':
           description: Get dashboard event metrics successful.
@@ -44468,6 +44477,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getDashboardEvents
       security:
+        - CookieAuth: []
+        - BearerAuth: []
         - InternalServiceAuth: []
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
@@ -44479,6 +44490,15 @@ paths:
             nullable: true
             format: uuid
           description: Optional tenant ID filter.
+        - name: hours
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2160
+            default: 24
+          description: Size of the window, in hours, for receivedInWindow. Out-of-range values are clamped.
   /api/v1/dashboard/alerts:
     get:
       tags:
