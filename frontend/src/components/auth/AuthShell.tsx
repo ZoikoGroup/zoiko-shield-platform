@@ -48,7 +48,7 @@ export function AuthShell({
   return (
     <div className={cn("relative min-h-screen w-full overflow-x-hidden bg-[#0b111c] text-[#0f172a] [color-scheme:light]", AUTH_FONT)}>
       <Image
-        src="/images/auth/login-bg.png"
+        src="/images/auth/login-bg.webp"
         alt=""
         fill
         priority
@@ -121,7 +121,7 @@ export function AuthCardHeader({ title, subtitle }: { title: string; subtitle: s
 export function ZoikoLogo({ className, priority }: { className?: string; priority?: boolean }) {
   return (
     <Image
-      src="/images/auth/zoiko-shield-logo.png"
+      src="/images/auth/zoiko-shield-logo.webp"
       alt="Zoiko Shield"
       width={303}
       height={93}
