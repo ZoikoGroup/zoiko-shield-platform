@@ -23,7 +23,19 @@ that turns it on in production.
    - Secret: the revealed secret
 5. GitHub sends a `ping`. "Recent Deliveries" shows the result: `202` is accepted, `401` means the
    secret does not match.
-6. Click **Stop test link** when done. Stopping the dev server also stops ngrok.
+6. Click **Stop test link** when done.
+
+### Restarting the frontend
+The link **survives a frontend restart**, so the URL you pasted into GitHub keeps working. ngrok is started
+detached, its log goes to a file, and the app remembers which process it started. When the page loads
+after a restart it finds the running link, brings its local gate back up, and still offers **Stop test link**.
+
+- Stopping the dev server does **not** stop ngrok. Use **Stop test link** (or `pkill ngrok`) when you are done.
+- The signing secret is shown only once and cannot be shown again after a restart. The panel keeps showing which
+  secret is active (`whsec_••••xxxx`, version, date). If you have lost it, use **Rotate secret**; the old one
+  keeps working for the grace period while you update GitHub.
+- The remembered process id is checked before it is ever used: it must be alive and its command line must be
+  ngrok tunnelling the gate port. A stale or edited state file can never make the app stop another program.
 
 ## What is exposed
 Only `POST /api/v1/ingestion/webhooks/<connector id>`. ngrok does not point at shield-core
@@ -46,7 +58,8 @@ Who can use the button: someone signed in who can see that connector, from the a
 | This link was started outside the app | You started ngrok yourself; stop it in that terminal. |
 
 Optional environment variables (all development only, all server-side): `NGROK_BIN`,
-`TUNNEL_PROXY_PORT`, `TUNNEL_TARGET_URL`, `NGROK_API_URL`, `TUNNEL_STARTUP_TIMEOUT_MS`.
+`TUNNEL_PROXY_PORT`, `TUNNEL_TARGET_URL`, `TUNNEL_STATE_DIR` (default: the system temp folder), `NGROK_API_URL`,
+`TUNNEL_STARTUP_TIMEOUT_MS`.
 
 `TUNNEL_TARGET_URL` is where the gate forwards. It defaults to shield-core, as in production. Pointing it at
 shield-ingest (`http://127.0.0.1:3002`) skips the core gateway but still checks the same signature secret.

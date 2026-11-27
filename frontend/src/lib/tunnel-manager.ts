@@ -1,5 +1,8 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import fs from "node:fs";
 import http from "node:http";
+import os from "node:os";
+import path from "node:path";
 
 /**
  * DEVELOPMENT ONLY. Starts and stops an ngrok tunnel so a webhook sender such as
@@ -56,23 +59,78 @@ function config() {
     bin: process.env.NGROK_BIN || "ngrok",
     api: process.env.NGROK_API_URL || "http://127.0.0.1:4040/api/tunnels",
     startupMs: Number(process.env.TUNNEL_STARTUP_TIMEOUT_MS) || 20_000,
+    // Where the app remembers the ngrok it started (outside .next, which `npm run dev` wipes).
+    stateDir: process.env.TUNNEL_STATE_DIR || os.tmpdir(),
   };
 }
 
-// Survives hot reloads of `next dev`, which re-evaluate this module and would
-// otherwise orphan a running ngrok.
-type Holder = { child: ChildProcess | null; proxy: http.Server | null };
-const g = globalThis as typeof globalThis & { __zoikoTunnel?: Holder; __zoikoTunnelExitHook?: boolean };
-const holder: Holder = (g.__zoikoTunnel ??= { child: null, proxy: null });
-if (!g.__zoikoTunnelExitHook) {
-  g.__zoikoTunnelExitHook = true;
-  process.on("exit", () => {
-    try {
-      holder.child?.kill();
-    } catch {
-      /* already gone */
-    }
-  });
+// Survives hot reloads of `next dev`, which re-evaluate this module.
+type Holder = { proxy: http.Server | null };
+const g = globalThis as typeof globalThis & { __zoikoTunnel?: Holder };
+const holder: Holder = (g.__zoikoTunnel ??= { proxy: null });
+
+// ---- remembering the ngrok this app started ------------------------------
+//
+// ngrok is started detached and is deliberately NOT stopped when the frontend exits, so
+// the public link survives a frontend restart (restarts are routine in development, and
+// the link is pasted into GitHub). Because the frontend forgets everything on restart,
+// the process id is written to a small file, and checked before it is ever used.
+
+const uid = (): string => String(process.getuid?.() ?? "user");
+const stateFile = () => path.join(config().stateDir, `zoiko-shield-dev-tunnel-${uid()}.json`);
+const logFile = () => path.join(config().stateDir, `zoiko-shield-dev-ngrok-${uid()}.log`);
+
+function clearOwned(): void {
+  try {
+    fs.rmSync(stateFile(), { force: true });
+  } catch {
+    /* nothing to clear */
+  }
+}
+
+/**
+ * True only if `pid` is alive AND its command line is our ngrok tunnelling our gate port.
+ * A stale or tampered state file can therefore never make the app signal some other
+ * process.
+ */
+function isOurNgrok(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 1) return false;
+  try {
+    process.kill(pid, 0);
+    const args = execFileSync("ps", ["-o", "args=", "-p", String(pid)], { encoding: "utf8", timeout: 2000 }).trim();
+    const { bin, proxyPort } = config();
+    return args.includes(path.basename(bin)) && args.includes(`http ${proxyPort}`);
+  } catch {
+    return false;
+  }
+}
+
+/** The pid of the ngrok this app started, if it is still running; otherwise null. */
+function readOwnedPid(): number | null {
+  try {
+    const pid = JSON.parse(fs.readFileSync(stateFile(), "utf8"))?.pid;
+    if (typeof pid === "number" && isOurNgrok(pid)) return pid;
+  } catch {
+    /* no state file */
+  }
+  clearOwned();
+  return null;
+}
+
+function writeOwned(pid: number): void {
+  try {
+    fs.writeFileSync(stateFile(), JSON.stringify({ pid, startedAt: new Date().toISOString() }), { mode: 0o600 });
+  } catch {
+    /* the link still works; only Stop after a restart is lost */
+  }
+}
+
+function readNgrokLog(): string {
+  try {
+    return fs.readFileSync(logFile(), "utf8").slice(-4000);
+  } catch {
+    return "";
+  }
 }
 
 // ---- the gate ngrok points at -------------------------------------------
@@ -210,7 +268,7 @@ async function readStatus(): Promise<{ apiUp: boolean; url: string | null }> {
 }
 
 function managed(): boolean {
-  return Boolean(holder.child && holder.child.exitCode === null && !holder.child.killed);
+  return readOwnedPid() !== null;
 }
 
 /** Turn ngrok's own log into a message a developer can act on. */
@@ -260,18 +318,12 @@ export async function startTunnel(): Promise<TunnelState> {
     );
   }
 
-  const child = spawn(c.bin, ["http", String(c.proxyPort), "--log=stdout", "--log-format=json"], {
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  holder.child = child;
-  let log = "";
-  const collect = (b: Buffer) => {
-    log = (log + b.toString()).slice(-4000);
-  };
-  child.stdout?.on("data", collect);
-  child.stderr?.on("data", collect);
-  child.once("exit", () => {
-    if (holder.child === child) holder.child = null;
+  // Detached, no pipes: ngrok must outlive this process, and a pipe closed by a
+  // restarting frontend would kill it on its next log write. Its log goes to a file.
+  fs.writeFileSync(logFile(), "", { mode: 0o600 });
+  const child = spawn(c.bin, ["http", String(c.proxyPort), `--log=${logFile()}`, "--log-format=json"], {
+    stdio: "ignore",
+    detached: true,
   });
 
   try {
@@ -293,7 +345,7 @@ export async function startTunnel(): Promise<TunnelState> {
           ),
         ),
       );
-      child.once("exit", (code) => end(() => reject(explainNgrokFailure(log, code))));
+      child.once("exit", (code) => end(() => reject(explainNgrokFailure(readNgrokLog(), code))));
       const started = Date.now();
       const poll = async () => {
         if (finished) return;
@@ -306,6 +358,9 @@ export async function startTunnel(): Promise<TunnelState> {
       };
       void poll();
     });
+    // Let the frontend exit without waiting for, or stopping, ngrok.
+    child.unref();
+    if (child.pid) writeOwned(child.pid);
     return { running: true, url, managed: true };
   } catch (error) {
     try {
@@ -313,16 +368,20 @@ export async function startTunnel(): Promise<TunnelState> {
     } catch {
       /* already gone */
     }
-    holder.child = null;
     await closeProxy();
     throw error;
   }
 }
 
 export async function stopTunnel(): Promise<TunnelState> {
-  if (holder.child && holder.child.exitCode === null) {
-    holder.child.kill("SIGTERM");
-    holder.child = null;
+  const pid = readOwnedPid();
+  if (pid !== null) {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      /* already gone */
+    }
+    clearOwned();
     await closeProxy();
     return { running: false, url: null, managed: false };
   }

@@ -197,14 +197,17 @@ describe("tunnel lifecycle (with a fake ngrok program)", () => {
     `#!/usr/bin/env node
 const http = require("http");
 const port = process.argv[3];
+const logArg = process.argv.find((a) => a.startsWith("--log="));
+const logPath = logArg ? logArg.slice(6) : "";
+const log = (o) => { const line = JSON.stringify(o) + "\\n"; if (logPath && logPath !== "stdout") require("fs").appendFileSync(logPath, line); else process.stdout.write(line); };
 const mode = process.env.FAKE_NGROK_MODE || "ok";
-if (mode === "noauth") { console.log(JSON.stringify({ lvl: "eror", err: "authentication failed: ERR_NGROK_4018" })); process.exit(1); }
-if (mode === "crash") { console.log(JSON.stringify({ lvl: "eror", msg: "something broke" })); process.exit(2); }
+if (mode === "noauth") { log({ lvl: "eror", err: "authentication failed: ERR_NGROK_4018" }); process.exit(1); }
+if (mode === "crash") { log({ lvl: "eror", msg: "something broke" }); process.exit(2); }
 if (mode === "silent") { setInterval(() => {}, 1000); }
 else {
   http.createServer((q, r) => { r.setHeader("content-type", "application/json");
     r.end(JSON.stringify({ tunnels: [{ public_url: "https://fake-abc.ngrok-free.app", config: { addr: "http://localhost:" + port } }] })); })
-    .listen(Number(process.env.FAKE_NGROK_API_PORT), "127.0.0.1", () => console.log(JSON.stringify({ lvl: "info", msg: "started" })));
+    .listen(Number(process.env.FAKE_NGROK_API_PORT), "127.0.0.1", () => log({ lvl: "info", msg: "started" }));
 }
 process.on("SIGTERM", () => process.exit(0));
 `,
@@ -222,12 +225,14 @@ process.on("SIGTERM", () => process.exit(0));
       TUNNEL_PROXY_PORT: String(proxyPort),
       SHIELD_CORE_URL: core.url,
       TUNNEL_STARTUP_TIMEOUT_MS: "4000",
+      TUNNEL_STATE_DIR: fs.mkdtempSync(path.join(os.tmpdir(), "tunnel-state-")),
       FAKE_NGROK_MODE: "ok",
     });
   });
   afterEach(async () => {
     await stopTunnel().catch(() => {});
     await core.stop();
+    fs.rmSync(process.env.TUNNEL_STATE_DIR as string, { recursive: true, force: true });
     process.env = { ...SAVED };
   });
 
@@ -272,28 +277,83 @@ process.on("SIGTERM", () => process.exit(0));
     }
   });
 
-  it("brings the gate back when a tunnel from an earlier dev-server run is still open", async () => {
-    type Held = { child: { kill: () => void } | null; proxy: http.Server | null };
+  /** A frontend restart: everything held in memory is gone; only files and processes remain. */
+  async function simulateFrontendRestart() {
+    type Held = { proxy: http.Server | null };
     const held = (globalThis as unknown as { __zoikoTunnel: Held }).__zoikoTunnel;
-
-    await startTunnel();
-    // Simulate a dev-server restart: the gate is gone and this process no longer owns ngrok,
-    // but the tunnel itself is still open.
-    const ngrok = held.child;
-    await close(held.proxy as http.Server);
+    if (held.proxy?.listening) await close(held.proxy);
     held.proxy = null;
-    held.child = null;
-    expect(await portOpen(proxyPort)).toBe(false);
+  }
 
-    try {
+  it("keeps the same public link after the frontend restarts, and the gate comes back behind it", async () => {
+    const first = await startTunnel();
+    await simulateFrontendRestart();
+    expect(await portOpen(proxyPort)).toBe(false); // the gate died with the old frontend
+    expect(await portOpen(apiPort)).toBe(true); // ngrok did not
+
+    const after = await getTunnelState(); // what the card asks on load
+    expect(after).toEqual({ running: true, url: first.url, managed: true });
+    expect(await portOpen(proxyPort)).toBe(true); // the old link works again
+    const res = await fetch(`http://127.0.0.1:${proxyPort}/api/v1/ingestion/webhooks/${ID}`, { method: "POST", body: "{}" });
+    expect(res.status).toBe(202);
+  });
+
+  it("can still stop that link after a restart (the pid is remembered, not just held in memory)", async () => {
+    await startTunnel();
+    await simulateFrontendRestart();
+    const state = await stopTunnel();
+    expect(state).toEqual({ running: false, url: null, managed: false });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await portOpen(apiPort)).toBe(false); // ngrok really stopped
+  });
+
+  it("clicking Create again after a restart reuses the running link instead of starting a second ngrok", async () => {
+    const first = await startTunnel();
+    await simulateFrontendRestart();
+    expect(await startTunnel()).toEqual({ running: true, url: first.url, managed: true });
+  });
+
+  it("starts ngrok detached with its log in a file, not on a pipe a restart would close", async () => {
+    await startTunnel();
+    const log = fs.readFileSync(path.join(process.env.TUNNEL_STATE_DIR as string, `zoiko-shield-dev-ngrok-${process.getuid?.() ?? "user"}.log`), "utf8");
+    expect(log).toContain("started");
+    const state = JSON.parse(fs.readFileSync(path.join(process.env.TUNNEL_STATE_DIR as string, `zoiko-shield-dev-tunnel-${process.getuid?.() ?? "user"}.json`), "utf8"));
+    expect(Number.isInteger(state.pid)).toBe(true);
+    const mode = fs.statSync(path.join(process.env.TUNNEL_STATE_DIR as string, `zoiko-shield-dev-tunnel-${process.getuid?.() ?? "user"}.json`)).mode & 0o777;
+    expect(mode).toBe(0o600);
+  });
+
+  describe("the remembered pid can never be used against another process", () => {
+    const stateFile = () => path.join(process.env.TUNNEL_STATE_DIR as string, `zoiko-shield-dev-tunnel-${process.getuid?.() ?? "user"}.json`);
+
+    it("ignores and clears a pid that belongs to some other program", async () => {
+      fs.writeFileSync(stateFile(), JSON.stringify({ pid: process.pid })); // this test runner: alive, but not our ngrok
       const state = await getTunnelState();
-      expect(state).toMatchObject({ running: true, url: "https://fake-abc.ngrok-free.app", managed: false });
-      expect(await portOpen(proxyPort)).toBe(true); // the link works again
-    } finally {
-      await close(held.proxy as unknown as http.Server).catch(() => {});
-      held.proxy = null;
-      ngrok?.kill(); // the fake ngrok we deliberately orphaned
-    }
+      expect(state.managed).toBe(false);
+      expect(fs.existsSync(stateFile())).toBe(false);
+      expect(await stopTunnel()).toEqual({ running: false, url: null, managed: false }); // and did not kill us
+    });
+
+    it("ignores a pid that is not running, a pid of 0 or 1, and a damaged file", async () => {
+      for (const content of [JSON.stringify({ pid: 2 ** 22 - 3 }), JSON.stringify({ pid: 0 }), JSON.stringify({ pid: 1 }), JSON.stringify({ pid: "123" }), "not json", ""]) {
+        fs.writeFileSync(stateFile(), content);
+        expect((await getTunnelState()).managed).toBe(false);
+      }
+    });
+
+    it("will not stop an ngrok it did not start, even if the state file points at one", async () => {
+      // A genuine fake ngrok, started by hand on a different port: command line does not match our gate port.
+      const { spawn } = await import("node:child_process");
+      const other = spawn(bin, ["http", "5555", "--log=stdout"], { env: { ...process.env, FAKE_NGROK_API_PORT: String(await freePort()) }, stdio: "ignore" });
+      try {
+        fs.writeFileSync(stateFile(), JSON.stringify({ pid: other.pid }));
+        expect((await getTunnelState()).managed).toBe(false);
+        await expect(stopTunnel().then(() => "stopped")).resolves.toBe("stopped"); // no url for our port: nothing to stop
+        expect(() => process.kill(other.pid as number, 0)).not.toThrow(); // still alive
+      } finally {
+        other.kill();
+      }
+    });
   });
 
   it("is safe to click twice", async () => {
