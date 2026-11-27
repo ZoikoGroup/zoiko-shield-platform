@@ -13,6 +13,7 @@ import {
 import { GcpKmsEnvelope } from '../../../../../libs/kms/src/gcp-kms-envelope';
 import { runWithPlatformScope } from '../../../../../libs/database/src';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { SigningSecretSource } from '../core/webhook-receiver';
 
 /** How a signing secret is presented to the user. Shown once, never again. */
 export interface IssuedWebhookSecret {
@@ -363,6 +364,34 @@ export class ConnectorWebhookSecretService {
       createdAt: result.created.createdAt,
       previousValidUntil: result.previousValidUntil,
     };
+  }
+
+  /**
+   * Which secret, if any, can verify this connector's deliveries. Mirrors the order the
+   * webhook guard uses. Looks only for existence; nothing is decrypted.
+   */
+  async signingSecretSource(connectorId: string): Promise<SigningSecretSource> {
+    const row = await runWithPlatformScope(
+      'webhook signing secret presence check',
+      () =>
+        this.prisma.connectorWebhookSecret.findFirst({
+          where: { instanceId: connectorId, status: 'ACTIVE' },
+          select: { id: true },
+        }),
+    );
+    if (row) return 'CONNECTOR';
+    try {
+      const map = process.env.WEBHOOK_HMAC_SECRETS
+        ? (JSON.parse(process.env.WEBHOOK_HMAC_SECRETS) as Record<string, string>)
+        : {};
+      if (map[connectorId]) return 'OPERATOR';
+    } catch {
+      /* malformed operator map: treat as absent, the guard fails the same way */
+    }
+    if (process.env.NODE_ENV !== 'production' && process.env.WEBHOOK_HMAC_SECRET) {
+      return 'SHARED_DEV';
+    }
+    return 'NONE';
   }
 
   /** End every secret for a connector (it was retired). They cannot be restored. */

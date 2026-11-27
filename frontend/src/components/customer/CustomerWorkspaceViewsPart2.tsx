@@ -1743,14 +1743,15 @@ export function CustomerIntegrationsSection() {
 
   const testConnection = (c: ConnectorRow) =>
     void run("test", async () => {
-      const res = await backend.post<{ status?: string; latencyMs?: number }>(
+      const res = await backend.post<{ status?: string; latencyMs?: number; reason?: string }>(
         `/api/v1/connectors/${encodeURIComponent(c.id)}/test`,
         undefined,
         { confirmed: true },
       );
       setHealthTick((t) => t + 1);
       connectors.reload();
-      return `Connection test for "${c.name}": ${humanize(res?.status)}.`;
+      // A bare "Unverified" tells nobody what to do; the reason does.
+      return `Connection test for "${c.name}": ${humanize(res?.status)}.${res?.reason ? ` ${res.reason}` : ""}`;
     });
 
   const syncNow = (c: ConnectorRow) =>
@@ -2094,9 +2095,12 @@ export function CustomerIntegrationsSection() {
                     <button type="button" disabled={busy !== null} onClick={() => testConnection(selected)} className={PRIMARY_BUTTON}>
                       {busy === "test" ? "Testing…" : "Test connection"}
                     </button>
-                    <button type="button" disabled={busy !== null} onClick={() => syncNow(selected)} className={SECONDARY_BUTTON}>
-                      {busy === "sync" ? "Syncing…" : "Sync now"}
-                    </button>
+                    {/* A webhook connector is push-based: the sender delivers to us, so there is nothing to pull. */}
+                    {selected.authentication_type !== "WEBHOOK_SECRET" && (
+                      <button type="button" disabled={busy !== null} onClick={() => syncNow(selected)} className={SECONDARY_BUTTON}>
+                        {busy === "sync" ? "Syncing…" : "Sync now"}
+                      </button>
+                    )}
                     {confirmRemove ? (
                       <button type="button" disabled={busy !== null} onClick={() => removeConnector(selected)} className={SECONDARY_BUTTON}>
                         {busy === "remove" ? "Removing…" : "Confirm removal"}

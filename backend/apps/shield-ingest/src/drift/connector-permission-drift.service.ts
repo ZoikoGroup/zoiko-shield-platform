@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -7,6 +7,8 @@ import {
 } from '../kafka/kafka.producer.service';
 import { ConnectorHealthService } from '../connectors/services/health.service';
 import { PermissionService } from '../connectors/services/permission.service';
+import { ConnectorWebhookSecretService } from '../connectors/services/connector-webhook-secret.service';
+import { isInboundWebhookReceiver } from '../connectors/core/webhook-receiver';
 import { PlatformScope } from '../../../../libs/database/src';
 
 export interface RequiredPermissionSpec {
@@ -95,7 +97,27 @@ export class ConnectorPermissionDriftService {
     private readonly kafkaProducer: KafkaProducerService,
     private readonly healthService: ConnectorHealthService,
     private readonly permissionService: PermissionService,
+    @Optional()
+    private readonly webhookSecrets?: ConnectorWebhookSecretService,
   ) {}
+
+  /**
+   * What an inbound webhook receiver is actually "granted". It holds no OAuth scopes
+   * that someone could revoke, so these are facts about the receiver itself:
+   *  - webhook:receive: it is live (the sweep only visits live connectors);
+   *  - hmac:verify: something can verify its deliveries (its own signing secret, an
+   *    operator-supplied one, or the shared development secret).
+   * Previously these were read from rows that nothing ever marked granted, so every
+   * webhook connector was reported as having "lost" webhook:receive on every sweep.
+   */
+  async inboundReceiverGrants(instanceId: string): Promise<string[]> {
+    const granted = ['webhook:receive'];
+    const source = this.webhookSecrets
+      ? await this.webhookSecrets.signingSecretSource(instanceId)
+      : 'NONE';
+    if (source !== 'NONE') granted.push('hmac:verify');
+    return granted;
+  }
 
   /**
    * Evaluates active permissions against required scopes for a connector instance.
@@ -235,15 +257,20 @@ export class ConnectorPermissionDriftService {
       });
 
       for (const connector of activeConnectors) {
-        const granted = await this.permissionService.getGranted(connector.id);
-        const provider =
+        const declaredProvider =
           connector.definition?.provider ||
           connector.connectorDefId ||
           'generic';
+        const receiver = isInboundWebhookReceiver(declaredProvider);
+        const granted = receiver
+          ? await this.inboundReceiverGrants(connector.id)
+          : await this.permissionService.getGranted(connector.id);
         await this.evaluateInstanceDrift(
           connector.id,
           connector.tenant_id,
-          provider,
+          // A GitHub webhook receiver needs the webhook baseline, not the scopes of
+          // a pull integration with the GitHub API.
+          receiver ? 'generic-webhook' : declaredProvider,
           granted,
         );
       }

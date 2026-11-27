@@ -11,6 +11,7 @@ import { MeteringService } from '../metering/metering.service';
 import { StreamDeduplicationService } from '../deduplication/stream-deduplication.service';
 import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
 import { ConnectorCacheService } from './connector-cache.service';
+import { ConnectorHealthService } from '../connectors/services/health.service';
 import * as crypto from 'crypto';
 import { IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
 
@@ -64,6 +65,7 @@ export class RawIngestService {
     private readonly deduplicationService?: StreamDeduplicationService,
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
     @Optional() private readonly connectorCache?: ConnectorCacheService,
+    @Optional() private readonly healthService?: ConnectorHealthService,
   ) {
     this.dlqService?.setReingestHandler((connectorId, headers, payload) =>
       this.processWebhookPayload(connectorId, headers, payload),
@@ -316,6 +318,24 @@ export class RawIngestService {
       this.logger.warn(
         `Failed to emit Kafka event: ${err instanceof Error ? err.message : String(err)}`,
       );
+    }
+
+    // A signed delivery that was accepted is the proof a webhook connector works. Record
+    // it so the connector shows as connected and its failure count clears. Only an
+    // accepted delivery counts (not a quarantined one), and a health-write problem must
+    // never turn an accepted delivery into a failed one.
+    if (processingStatus === 'ACCEPTED' && this.healthService) {
+      try {
+        await this.healthService.recordWebhookDelivery(
+          connectorId,
+          tenantId,
+          rawEvent.received_at,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Could not record delivery health for connector ${connectorId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     return {

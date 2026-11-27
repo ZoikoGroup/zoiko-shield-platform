@@ -20,6 +20,8 @@ import { ConnectorRegistry } from './core/connector-registry';
 import { ConnectorSyncService } from './services/sync.service';
 import { randomUUID } from 'crypto';
 import { ConnectorWebhookSecretService } from './services/connector-webhook-secret.service';
+import { ConnectorHealthService } from './services/health.service';
+import { isInboundWebhookReceiver } from './core/webhook-receiver';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateConnectorDto {
@@ -105,6 +107,8 @@ export class ConnectorCatalogService {
     private readonly shieldCore: ShieldCoreClient,
     @Optional()
     private readonly webhookSecrets?: ConnectorWebhookSecretService,
+    @Optional()
+    private readonly healthService?: ConnectorHealthService,
   ) {}
 
   /**
@@ -458,20 +462,78 @@ export class ConnectorCatalogService {
     return retired;
   }
 
+  /**
+   * A receiver cannot be probed from here: it is the sender that connects to it. What
+   * can be checked is the evidence: can it verify deliveries (a signing secret), and
+   * has a signed delivery actually arrived? Passing the test also corrects a stale
+   * health state, since a verified delivery is exactly what "connected" means.
+   */
+  private async testWebhookReceiver(instance: {
+    id: string;
+    tenant_id: string;
+    definition: { provider: string };
+  }) {
+    const [signingSecret, stats] = await Promise.all([
+      this.webhookSecrets
+        ? this.webhookSecrets.signingSecretSource(instance.id)
+        : Promise.resolve('NONE' as const),
+      this.prisma.rawEvent.aggregate({
+        where: { connector_id: instance.id, processing_status: 'ACCEPTED' },
+        _count: { _all: true },
+        _max: { received_at: true },
+      }),
+    ]);
+    const deliveriesReceived = stats._count._all;
+    const lastDelivery = stats._max.received_at;
+    const result = {
+      provider: instance.definition.provider,
+      lastCheckedAt: new Date().toISOString(),
+      signingSecret,
+      deliveriesReceived,
+      lastDeliveryAt: lastDelivery ? lastDelivery.toISOString() : null,
+    };
+
+    if (signingSecret === 'NONE') {
+      return {
+        ...result,
+        status: 'UNVERIFIED',
+        reason:
+          'This connector has no signing secret, so it cannot verify deliveries. Generate one in its panel.',
+      };
+    }
+    if (!lastDelivery) {
+      return {
+        ...result,
+        status: 'UNVERIFIED',
+        reason:
+          'No signed delivery has been received yet. Send one (GitHub: open the webhook and choose Redeliver), then test again.',
+      };
+    }
+    await this.healthService
+      ?.recordWebhookDelivery(instance.id, instance.tenant_id, lastDelivery, {
+        force: true,
+      })
+      .catch((error) =>
+        this.logger.warn(
+          `Could not refresh health for connector ${instance.id}: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+    return {
+      ...result,
+      status: 'VERIFIED',
+      reason: `${deliveriesReceived} signed delivery(ies) received; the last at ${lastDelivery.toISOString()}.`,
+    };
+  }
+
   async testConnector(tenantId: string, connectorId: string) {
     const instance = await this.getConnectorById(tenantId, connectorId);
+    if (
+      isInboundWebhookReceiver(instance.definition.provider) &&
+      !this.registry.has(instance.definition.provider)
+    ) {
+      return this.testWebhookReceiver(instance);
+    }
     if (!this.registry.has(instance.definition.provider)) {
-      if (
-        instance.definition.provider === 'generic-webhook' ||
-        instance.definition.provider === 'github'
-      ) {
-        return {
-          status: 'UNVERIFIED',
-          provider: instance.definition.provider,
-          lastCheckedAt: new Date().toISOString(),
-          reason: `Connector '${instance.definition.provider}' is an inbound webhook receiver; send a signed webhook payload to verify end-to-end delivery.`,
-        };
-      }
       throw new BadRequestException(
         `Provider '${instance.definition.provider}' has no executable connection test`,
       );
@@ -489,7 +551,16 @@ export class ConnectorCatalogService {
   }
 
   async syncConnector(tenantId: string, connectorId: string) {
-    await this.getConnectorById(tenantId, connectorId);
+    const instance = await this.getConnectorById(tenantId, connectorId);
+    // An inbound webhook receiver is push-based: there is nothing to pull. Running a
+    // pull sync against it can only fail, and the failure was recorded as the
+    // connector being degraded ("Unknown error occurred"). Report its health as it is.
+    if (
+      isInboundWebhookReceiver(instance.definition.provider) &&
+      !this.registry.has(instance.definition.provider)
+    ) {
+      return this.getConnectorHealth(tenantId, connectorId);
+    }
     await this.syncService.runSync(connectorId);
     return this.getConnectorHealth(tenantId, connectorId);
   }
