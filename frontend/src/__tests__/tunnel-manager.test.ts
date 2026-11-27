@@ -240,6 +240,45 @@ process.on("SIGTERM", () => process.exit(0));
     expect(await portOpen(apiPort)).toBe(false); // ngrok process gone
   });
 
+  it("forwards to TUNNEL_TARGET_URL when set (dev: straight at ingest), else to SHIELD_CORE_URL", async () => {
+    const ingest = await fakeCore(401, { statusCode: 401, message: "Invalid webhook HMAC signature" });
+    process.env.TUNNEL_TARGET_URL = ingest.url;
+    try {
+      await startTunnel();
+      const res = await fetch(`http://127.0.0.1:${proxyPort}/api/v1/ingestion/webhooks/${ID}`, { method: "POST", body: "{}" });
+      expect(res.status).toBe(401);
+      expect(ingest.seen).toHaveLength(1); // reached the override
+      expect(core.seen).toHaveLength(0); // not shield-core
+    } finally {
+      await stopTunnel();
+      await ingest.stop();
+    }
+  });
+
+  it("brings the gate back when a tunnel from an earlier dev-server run is still open", async () => {
+    type Held = { child: { kill: () => void } | null; proxy: http.Server | null };
+    const held = (globalThis as unknown as { __zoikoTunnel: Held }).__zoikoTunnel;
+
+    await startTunnel();
+    // Simulate a dev-server restart: the gate is gone and this process no longer owns ngrok,
+    // but the tunnel itself is still open.
+    const ngrok = held.child;
+    await close(held.proxy as http.Server);
+    held.proxy = null;
+    held.child = null;
+    expect(await portOpen(proxyPort)).toBe(false);
+
+    try {
+      const state = await getTunnelState();
+      expect(state).toMatchObject({ running: true, url: "https://fake-abc.ngrok-free.app", managed: false });
+      expect(await portOpen(proxyPort)).toBe(true); // the link works again
+    } finally {
+      await close(held.proxy as unknown as http.Server).catch(() => {});
+      held.proxy = null;
+      ngrok?.kill(); // the fake ngrok we deliberately orphaned
+    }
+  });
+
   it("is safe to click twice", async () => {
     const a = await startTunnel();
     const b = await startTunnel();

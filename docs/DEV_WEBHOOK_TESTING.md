@@ -42,7 +42,11 @@ Who can use the button: someone signed in who can see that connector, from the a
 | ngrok is already running with a different tunnel | Close that ngrok (a free account allows one at a time), then retry. |
 | Port 3099 is already in use | Set `TUNNEL_PROXY_PORT` to a free port and restart the frontend. |
 | `502` from the link | shield-core is not running on `SHIELD_CORE_URL` (default `http://127.0.0.1:3001`). |
+| `404` in GitHub's delivery, body `Cannot POST /api/v1/ingestion/webhooks/...` | The shield-core container is older than the webhook gateway. Rebuild it (`docker compose build shield-core && docker compose up -d shield-core`), or for now send the link straight to ingest: set `TUNNEL_TARGET_URL=http://127.0.0.1:3002` in `frontend/.env.local`, restart `npm run dev`, then stop and create the test link again. |
 | This link was started outside the app | You started ngrok yourself; stop it in that terminal. |
 
 Optional environment variables (all development only, all server-side): `NGROK_BIN`,
-`TUNNEL_PROXY_PORT`, `NGROK_API_URL`, `TUNNEL_STARTUP_TIMEOUT_MS`.
+`TUNNEL_PROXY_PORT`, `TUNNEL_TARGET_URL`, `NGROK_API_URL`, `TUNNEL_STARTUP_TIMEOUT_MS`.
+
+`TUNNEL_TARGET_URL` is where the gate forwards. It defaults to shield-core, as in production. Pointing it at
+shield-ingest (`http://127.0.0.1:3002`) skips the core gateway but still checks the same signature secret.

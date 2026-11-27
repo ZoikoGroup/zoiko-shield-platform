@@ -47,7 +47,11 @@ export interface TunnelState {
 
 function config() {
   return {
-    core: process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001",
+    // Where the gate forwards. shield-core by default (it hosts the public webhook route,
+    // as in production). TUNNEL_TARGET_URL points it elsewhere for development only, e.g.
+    // straight at shield-ingest (http://127.0.0.1:3002) when the shield-core image has not
+    // been rebuilt yet. Ingest verifies the same signature, so the secret is still checked.
+    core: process.env.TUNNEL_TARGET_URL || process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001",
     proxyPort: Number(process.env.TUNNEL_PROXY_PORT) || 3099,
     bin: process.env.NGROK_BIN || "ngrok",
     api: process.env.NGROK_API_URL || "http://127.0.0.1:4040/api/tunnels",
@@ -228,6 +232,10 @@ export function explainNgrokFailure(log: string, exitCode: number | null): Tunne
 
 export async function getTunnelState(): Promise<TunnelState> {
   const { url } = await readStatus();
+  // A tunnel to our gate port can outlive the dev server that opened it (a restart that
+  // did not stop ngrok). Without the gate behind it that link is dead, so bring the gate
+  // back: the tunnel was ours, and the gate is exactly what it is meant to reach.
+  if (url && !holder.proxy?.listening) await ensureProxy().catch(() => {});
   return { running: Boolean(url), url, managed: managed() };
 }
 
