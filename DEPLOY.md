@@ -38,6 +38,24 @@ POST https://api.zoikoshield.com/api/v1/ingestion/webhooks/<connector id>
 - Each connector has its own signing secret (see `CONNECTOR_SECRET_KMS_KEY` above), shown once in the connector's panel.
 - Your reverse proxy / WAF must pass the request body and the `x-webhook-*`, `x-signature*`, `x-hub-signature-256` and `x-github-*` headers through unchanged, and must not buffer-and-rewrite the JSON.
 
+#### Giving existing webhook connectors their own secret
+Connectors created before per-connector secrets have none, and keep verifying against whatever they used before. After this release is deployed and `CONNECTOR_SECRET_KMS_KEY` is set, create their secrets once, from the VM:
+
+```bash
+# 1. Dry run (default): lists the connectors that have no secret. Changes nothing.
+docker compose exec -T shield-ingest node dist/apps/shield-ingest/main.js --backfill-webhook-secrets
+
+# 2. Create them. Safe to re-run: connectors that already have a secret are skipped.
+docker compose exec -T shield-ingest node dist/apps/shield-ingest/main.js --backfill-webhook-secrets --apply
+
+# Limit to one tenant:  ... --backfill-webhook-secrets --apply --tenant <tenant id>
+```
+
+- The secrets are created **unrevealed** and are never printed. Each tenant owner opens the connector and chooses **Reveal secret**, which shows it once. The operator never holds a tenant's secret.
+- It is additive: existing senders keep working. Once a sender has switched, remove that connector's entry from `WEBHOOK_HMAC_SECRETS`.
+- It exits non-zero if any connector failed, and refuses to run `--apply` if the vault is not configured.
+- Only connectors whose authentication type is `WEBHOOK_SECRET` are covered (the ones that show the webhook panel in the UI).
+
 ### Frontend (Next.js SSR / App)
 Set these variables before executing `npm run build`:
 

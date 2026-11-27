@@ -6,6 +6,7 @@ import { ShieldIngestModule } from './shield-ingest.module';
 import { TraceIdMiddleware } from './observability/trace-id.middleware';
 import { HttpLoggingInterceptor } from './observability/http-logging.interceptor';
 import { ValidationPipe } from '@nestjs/common';
+import { runBackfillCli } from './cli/backfill-webhook-secrets';
 
 async function bootstrap() {
   const app = await NestFactory.create(ShieldIngestModule, { rawBody: true });
@@ -39,7 +40,19 @@ async function bootstrap() {
 
   await app.listen(process.env.SHIELD_INGEST_PORT ?? 3002, '0.0.0.0');
 }
-bootstrap().catch((err) => {
-  console.error('Error starting shield-ingest:', err);
-  process.exit(1);
-});
+if (process.argv.includes('--backfill-webhook-secrets')) {
+  // Maintenance task, not a server: do the work and exit. Runs in this same
+  // bundle so it has the service's own database login and key-management
+  // credentials. See cli/backfill-webhook-secrets.ts.
+  runBackfillCli(process.argv)
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      console.error('Webhook secret backfill failed:', err);
+      process.exit(1);
+    });
+} else {
+  bootstrap().catch((err) => {
+    console.error('Error starting shield-ingest:', err);
+    process.exit(1);
+  });
+}
