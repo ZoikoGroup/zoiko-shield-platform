@@ -110,7 +110,7 @@
 4. **React Hook Exhaustive-Deps Warnings (`7` warnings in `next lint`)** — Stale closure / extra render risks across `ai-governance/page.tsx:538`, `auditor/page.tsx:53`, `cases/page.tsx:92` (x2), `notifications/page.tsx:181`, `policies/page.tsx:68`, `TopHeader.tsx:312` (Severity: **Low–Medium**). Notice `next.config.ts:5-7` sets `eslint.ignoreDuringBuilds: true`, hiding lint warnings during `next build`.
 
 ### 5.2 Static Assets, Module Imports & Case Sensitivity
-- **`frontend/public/` Assets (`6` files, all valid):** `frontend/public/images/auth/{apple.svg, company-sso.svg, google.svg, login-bg.png, microsoft.svg, zoiko-shield-logo.png}`. Zero broken image/asset paths detected.
+- **`frontend/public/` Assets (`6` files, all valid):** `frontend/public/images/auth/{apple.svg, company-sso.svg, google.svg, login-bg.webp, microsoft.svg, zoiko-shield-logo.webp}`. Zero broken image/asset paths detected.
 - **Imports & Casing (`188` files in `frontend/src/`):** Zero unresolved module imports (`npx tsc --noEmit` exits `0`) and zero case-sensitivity mismatches on import paths.
 
 ### 5.3 Dead Code, Unused Files & Legacy Directories
