@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { createKafka } from '../../../../libs/kafka/src/kafka-client';
+import { ConsumerSupervisor } from '../../../../libs/kafka/src/consumer-supervisor';
 import { NormalizationService } from './normalization.service';
 import {
   runWithPlatformScope,
@@ -36,34 +37,34 @@ export class TelemetryIngestedConsumer
 {
   private readonly logger = new Logger(TelemetryIngestedConsumer.name);
   private readonly kafka: Kafka;
-  private readonly consumer: Consumer;
+  private readonly supervisor: ConsumerSupervisor;
 
   constructor(private readonly normalizationService: NormalizationService) {
     this.kafka = createKafka('zoiko-shield-ingest-normalization-consumer');
-    this.consumer = this.kafka.consumer({
-      groupId: 'shield-ingest-normalization',
+    // This consumer normalizes every accepted delivery. If it is not running, deliveries
+    // are stored but never understood, so startup is supervised and retried (see
+    // ConsumerSupervisor) rather than attempted once.
+    this.supervisor = new ConsumerSupervisor({
+      name: 'shield-ingest',
+      topics: () => [TELEMETRY_INGESTED_TOPIC],
+      buildConsumer: () => this.buildConsumer(),
+      eachMessage: (payload: EachMessagePayload) => this.handleMessage(payload),
+      logger: this.logger,
     });
   }
 
-  async onApplicationBootstrap() {
-    try {
-      await this.consumer.connect();
-      await this.consumer.subscribe({
-        topic: TELEMETRY_INGESTED_TOPIC,
-        fromBeginning: false,
-      });
-      await this.consumer.run({
-        eachMessage: (payload: EachMessagePayload) =>
-          this.handleMessage(payload),
-      });
-      this.logger.log(
-        `Kafka consumer subscribed to ${TELEMETRY_INGESTED_TOPIC}`,
-      );
-    } catch (error: any) {
-      this.logger.error(
-        `Failed to start ${TELEMETRY_INGESTED_TOPIC} consumer: ${error.message}`,
-      );
-    }
+  /** Overridable so tests can supply a fake consumer. */
+  protected buildConsumer(): Consumer {
+    return this.kafka.consumer({ groupId: 'shield-ingest-normalization' });
+  }
+
+  getStatus() {
+    return this.supervisor.getStatus();
+  }
+
+  onApplicationBootstrap() {
+    // Not awaited: the service must come up even when Kafka is down.
+    this.supervisor.start();
   }
 
   private async handleMessage({ message }: EachMessagePayload): Promise<void> {
@@ -102,6 +103,6 @@ export class TelemetryIngestedConsumer
   }
 
   async onModuleDestroy() {
-    await this.consumer.disconnect();
+    await this.supervisor.stop();
   }
 }

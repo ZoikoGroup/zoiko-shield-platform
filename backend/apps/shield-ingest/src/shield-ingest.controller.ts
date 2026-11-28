@@ -1,11 +1,39 @@
-import { Controller, Get, Header } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Optional,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { TelemetryIngestedConsumer } from './normalization/telemetry-ingested.consumer';
 import { ShieldIngestService } from './shield-ingest.service';
 import { PublicIngress } from './security/public-ingress.decorator';
 
 @Controller()
 @PublicIngress()
 export class ShieldIngestController {
-  constructor(private readonly shieldIngestService: ShieldIngestService) {}
+  constructor(
+    private readonly shieldIngestService: ShieldIngestService,
+    @Optional() private readonly telemetryConsumer?: TelemetryIngestedConsumer,
+  ) {}
+
+  /**
+   * 503 while the consumer that normalizes deliveries is not running. Deliveries are still
+   * stored, but nothing turns them into events until it is back.
+   */
+  @Get('health/consumer')
+  getHealthConsumer() {
+    const status = this.telemetryConsumer?.getStatus();
+    const healthy = !status || status.topics.length === 0 || status.running;
+    const payload = {
+      status: healthy ? 'running' : 'down',
+      service: 'shield-ingest',
+      kafkaConsumer: status ? { ...status, healthy } : null,
+      timestamp: new Date().toISOString(),
+    };
+    if (!healthy) throw new ServiceUnavailableException(payload);
+    return payload;
+  }
 
   @Get()
   getHello(): string {
