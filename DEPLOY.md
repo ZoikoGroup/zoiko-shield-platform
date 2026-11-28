@@ -52,6 +52,17 @@ Set these variables before executing `npm run build`:
 
 ---
 
+### Kafka consumer health
+shield-core, shield-ingest and shield-action keep their Kafka consumers alive themselves: if the broker is not ready at startup (for example after a host or Docker restart, when everything comes up together) they retry with a growing delay (1 s up to 30 s) until they connect, and replace a consumer that dies for good. The application starts either way.
+
+- `GET /health/consumer` on shield-core and shield-ingest returns **503** while that service's consumer is not running, with the last error and the number of attempts. Point a monitor or an auto-restart at it.
+- `GET /health/ready` on shield-core also lists the consumer's state (`kafkaConsumer`). It does not make readiness fail: the API stays in rotation.
+- The consumer groups can be checked on the broker with `rpk group list` and `rpk group describe <group>`: a group in state `Empty` with growing lag has no running consumer. Groups: `shield-core-case-evidence`, `shield-ingest-normalization`, `shield-action-response`.
+
+Everything fed by a consumer stalls while it is down: core's asset and identity context and case evidence, ingest's normalization of deliveries, and action's response handling. Messages are not lost; they are processed once the consumer is back.
+
+---
+
 ## 2. Database Migration Procedure
 
 All schema migrations are version-controlled via Prisma and reconciled TypeORM baselines. Never apply uncommitted ad-hoc SQL in production.

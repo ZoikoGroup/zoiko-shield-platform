@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { ConsumerSupervisor } from '../../../../libs/kafka/src/consumer-supervisor';
 import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { EventEnvelope } from './kafka-producer.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,12 +33,20 @@ export class KafkaConsumerService
 {
   private readonly logger = new Logger(KafkaConsumerService.name);
   private readonly kafka: Kafka;
-  private readonly consumer: Consumer;
   private readonly handlers = new Map<string, KafkaMessageHandler[]>();
+  private readonly supervisor: ConsumerSupervisor;
 
   constructor(private readonly prisma: PrismaService) {
     this.kafka = createKafka('zoiko-shield-action-consumer');
-    this.consumer = this.kafka.consumer({ groupId: 'shield-action-response' });
+    // Startup is supervised and retried (see ConsumerSupervisor): connecting once and
+    // logging a failure left this consumer dead for good after a broker restart.
+    this.supervisor = new ConsumerSupervisor({
+      name: 'shield-action',
+      topics: () => [...this.handlers.keys()],
+      buildConsumer: () => this.buildConsumer(),
+      eachMessage: (payload) => this.handleMessageInScope(payload),
+      logger: this.logger,
+    });
   }
 
   registerHandler(topic: string, handler: KafkaMessageHandler): void {
@@ -46,41 +55,26 @@ export class KafkaConsumerService
     this.handlers.set(topic, existing);
   }
 
-  async onApplicationBootstrap() {
+  /** Overridable so tests can supply a fake consumer. */
+  protected buildConsumer(): Consumer {
+    return this.kafka.consumer({ groupId: 'shield-action-response' });
+  }
+
+  getStatus() {
+    return this.supervisor.getStatus();
+  }
+
+  onApplicationBootstrap() {
     if (this.handlers.size === 0) {
       this.logger.warn(
         'No Kafka handlers registered — consumer will not subscribe to any topic.',
       );
       return;
     }
-
-    try {
-      await this.consumer.connect();
-      await Promise.all(
-        [...this.handlers.keys()].map((topic) =>
-          this.consumer.subscribe({ topic, fromBeginning: false }),
-        ),
-      );
-
-      await this.consumer.run({
-        eachMessage: async (payload: EachMessagePayload) => {
-          await this.handleMessageInScope(payload);
-        },
-      });
-
-      this.logger.log(
-        `Kafka consumer subscribed to: ${[...this.handlers.keys()].join(', ')}`,
-      );
-    } catch (error: any) {
-      this.logger.error(`Failed to start Kafka consumer: ${error.message}`);
-    }
+    // Not awaited: the service must come up even when Kafka is down.
+    this.supervisor.start();
   }
 
-  /**
-   * Each message runs in its envelope tenant's database scope, so handlers
-   * see only that tenant's rows. A message naming no tenant is processed as
-   * an explicit platform operation.
-   */
   private handleMessageInScope(payload: EachMessagePayload): Promise<void> {
     let tenantId: unknown;
     try {
@@ -153,6 +147,6 @@ export class KafkaConsumerService
   }
 
   async onModuleDestroy() {
-    await this.consumer.disconnect();
+    await this.supervisor.stop();
   }
 }

@@ -70,3 +70,30 @@ describe('TelemetryIngestedConsumer', () => {
     ).rejects.toThrow('boom');
   });
 });
+
+describe('TelemetryIngestedConsumer supervision', () => {
+  /** A consumer that never reaches a broker, so no real Kafka client is started. */
+  class Offline extends TelemetryIngestedConsumer {
+    protected buildConsumer(): any {
+      return {
+        events: { CRASH: 'crash', GROUP_JOIN: 'join', STOP: 'stop' },
+        on: jest.fn(),
+        connect: jest.fn(() => new Promise(() => undefined)),
+        subscribe: jest.fn(),
+        run: jest.fn(),
+        disconnect: jest.fn().mockResolvedValue(undefined),
+      };
+    }
+  }
+  const make = () => new Offline({ normalizeRawEvent: jest.fn() } as any);
+
+  it('reports its state, so a stalled normalizer is visible', () => {
+    expect(make().getStatus()).toMatchObject({ running: false, attempts: 0, topics: ['telemetry.ingested'] });
+  });
+
+  it('does not block startup, and stops cleanly', async () => {
+    const consumer = make();
+    expect(consumer.onApplicationBootstrap()).toBeUndefined();
+    await expect(consumer.onModuleDestroy()).resolves.toBeUndefined();
+  });
+});
