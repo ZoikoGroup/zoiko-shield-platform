@@ -1,5 +1,6 @@
 "use client";
 
+import AlertRulesPanel from "./AlertRulesPanel";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, Search, X } from "lucide-react";
@@ -2253,7 +2254,7 @@ function publishedVersion(d: DetectionDefinition) {
 }
 
 export function CustomerDetectionResponseSection() {
-  type Tab = "Overview" | "Detection rules" | "Approvals" | "Execution history";
+  type Tab = "Overview" | "Detection rules" | "My alert rules" | "Approvals" | "Execution history";
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -2281,7 +2282,7 @@ export function CustomerDetectionResponseSection() {
 
       <div className={BAR}>
         <Tabs
-          tabs={["Overview", "Detection rules", "Approvals", "Execution history"] as const}
+          tabs={["Overview", "Detection rules", "My alert rules", "Approvals", "Execution history"] as const}
           active={activeTab}
           onChange={setActiveTab}
         />
@@ -2347,6 +2348,8 @@ export function CustomerDetectionResponseSection() {
           }
         />
       </div>
+
+      {activeTab === "My alert rules" && <AlertRulesPanel />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {(show("Detection rules") || show("Execution history")) && (

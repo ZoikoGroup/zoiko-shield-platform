@@ -7,6 +7,7 @@ import {
   Query,
   Headers,
   Body,
+  HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { IsObject, IsOptional, IsString } from 'class-validator';
@@ -14,6 +15,7 @@ import {
   DetectionEngineService,
   CreateDetectionRuleDto,
   UpdateDetectionRuleDto,
+  PreviewRuleDto,
 } from './detection-engine.service';
 import { requireTenantId } from '../security/tenant-context';
 
@@ -119,6 +121,27 @@ export class DetectionEngineController {
    * POST /api/v1/detections/:detectionId/test
    * Test detection rule against sample event payload
    */
+  /**
+   * POST /api/v1/detections/preview
+   * How many of the tenant's recent events a rule's conditions would match.
+   * Records nothing and raises no alert.
+   */
+  @Post('preview')
+  @HttpCode(HttpStatus.OK)
+  async previewRule(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Body() dto: PreviewRuleDto,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.detectionService.previewRule(
+        requireTenantId(headerTenantId),
+        dto.conditionDefinition,
+        dto.limit,
+      ),
+    };
+  }
+
   @Post(':detectionId/test')
   async testRule(
     @Headers('x-tenant-id') headerTenantId: string,

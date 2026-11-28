@@ -13,6 +13,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -29,6 +30,13 @@ const OPERATORS = [
 ] as const;
 const RULE_TYPES = ['MATCH', 'THRESHOLD', 'BEHAVIORAL'] as const;
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+
+/** A tenant may own at most this many rules. */
+const MAX_TENANT_RULES = 100;
+/** At most this many of a tenant's active rules are run against each live event. */
+const MAX_LIVE_RULES = 50;
+const PREVIEW_DEFAULT = 50;
+const PREVIEW_MAX = 200;
 
 /**
  * shield-ingest's global ValidationPipe runs with forbidUnknownValues: true
@@ -137,6 +145,22 @@ export class UpdateDetectionRuleDto {
   requiredFields?: string[];
 }
 
+export class PreviewRuleDto {
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RuleDefinition)
+  conditionDefinition!: RuleDefinition;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(PREVIEW_MAX)
+  limit?: number;
+}
+
+/** A recorded evaluation of one rule against one event. */
+type RunRecord = Awaited<ReturnType<PrismaService['detectionRun']['create']>>;
+
 @Injectable()
 export class DetectionEngineService {
   private readonly logger = new Logger(DetectionEngineService.name);
@@ -151,6 +175,16 @@ export class DetectionEngineService {
    */
   async createRule(dto: CreateDetectionRuleDto) {
     this.logger.log(`Creating detection rule '${dto.name}'`);
+    if (dto.tenantId) {
+      const owned = await this.prisma.detectionRule.count({
+        where: { tenant_id: dto.tenantId },
+      });
+      if (owned >= MAX_TENANT_RULES) {
+        throw new BadRequestException(
+          `A tenant can have at most ${MAX_TENANT_RULES} rules. Disable or edit an existing one.`,
+        );
+      }
+    }
 
     const conditionStr = JSON.stringify(dto.conditionDefinition);
     const requiredStr = JSON.stringify(dto.requiredFields || []);
@@ -291,7 +325,25 @@ export class DetectionEngineService {
   /**
    * Evaluates a rule against a single event record
    */
-  private async evaluateRuleAgainstEvent(rule: any, event: any) {
+  // Replays always get a run back; the live path gets null for a non-match.
+  private async evaluateRuleAgainstEvent(
+    rule: any,
+    event: any,
+  ): Promise<RunRecord>;
+  private async evaluateRuleAgainstEvent(
+    rule: any,
+    event: any,
+    options: { live: true },
+  ): Promise<RunRecord | null>;
+  private async evaluateRuleAgainstEvent(
+    rule: any,
+    event: any,
+    options: { live?: boolean } = {},
+  ): Promise<RunRecord | null> {
+    // Replays record a run for every rule and event, matched or not. Running live, that
+    // would add a row per rule on every event, forever; only matches and errors are kept.
+    const nonMatch = (result: string, details: string) =>
+      options.live ? null : this.recordRun(rule, event, result, details);
     let requiredFields: string[] = [];
     try {
       requiredFields = JSON.parse(rule.required_fields || '[]');
@@ -307,9 +359,7 @@ export class DetectionEngineService {
     // Check required fields
     for (const field of requiredFields) {
       if (!event[field]) {
-        return this.recordRun(
-          rule,
-          event,
+        return nonMatch(
           'SKIPPED_MISSING_FIELDS',
           `Required field '${field}' missing on event`,
         );
@@ -330,7 +380,7 @@ export class DetectionEngineService {
 
     // Check eventClass if specified
     if (definition.eventClass && event.event_class !== definition.eventClass) {
-      return this.recordRun(rule, event, 'NO_MATCH', `event_class mismatch`);
+      return nonMatch('NO_MATCH', `event_class mismatch`);
     }
 
     // Check single event conditions
@@ -343,12 +393,7 @@ export class DetectionEngineService {
     }
 
     if (!conditionsMatched) {
-      return this.recordRun(
-        rule,
-        event,
-        'NO_MATCH',
-        'Conditions did not match',
-      );
+      return nonMatch('NO_MATCH', 'Conditions did not match');
     }
 
     // If ruleType is THRESHOLD, evaluate windowing
@@ -377,12 +422,26 @@ export class DetectionEngineService {
       });
 
       if (matchingCount < definition.threshold) {
-        return this.recordRun(
-          rule,
-          event,
+        return nonMatch(
           'NO_MATCH',
           `Threshold not met: ${matchingCount}/${definition.threshold} events in ${definition.windowMinutes}m window`,
         );
+      }
+      // Once a threshold rule has fired, stay quiet for the rest of its window instead
+      // of raising an alert for every further event.
+      if (options.live) {
+        const recent = await this.prisma.detectionRun.findFirst({
+          where: {
+            rule_id: rule.id,
+            tenant_id: event.tenant_id,
+            result: 'MATCHED',
+            executed_at: {
+              gte: new Date(Date.now() - definition.windowMinutes * 60 * 1000),
+            },
+          },
+          select: { id: true },
+        });
+        if (recent) return null;
       }
     }
 
@@ -461,6 +520,86 @@ export class DetectionEngineService {
   /**
    * Test a detection rule against sample event payload
    */
+  /**
+   * Run a new event through the tenant's OWN active rules, raising an alert for each match.
+   *
+   * Only rules the tenant created run here. The shared, platform-wide rules are not run
+   * on live events by this path, so turning a tenant's own rules on cannot change what
+   * every other tenant sees. A fault in one rule is logged and skipped; it never stops the
+   * others or fails the caller.
+   */
+  async evaluateTenantRules(event: any) {
+    const rules = await this.prisma.detectionRule.findMany({
+      where: { status: 'ACTIVE', tenant_id: event.tenant_id },
+      orderBy: { created_at: 'asc' },
+      take: MAX_LIVE_RULES,
+    });
+    const matched = [];
+    for (const rule of rules) {
+      try {
+        const run = await this.evaluateRuleAgainstEvent(rule, event, {
+          live: true,
+        });
+        if (run?.result === 'MATCHED') matched.push(run);
+      } catch (error) {
+        this.logger.warn(
+          `Rule '${rule.name}' (${rule.id}) failed on event ${event.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return matched;
+  }
+
+  /**
+   * What a rule WOULD do: run its conditions over the tenant's most recent events and
+   * report how many match, without recording anything or raising any alert. Lets an admin
+   * tune a rule before it goes live.
+   */
+  async previewRule(
+    tenantId: string,
+    definition: RuleDefinition,
+    limit = PREVIEW_DEFAULT,
+  ) {
+    if (definition.ruleType !== 'MATCH') {
+      throw new BadRequestException(
+        'Only single-event (MATCH) rules can be previewed.',
+      );
+    }
+    const take = Number.isFinite(limit)
+      ? Math.min(Math.max(Math.floor(limit), 1), PREVIEW_MAX)
+      : PREVIEW_DEFAULT;
+    const events = await this.prisma.normalizedEvent.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { recorded_at: 'desc' },
+      take,
+    });
+    const matches = events.filter((event) =>
+      this.matchesDefinition(definition, event),
+    );
+    return {
+      evaluated: events.length,
+      matched: matches.length,
+      samples: matches.slice(0, 5).map((e) => ({
+        id: e.id,
+        recordedAt: e.recorded_at,
+        activity: e.event_activity ?? e.event_class,
+        resource: e.resource_id,
+        actor: e.actor_user_id,
+        outcome: e.outcome,
+      })),
+    };
+  }
+
+  /** Whether one event satisfies a MATCH rule's event class and conditions. */
+  private matchesDefinition(definition: RuleDefinition, event: any): boolean {
+    if (definition.eventClass && event.event_class !== definition.eventClass) {
+      return false;
+    }
+    return (definition.conditions || []).every((cond) =>
+      this.evalSingleCondition(cond, event),
+    );
+  }
+
   async testRule(
     tenantId: string,
     ruleId: string,

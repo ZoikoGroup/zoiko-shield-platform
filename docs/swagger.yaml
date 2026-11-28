@@ -44650,6 +44650,345 @@ paths:
             minimum: 1
             default: 100
           description: Maximum number of evidence records to return.
+  /api/v1/alert-rules:
+    get:
+      tags:
+        - AlertRules
+      summary: List the workspace's alert rules
+      description: >-
+        Rules this tenant created, newest first. Platform-wide rules are not included. Requires tenant read access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: The request is not valid
+        '401':
+          description: Not signed in
+        '403':
+          description: Missing tenant permission
+    post:
+      tags:
+        - AlertRules
+      summary: Create an alert rule
+      description: >-
+        Raises an alert of the given severity whenever a newly received event matches every condition. With threshold and windowMinutes it alerts once that many events match within the window, then stays quiet for the rest of that window. A workspace can have at most 100 rules. Requires tenant write access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, severity, conditions]
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 500
+                severity:
+                  type: string
+                  enum: [CRITICAL, HIGH, MEDIUM, LOW]
+                conditions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [field, operator, value]
+                    properties:
+                      field:
+                        type: string
+                        enum: [event_class, event_category, event_activity, severity, actor_user_id, actor_email, source_ip, destination_ip, resource_id, resource_type, action, outcome]
+                      operator:
+                        type: string
+                        enum: [EQUALS, NOT_EQUALS, CONTAINS, IN]
+                      value:
+                        description: Text (up to 200 characters), or a list of text values when the operator is IN
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: string
+                threshold:
+                  type: integer
+                  minimum: 2
+                  maximum: 1000
+                  description: Alert only after this many matching events within windowMinutes. Give both or neither.
+                windowMinutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 1440
+      responses:
+        '201':
+          description: The created rule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '400':
+          description: The request is not valid
+        '401':
+          description: Not signed in
+        '403':
+          description: Missing tenant permission
+  /api/v1/alert-rules/preview:
+    post:
+      tags:
+        - AlertRules
+      summary: Preview what a rule would match
+      description: >-
+        Counts how many of the workspace's most recent events would match the conditions and returns a few examples. Records nothing and raises no alert. Requires tenant read access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conditions]
+              properties:
+                conditions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [field, operator, value]
+                    properties:
+                      field:
+                        type: string
+                        enum: [event_class, event_category, event_activity, severity, actor_user_id, actor_email, source_ip, destination_ip, resource_id, resource_type, action, outcome]
+                      operator:
+                        type: string
+                        enum: [EQUALS, NOT_EQUALS, CONTAINS, IN]
+                      value:
+                        description: Text (up to 200 characters), or a list of text values when the operator is IN
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: string
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 200
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      evaluated:
+                        type: integer
+                      matched:
+                        type: integer
+                      samples:
+                        type: array
+                        items:
+                          type: object
+        '400':
+          description: The request is not valid
+        '401':
+          description: Not signed in
+        '403':
+          description: Missing tenant permission
+  /api/v1/alert-rules/{id}:
+    patch:
+      tags:
+        - AlertRules
+      summary: Change an alert rule
+      description: >-
+        Edits the rule's name, severity, conditions or threshold. Only rules created by this workspace can be changed. Requires tenant write access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 500
+                severity:
+                  type: string
+                  enum: [CRITICAL, HIGH, MEDIUM, LOW]
+                conditions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [field, operator, value]
+                    properties:
+                      field:
+                        type: string
+                        enum: [event_class, event_category, event_activity, severity, actor_user_id, actor_email, source_ip, destination_ip, resource_id, resource_type, action, outcome]
+                      operator:
+                        type: string
+                        enum: [EQUALS, NOT_EQUALS, CONTAINS, IN]
+                      value:
+                        description: Text (up to 200 characters), or a list of text values when the operator is IN
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items:
+                              type: string
+                threshold:
+                  type: integer
+                  minimum: 2
+                  maximum: 1000
+                  description: Alert only after this many matching events within windowMinutes. Give both or neither.
+                windowMinutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 1440
+      responses:
+        '200':
+          description: The updated rule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '400':
+          description: The request is not valid
+        '401':
+          description: Not signed in
+        '403':
+          description: Missing tenant permission
+  /api/v1/alert-rules/{id}/enabled:
+    post:
+      tags:
+        - AlertRules
+      summary: Turn an alert rule on or off
+      description: >-
+        A disabled rule is kept but no longer raises alerts. Requires tenant write access.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: The updated rule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '400':
+          description: The request is not valid
+        '401':
+          description: Not signed in
+        '403':
+          description: Missing tenant permission
+  /api/v1/detections/preview:
+    post:
+      tags:
+        - DetectionEngine
+      summary: Preview a detection rule against recent events
+      description: >-
+        Internal route used by shield-core. Counts how many of the tenant's recent events a rule definition would match. Records nothing.
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [conditionDefinition]
+              properties:
+                conditionDefinition:
+                  type: object
+                limit:
+                  type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '400':
+          description: The request is not valid
+        '401':
+          description: Not signed in
+        '403':
+          description: Missing tenant permission
   /api/v1/detections:
     post:
       tags:

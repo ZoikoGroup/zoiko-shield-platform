@@ -348,6 +348,39 @@ export class ShieldIngestClient {
     });
   }
 
+  // --- Tenant alert rules (stored as detection rules in ingest) ---
+  listAlertRules(tenantId: string): Promise<any> {
+    return this.get('/api/v1/detections', { 'x-tenant-id': tenantId });
+  }
+
+  createAlertRule(tenantId: string, dto: unknown): Promise<any> {
+    return this.post('/api/v1/detections', dto, { 'x-tenant-id': tenantId });
+  }
+
+  updateAlertRule(tenantId: string, id: string, dto: unknown): Promise<any> {
+    return this.patch(`/api/v1/detections/${encodeURIComponent(id)}`, dto, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
+  setAlertRuleEnabled(
+    tenantId: string,
+    id: string,
+    enabled: boolean,
+  ): Promise<any> {
+    return this.post(
+      `/api/v1/detections/${encodeURIComponent(id)}/${enabled ? 'activate' : 'disable'}`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
+  }
+
+  previewAlertRule(tenantId: string, dto: unknown): Promise<any> {
+    return this.post('/api/v1/detections/preview', dto, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
   // --- HTTP Helpers ---
   private async get(
     path: string,
