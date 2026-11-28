@@ -13,8 +13,10 @@ import {
   Min,
   MinLength,
   ValidateNested,
-  registerDecorator,
-  ValidationOptions,
+  Validate,
+  ValidationArguments,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
 } from 'class-validator';
 
 /** The event fields a tenant may write conditions about. */
@@ -51,34 +53,25 @@ const MAX_VALUE_LENGTH = 200;
 const MAX_IN_VALUES = 25;
 
 /** A condition value is a short string, or (for IN) a short list of them. */
-function IsConditionValue(options?: ValidationOptions) {
-  return (object: object, propertyName: string) =>
-    registerDecorator({
-      name: 'isConditionValue',
-      target: object.constructor,
-      propertyName,
-      options: {
-        message: `value must be text up to ${MAX_VALUE_LENGTH} characters (a list of up to ${MAX_IN_VALUES} for IN)`,
-        ...options,
-      },
-      validator: {
-        validate(value: unknown, args: any) {
-          const ok = (v: unknown) =>
-            typeof v === 'string' &&
-            v.length > 0 &&
-            v.length <= MAX_VALUE_LENGTH;
-          if (args.object?.operator === 'IN') {
-            return (
-              Array.isArray(value) &&
-              value.length > 0 &&
-              value.length <= MAX_IN_VALUES &&
-              value.every(ok)
-            );
-          }
-          return ok(value);
-        },
-      },
-    });
+@ValidatorConstraint({ name: 'isConditionValue', async: false })
+export class ConditionValueConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown, args: ValidationArguments): boolean {
+    const ok = (v: unknown) =>
+      typeof v === 'string' && v.length > 0 && v.length <= MAX_VALUE_LENGTH;
+    if ((args.object as { operator?: string })?.operator === 'IN') {
+      return (
+        Array.isArray(value) &&
+        value.length > 0 &&
+        value.length <= MAX_IN_VALUES &&
+        value.every(ok)
+      );
+    }
+    return ok(value);
+  }
+
+  defaultMessage(): string {
+    return `value must be text up to ${MAX_VALUE_LENGTH} characters (a list of up to ${MAX_IN_VALUES} for IN)`;
+  }
 }
 
 export class AlertConditionDto {
@@ -88,7 +81,7 @@ export class AlertConditionDto {
   @IsIn(ALERT_RULE_OPERATORS)
   operator!: (typeof ALERT_RULE_OPERATORS)[number];
 
-  @IsConditionValue()
+  @Validate(ConditionValueConstraint)
   value!: string | string[];
 }
 
