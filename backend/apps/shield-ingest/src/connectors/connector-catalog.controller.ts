@@ -21,6 +21,7 @@ import {
 import { requireTenantId } from '../security/tenant-context';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { ConnectorHealthService } from './services/health.service';
+import { ConnectorActivityService } from './services/connector-activity.service';
 import { ConnectorWebhookSecretService } from './services/connector-webhook-secret.service';
 import { DLQReplayWorker } from '../ingestion/dlq-replay.worker';
 import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
@@ -36,7 +37,33 @@ export class ConnectorCatalogController {
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
     @Optional()
     private readonly webhookSecrets?: ConnectorWebhookSecretService,
+    @Optional()
+    private readonly connectorActivity?: ConnectorActivityService,
   ) {}
+
+  /**
+   * GET /api/v1/connectors/:connectorId/activity?limit=10
+   * What the connector has received: totals and the latest deliveries.
+   */
+  @Get('connectors/:connectorId/activity')
+  async getConnectorActivity(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('connectorId') connectorId: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!this.connectorActivity) {
+      throw new ServiceUnavailableException('Connector activity is unavailable');
+    }
+    const parsed = limit === undefined || limit.trim() === '' ? undefined : Number(limit);
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.connectorActivity.recent(
+        requireTenantId(tenantId),
+        connectorId,
+        parsed,
+      ),
+    };
+  }
 
   private requireWebhookSecrets(): ConnectorWebhookSecretService {
     if (!this.webhookSecrets) {
