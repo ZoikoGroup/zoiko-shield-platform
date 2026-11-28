@@ -37,6 +37,7 @@ import { ConnectorCacheService } from './ingestion/connector-cache.service';
 import { ConnectorCatalogController } from './connectors/connector-catalog.controller';
 import { ConnectorCatalogService } from './connectors/connector-catalog.service';
 import { ConnectorWebhookSecretService } from './connectors/services/connector-webhook-secret.service';
+import { ConnectorActivityService } from './connectors/services/connector-activity.service';
 import { ShieldCoreClient } from './internal-client/shield-core.client';
 import { AwsCloudTrailProvider } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.provider';
 import { AwsCloudTrailNormalizerService } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
@@ -216,6 +217,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     RawIngestService,
     ConnectorCatalogService,
     ConnectorWebhookSecretService,
+    ConnectorActivityService,
     ShieldCoreClient,
     NormalizationService,
     CloudNormalizationBridgeService,

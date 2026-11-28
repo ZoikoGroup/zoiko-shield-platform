@@ -111,6 +111,17 @@ export class ShieldIngestClient {
     );
   }
 
+  async getConnectorActivity(
+    tenantId: string,
+    id: string,
+    limit?: number,
+  ): Promise<any> {
+    const query = limit ? `?limit=${limit}` : '';
+    return this.get(`/api/v1/connectors/${id}/activity${query}`, {
+      'x-tenant-id': tenantId,
+    });
+  }
+
   async getConnectorHealth(tenantId: string, id: string): Promise<any> {
     return this.get(`/api/v1/connectors/${id}/health`, {
       'x-tenant-id': tenantId,

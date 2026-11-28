@@ -149,6 +149,23 @@ export class ConnectorsProxyController {
     });
   }
 
+  /** What a connector has received: totals and its latest deliveries. */
+  @Get('connectors/:id/activity')
+  async getConnectorActivity(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    const n = Number(limit);
+    const bounded =
+      limit !== undefined && Number.isFinite(n) && n >= 1
+        ? Math.min(Math.floor(n), 50)
+        : undefined;
+    return this.shieldIngestClient.getConnectorActivity(tenantId, id, bounded);
+  }
+
   @Get('connectors/:id/health')
   async getConnectorHealth(
     @Headers('x-tenant-id') headerTenantId: string,
