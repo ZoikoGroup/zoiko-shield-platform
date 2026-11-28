@@ -148,4 +148,78 @@ describe('NormalizationService', () => {
     expect(result).toHaveProperty('reason', 'MALFORMED_PAYLOAD');
     expect(prismaMock.quarantinedEvent.create).toHaveBeenCalled();
   });
+
+  describe('alert rules run on every newly normalized event', () => {
+    const normalized = {
+      id: 'norm-1',
+      tenant_id: 'tenant-001',
+      environment_id: 'prod-env',
+      connector_id: 'conn-123',
+      raw_event_id: 'raw-100',
+      event_class: 'AUTHENTICATION',
+      severity: 'INFORMATIONAL',
+      actor_email: 'alice@example.com',
+      outcome: 'SUCCESS',
+      occurred_at: new Date(),
+      recorded_at: new Date(),
+      mapping_version: '1.0',
+    };
+    const withDetection = (evaluateTenantRules: jest.Mock) =>
+      new NormalizationService(prismaMock, kafkaMock, {
+        evaluateTenantRules,
+      } as any);
+
+    beforeEach(() => {
+      prismaMock.rawEvent.findUnique.mockResolvedValue(mockRawEvent);
+      prismaMock.normalizedEvent.create.mockResolvedValue(normalized);
+    });
+
+    it('hands the new event to the tenant rules', async () => {
+      const evaluate = jest.fn().mockResolvedValue([]);
+      await withDetection(evaluate).normalizeRawEvent('raw-100');
+      expect(evaluate).toHaveBeenCalledWith(normalized);
+    });
+
+    it('a rule problem never fails a successfully normalized event', async () => {
+      const evaluate = jest
+        .fn()
+        .mockRejectedValue(new Error('rule engine down'));
+      await expect(
+        withDetection(evaluate).normalizeRawEvent('raw-100'),
+      ).resolves.toHaveProperty('id', 'norm-1');
+    });
+
+    it('runs the rules only after the event is stored and published', async () => {
+      const order: string[] = [];
+      prismaMock.normalizedEvent.create.mockImplementation(
+        async () => (order.push('stored'), normalized),
+      );
+      kafkaMock.publishEvent.mockImplementation(
+        async () => (order.push('published'), true),
+      );
+      await withDetection(
+        jest.fn(async () => (order.push('rules'), [])),
+      ).normalizeRawEvent('raw-100');
+      expect(order).toEqual(['stored', 'published', 'rules']);
+    });
+
+    it('does not run them again for an already-normalized raw event', async () => {
+      prismaMock.rawEvent.findUnique.mockResolvedValue({
+        ...mockRawEvent,
+        processing_status: 'NORMALIZED',
+      });
+      prismaMock.normalizedEvent.findFirst = jest
+        .fn()
+        .mockResolvedValue(normalized);
+      const evaluate = jest.fn();
+      await withDetection(evaluate).normalizeRawEvent('raw-100');
+      expect(evaluate).not.toHaveBeenCalled();
+    });
+
+    it('works unchanged where no rule engine is wired', async () => {
+      await expect(
+        service.normalizeRawEvent('raw-100'),
+      ).resolves.toHaveProperty('id', 'norm-1');
+    });
+  });
 });

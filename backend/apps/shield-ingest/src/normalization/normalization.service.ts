@@ -1,5 +1,11 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { DetectionEngineService } from '../detection/detection-engine.service';
 import {
   KafkaProducerService,
   CANONICAL_TOPICS,
@@ -34,6 +40,7 @@ export class NormalizationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly kafkaProducer: KafkaProducerService,
+    @Optional() private readonly detectionEngine?: DetectionEngineService,
   ) {}
 
   /**
@@ -334,6 +341,18 @@ export class NormalizationService {
         occurredAt: normalizedEvent.occurred_at ?? normalizedEvent.recorded_at,
       },
     );
+
+    // Run the tenant's own alert rules on the new event. Best effort: a problem with a
+    // rule must never turn a successfully normalized event into a failure.
+    if (this.detectionEngine) {
+      try {
+        await this.detectionEngine.evaluateTenantRules(normalizedEvent);
+      } catch (error) {
+        this.logger.warn(
+          `Alert rules could not be evaluated for event ${normalizedEvent.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
     return normalizedEvent;
   }
